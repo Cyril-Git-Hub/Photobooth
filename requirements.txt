@@ -1,0 +1,10 @@
+# Étapes 2 à 6
+PyQt6
+opencv-contrib-python
+numpy
+mediapipe
+Pillow
+openpyxl
+
+# À activer aux étapes suivantes (ne pas installer avant) :
+# pyinstaller             # étape 9 : exécutable

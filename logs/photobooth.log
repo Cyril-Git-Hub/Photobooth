@@ -1,0 +1,450 @@
+2026-10-10 21:14:42,722 WARNING  app.config : config.ini introuvable, création avec les valeurs par défaut : C:\photobooth\config.ini
+2026-10-10 21:14:42,737 INFO     app.config : Dossier de fonds créé avec les thèmes par défaut : C:\photobooth\fonds
+2026-10-10 21:14:42,737 INFO     photobooth : Démarrage (détourage=ia, poses=4)
+2026-10-10 21:14:44,457 INFO     app.ui.main_window : Écran : home
+2026-10-10 21:14:46,457 INFO     app.ui.main_window : Écran : guest_select
+2026-10-10 21:14:48,270 INFO     app.ui.main_window : Écran : email_entry
+2026-10-10 21:14:48,879 INFO     app.ui.main_window : Écran : format_select
+2026-10-10 21:14:49,629 INFO     app.ui.main_window : Écran : background_select
+2026-10-10 21:14:50,566 INFO     app.ui.main_window : Écran : capture
+2026-10-10 21:14:54,072 INFO     app.core.webcam : Caméra 0 ouverte (backend 700) : 1280x720
+2026-10-10 21:15:18,814 INFO     app.ui.main_window : Écran : background_select
+2026-10-10 21:15:49,605 INFO     app.ui.main_window : Fermeture du logiciel
+2026-10-10 21:15:50,130 INFO     app.core.camera : Caméra arrêtée
+2026-10-10 21:16:01,159 INFO     photobooth : Démarrage (détourage=ia, poses=4)
+2026-10-10 21:16:01,269 INFO     app.ui.main_window : Écran : home
+2026-10-10 21:16:03,750 INFO     app.ui.main_window : Écran : guest_select
+2026-10-10 21:16:05,094 INFO     app.ui.main_window : Écran : email_entry
+2026-10-10 21:16:05,797 INFO     app.ui.main_window : Écran : format_select
+2026-10-10 21:16:06,469 INFO     app.ui.main_window : Écran : background_select
+2026-10-10 21:16:07,297 INFO     app.ui.main_window : Écran : capture
+2026-10-10 21:16:09,838 INFO     app.core.webcam : Caméra 0 ouverte (backend 700) : 1280x720
+2026-10-10 21:16:32,472 INFO     app.core.storage : Photo enregistrée : C:\photobooth\photos\2026-10-10\211632.jpg
+2026-10-10 21:16:33,305 INFO     app.ui.main_window : Écran : review
+2026-10-10 21:16:50,150 INFO     app.ui.main_window : Écran : sending
+2026-10-10 21:16:53,684 INFO     app.core.camera : Caméra arrêtée
+2026-10-10 21:16:53,699 INFO     app.ui.main_window : Écran : home
+2026-10-10 21:16:58,898 INFO     app.ui.main_window : Écran : guest_select
+2026-10-10 21:16:59,531 INFO     app.ui.main_window : Écran : email_entry
+2026-10-10 21:16:59,978 INFO     app.ui.main_window : Écran : format_select
+2026-10-10 21:17:00,465 INFO     app.ui.main_window : Écran : background_select
+2026-10-10 21:17:00,982 INFO     app.ui.main_window : Écran : capture
+2026-10-10 21:17:03,511 INFO     app.core.webcam : Caméra 0 ouverte (backend 700) : 1280x720
+2026-10-10 21:17:09,185 INFO     app.core.storage : Photo enregistrée : C:\photobooth\photos\2026-10-10\211709.jpg
+2026-10-10 21:17:09,935 INFO     app.ui.main_window : Écran : review
+2026-10-10 21:17:11,829 INFO     app.ui.main_window : Écran : capture
+2026-10-10 21:18:11,838 INFO     app.ui.main_window : Inactivité : retour à l'accueil
+2026-10-10 21:18:12,356 INFO     app.core.camera : Caméra arrêtée
+2026-10-10 21:18:12,367 INFO     app.ui.main_window : Écran : home
+2026-10-10 21:18:31,824 INFO     app.ui.main_window : Fermeture du logiciel
+2026-10-11 10:21:17,727 INFO     photobooth : Démarrage (détourage=ia, poses=4)
+2026-10-11 10:21:18,851 INFO     app.ui.main_window : Écran : home
+2026-10-11 10:21:22,336 INFO     matplotlib.font_manager : generated new fontManager
+2026-10-11 10:21:23,210 INFO     app.core.segmentation : Détourage IA prêt (selfie_segmenter.tflite)
+2026-10-11 10:21:36,373 INFO     app.ui.main_window : Fermeture du logiciel
+2026-10-11 10:22:01,458 INFO     photobooth : Démarrage (détourage=ia, poses=4)
+2026-10-11 10:22:01,567 INFO     app.ui.main_window : Écran : home
+2026-10-11 10:22:03,239 INFO     app.core.segmentation : Détourage IA prêt (selfie_segmenter.tflite)
+2026-10-11 10:22:08,958 INFO     app.ui.main_window : Écran : guest_select
+2026-10-11 10:22:10,747 INFO     app.ui.main_window : Écran : email_entry
+2026-10-11 10:22:11,668 INFO     app.ui.main_window : Écran : format_select
+2026-10-11 10:22:13,012 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 10:22:21,591 INFO     app.ui.main_window : Écran : capture
+2026-10-11 10:22:24,427 INFO     app.core.webcam : Caméra 0 ouverte (backend 700) : 1280x720
+2026-10-11 10:22:25,507 INFO     app.core.segmentation : Détourage IA : 1 masque(s), part de personne dans l'image = 0.00
+2026-10-11 10:22:35,339 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 10:22:36,163 INFO     app.ui.main_window : Écran : capture
+2026-10-11 10:22:40,257 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 10:22:40,986 INFO     app.ui.main_window : Écran : capture
+2026-10-11 10:22:43,729 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 10:22:46,693 INFO     app.ui.main_window : Écran : format_select
+2026-10-11 10:22:47,791 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 10:22:50,084 INFO     app.ui.main_window : Écran : capture
+2026-10-11 10:22:57,336 INFO     app.core.compositor : Aperçu avec décor : 64 ms par image (16 images/s max) en 960x540
+2026-10-11 10:23:04,867 INFO     app.core.compositor : Aperçu avec décor : 85 ms par image (12 images/s max) en 960x540
+2026-10-11 10:23:04,932 INFO     app.core.storage : Photo enregistrée : C:\photobooth\photos\2026-10-11\102304.jpg
+2026-10-11 10:23:05,674 INFO     app.ui.main_window : Écran : review
+2026-10-11 10:23:07,773 INFO     app.ui.main_window : Écran : capture
+2026-10-11 10:23:08,728 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 10:23:26,235 INFO     app.ui.main_window : Écran : capture
+2026-10-11 10:23:33,017 INFO     app.core.compositor : Aperçu avec décor : 80 ms par image (12 images/s max) en 960x540
+2026-10-11 10:23:35,248 INFO     app.core.storage : Photo enregistrée : C:\photobooth\photos\2026-10-11\102335.jpg
+2026-10-11 10:23:35,999 INFO     app.ui.main_window : Écran : review
+2026-10-11 10:23:39,789 INFO     app.ui.main_window : Écran : capture
+2026-10-11 10:23:44,200 INFO     app.core.storage : Photo enregistrée : C:\photobooth\photos\2026-10-11\102344.jpg
+2026-10-11 10:23:44,934 INFO     app.ui.main_window : Écran : review
+2026-10-11 10:23:49,652 INFO     app.ui.main_window : Écran : capture
+2026-10-11 10:23:55,667 INFO     app.core.compositor : Aperçu avec décor : 63 ms par image (16 images/s max) en 960x540
+2026-10-11 10:24:00,853 INFO     app.core.storage : Photo enregistrée : C:\photobooth\photos\2026-10-11\102400.jpg
+2026-10-11 10:24:01,586 INFO     app.ui.main_window : Écran : review
+2026-10-11 10:25:01,600 INFO     app.ui.main_window : Inactivité : retour à l'accueil
+2026-10-11 10:25:02,127 INFO     app.core.camera : Caméra arrêtée
+2026-10-11 10:25:02,132 INFO     app.ui.main_window : Écran : home
+2026-10-11 10:26:50,293 INFO     app.ui.main_window : Écran : guest_select
+2026-10-11 10:26:51,037 INFO     app.ui.main_window : Écran : email_entry
+2026-10-11 10:26:51,613 INFO     app.ui.main_window : Écran : format_select
+2026-10-11 10:26:52,186 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 10:26:54,237 INFO     app.ui.main_window : Écran : capture
+2026-10-11 10:26:56,823 INFO     app.core.webcam : Caméra 0 ouverte (backend 700) : 1280x720
+2026-10-11 10:27:03,075 INFO     app.core.compositor : Aperçu avec décor : 83 ms par image (12 images/s max) en 960x540
+2026-10-11 10:27:07,061 INFO     app.core.storage : Photo enregistrée : C:\photobooth\photos\2026-10-11\102707.jpg
+2026-10-11 10:27:07,796 INFO     app.ui.main_window : Écran : review
+2026-10-11 10:27:11,772 INFO     app.ui.main_window : Écran : capture
+2026-10-11 10:27:18,442 INFO     app.core.compositor : Aperçu avec décor : 87 ms par image (11 images/s max) en 960x540
+2026-10-11 10:27:24,556 INFO     app.core.compositor : Aperçu avec décor : 84 ms par image (12 images/s max) en 960x540
+2026-10-11 10:27:31,136 INFO     app.core.compositor : Aperçu avec décor : 80 ms par image (12 images/s max) en 960x540
+2026-10-11 10:27:37,114 INFO     app.core.compositor : Aperçu avec décor : 69 ms par image (15 images/s max) en 960x540
+2026-10-11 10:27:43,225 INFO     app.core.compositor : Aperçu avec décor : 74 ms par image (13 images/s max) en 960x540
+2026-10-11 10:27:49,304 INFO     app.core.compositor : Aperçu avec décor : 69 ms par image (14 images/s max) en 960x540
+2026-10-11 10:27:55,336 INFO     app.core.compositor : Aperçu avec décor : 75 ms par image (13 images/s max) en 960x540
+2026-10-11 10:28:01,326 INFO     app.core.compositor : Aperçu avec décor : 67 ms par image (15 images/s max) en 960x540
+2026-10-11 10:28:07,329 INFO     app.core.compositor : Aperçu avec décor : 63 ms par image (16 images/s max) en 960x540
+2026-10-11 10:28:13,747 INFO     app.core.storage : Photo enregistrée : C:\photobooth\photos\2026-10-11\102813.jpg
+2026-10-11 10:28:14,475 INFO     app.ui.main_window : Écran : review
+2026-10-11 10:28:41,429 INFO     app.ui.main_window : Écran : capture
+2026-10-11 10:28:47,491 INFO     app.core.compositor : Aperçu avec décor : 70 ms par image (14 images/s max) en 960x540
+2026-10-11 10:28:54,387 INFO     app.core.compositor : Aperçu avec décor : 93 ms par image (11 images/s max) en 960x540
+2026-10-11 10:29:00,771 INFO     app.core.compositor : Aperçu avec décor : 83 ms par image (12 images/s max) en 960x540
+2026-10-11 10:29:07,216 INFO     app.core.compositor : Aperçu avec décor : 80 ms par image (13 images/s max) en 960x540
+2026-10-11 10:29:13,275 INFO     app.core.compositor : Aperçu avec décor : 74 ms par image (14 images/s max) en 960x540
+2026-10-11 10:29:19,368 INFO     app.core.compositor : Aperçu avec décor : 74 ms par image (13 images/s max) en 960x540
+2026-10-11 10:29:25,517 INFO     app.core.compositor : Aperçu avec décor : 71 ms par image (14 images/s max) en 960x540
+2026-10-11 10:29:31,869 INFO     app.core.compositor : Aperçu avec décor : 79 ms par image (13 images/s max) en 960x540
+2026-10-11 10:29:38,074 INFO     app.core.compositor : Aperçu avec décor : 71 ms par image (14 images/s max) en 960x540
+2026-10-11 10:29:41,439 INFO     app.ui.main_window : Inactivité : retour à l'accueil
+2026-10-11 10:29:41,977 INFO     app.core.camera : Caméra arrêtée
+2026-10-11 10:29:41,987 INFO     app.ui.main_window : Écran : home
+2026-10-11 10:30:52,785 INFO     app.ui.main_window : Écran : guest_select
+2026-10-11 10:30:53,207 INFO     app.ui.main_window : Écran : email_entry
+2026-10-11 10:30:53,614 INFO     app.ui.main_window : Écran : format_select
+2026-10-11 10:30:54,051 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 10:30:55,270 INFO     app.ui.main_window : Écran : capture
+2026-10-11 10:30:57,828 INFO     app.core.webcam : Caméra 0 ouverte (backend 700) : 1280x720
+2026-10-11 10:31:02,866 INFO     app.core.storage : Photo enregistrée : C:\photobooth\photos\2026-10-11\103102.jpg
+2026-10-11 10:31:03,606 INFO     app.ui.main_window : Écran : review
+2026-10-11 10:31:46,054 INFO     app.ui.main_window : Écran : capture
+2026-10-11 10:31:52,125 INFO     app.core.compositor : Aperçu avec décor : 71 ms par image (14 images/s max) en 960x540
+2026-10-11 10:31:58,135 INFO     app.core.compositor : Aperçu avec décor : 66 ms par image (15 images/s max) en 960x540
+2026-10-11 10:32:04,145 INFO     app.core.compositor : Aperçu avec décor : 66 ms par image (15 images/s max) en 960x540
+2026-10-11 10:32:10,140 INFO     app.core.compositor : Aperçu avec décor : 64 ms par image (16 images/s max) en 960x540
+2026-10-11 10:32:16,138 INFO     app.core.compositor : Aperçu avec décor : 64 ms par image (16 images/s max) en 960x540
+2026-10-11 10:32:22,249 INFO     app.core.compositor : Aperçu avec décor : 69 ms par image (15 images/s max) en 960x540
+2026-10-11 10:32:28,245 INFO     app.core.compositor : Aperçu avec décor : 65 ms par image (15 images/s max) en 960x540
+2026-10-11 10:32:35,190 INFO     app.core.compositor : Aperçu avec décor : 87 ms par image (11 images/s max) en 960x540
+2026-10-11 10:32:35,425 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 10:32:37,138 INFO     app.ui.main_window : Écran : capture
+2026-10-11 10:32:42,158 INFO     app.core.storage : Photo enregistrée : C:\photobooth\photos\2026-10-11\103242.jpg
+2026-10-11 10:32:42,891 INFO     app.ui.main_window : Écran : review
+2026-10-11 10:32:45,643 INFO     app.ui.main_window : Écran : capture
+2026-10-11 10:33:27,769 INFO     app.ui.main_window : Fermeture du logiciel
+2026-10-11 10:33:28,304 INFO     app.core.camera : Caméra arrêtée
+2026-10-11 16:16:18,325 INFO     photobooth : Démarrage (détourage=ia, poses=4)
+2026-10-11 16:16:18,544 INFO     app.ui.main_window : Écran : home
+2026-10-11 16:16:19,170 WARNING  app.ui.main_window : Détourage non prêt au démarrage : Modèle de détourage introuvable : C:\photobooth\models\selfie_segmenter_landscape.tflite Lance « python tools\telecharger_modele.py » (une seule fois, avec internet), ou choisis mode_detourage = fond_vert dans config.ini.
+2026-10-11 16:16:19,764 INFO     app.ui.main_window : Écran : guest_select
+2026-10-11 16:16:20,639 INFO     app.ui.main_window : Écran : email_entry
+2026-10-11 16:16:21,342 INFO     app.ui.main_window : Écran : format_select
+2026-10-11 16:16:21,967 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 16:16:24,076 ERROR    app.ui.screens.capture : Détourage indisponible : Modèle de détourage introuvable :
+C:\photobooth\models\selfie_segmenter_landscape.tflite
+Lance « python tools\telecharger_modele.py » (une seule fois, avec internet), ou choisis mode_detourage = fond_vert dans config.ini.
+2026-10-11 16:16:24,076 INFO     app.ui.main_window : Écran : capture
+2026-10-11 16:16:31,545 INFO     app.ui.main_window : Fermeture du logiciel
+2026-10-11 16:17:42,667 INFO     photobooth : Démarrage (détourage=ia, poses=4)
+2026-10-11 16:17:42,760 INFO     app.ui.main_window : Écran : home
+2026-10-11 16:17:43,324 WARNING  app.ui.main_window : Détourage non prêt au démarrage : Modèle de détourage introuvable : C:\photobooth\models\selfie_segmenter_landscape.tflite Lance « python tools\telecharger_modele.py » (une seule fois, avec internet), ou choisis mode_detourage = fond_vert dans config.ini.
+2026-10-11 16:17:43,746 INFO     app.ui.main_window : Écran : guest_select
+2026-10-11 16:17:44,121 INFO     app.ui.main_window : Écran : email_entry
+2026-10-11 16:17:44,542 INFO     app.ui.main_window : Écran : format_select
+2026-10-11 16:17:44,980 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 16:17:45,917 ERROR    app.ui.screens.capture : Détourage indisponible : Modèle de détourage introuvable :
+C:\photobooth\models\selfie_segmenter_landscape.tflite
+Lance « python tools\telecharger_modele.py » (une seule fois, avec internet), ou choisis mode_detourage = fond_vert dans config.ini.
+2026-10-11 16:17:45,917 INFO     app.ui.main_window : Écran : capture
+2026-10-11 16:17:51,573 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 16:17:53,886 INFO     app.ui.main_window : Fermeture du logiciel
+2026-10-11 16:19:27,904 INFO     photobooth : Démarrage (détourage=ia, poses=4)
+2026-10-11 16:19:27,998 INFO     app.ui.main_window : Écran : home
+2026-10-11 16:19:29,655 INFO     app.core.segmentation : Détourage IA prêt (selfie_segmenter_landscape.tflite, entrée 256x144)
+2026-10-11 16:19:29,670 INFO     app.ui.main_window : Écran : guest_select
+2026-10-11 16:19:30,342 INFO     app.ui.main_window : Écran : email_entry
+2026-10-11 16:19:30,889 INFO     app.ui.main_window : Écran : format_select
+2026-10-11 16:19:31,342 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 16:19:32,233 INFO     app.ui.main_window : Écran : capture
+2026-10-11 16:19:34,847 INFO     app.core.webcam : Caméra 0 ouverte (backend 700) : 1280x720
+2026-10-11 16:19:34,985 INFO     app.core.segmentation : Détourage IA : 1 masque(s), part de personne dans l'image = 0.18
+2026-10-11 16:19:40,969 INFO     app.core.compositor : Aperçu avec décor : 83 ms par image (12 images/s max) en 960x540
+2026-10-11 16:19:47,066 INFO     app.core.storage : Photo enregistrée : C:\photobooth\photos\2026-10-11\161947.jpg
+2026-10-11 16:19:47,800 INFO     app.ui.main_window : Écran : review
+2026-10-11 16:19:50,413 INFO     app.ui.main_window : Écran : capture
+2026-10-11 16:19:54,403 INFO     app.core.storage : Photo enregistrée : C:\photobooth\photos\2026-10-11\161954.jpg
+2026-10-11 16:19:55,133 INFO     app.ui.main_window : Écran : review
+2026-10-11 16:19:59,324 INFO     app.ui.main_window : Écran : capture
+2026-10-11 16:20:00,232 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 16:20:03,494 INFO     app.ui.main_window : Écran : capture
+2026-10-11 16:20:05,075 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 16:20:05,835 INFO     app.ui.main_window : Écran : capture
+2026-10-11 16:20:12,298 INFO     app.core.compositor : Aperçu avec décor : 92 ms par image (11 images/s max) en 960x540
+2026-10-11 16:20:14,391 INFO     app.core.storage : Photo enregistrée : C:\photobooth\photos\2026-10-11\162014.jpg
+2026-10-11 16:20:15,131 INFO     app.ui.main_window : Écran : review
+2026-10-11 16:20:22,309 INFO     app.ui.main_window : Écran : capture
+2026-10-11 16:20:29,213 INFO     app.core.compositor : Aperçu avec décor : 97 ms par image (10 images/s max) en 960x540
+2026-10-11 16:20:34,434 INFO     app.ui.main_window : Fermeture du logiciel
+2026-10-11 16:20:35,070 INFO     app.core.camera : Caméra arrêtée
+2026-10-11 17:17:31,350 INFO     photobooth : Démarrage (détourage=ia, poses=4)
+2026-10-11 17:17:31,445 INFO     app.ui.main_window : Écran : home
+2026-10-11 17:17:33,154 INFO     app.core.segmentation : Détourage IA prêt (selfie_segmenter_landscape.tflite, entrée 256x144)
+2026-10-11 17:17:33,185 INFO     app.ui.main_window : Écran : guest_select
+2026-10-11 17:17:34,187 INFO     app.ui.main_window : Écran : email_entry
+2026-10-11 17:17:35,047 INFO     app.ui.main_window : Écran : format_select
+2026-10-11 17:17:35,984 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 17:17:43,673 INFO     app.ui.main_window : Fermeture du logiciel
+2026-10-11 17:18:07,376 INFO     photobooth : Démarrage (détourage=ia, poses=4)
+2026-10-11 17:18:07,486 INFO     app.ui.main_window : Écran : home
+2026-10-11 17:18:09,177 INFO     app.core.segmentation : Détourage IA prêt (selfie_segmenter_landscape.tflite, entrée 256x144)
+2026-10-11 17:18:09,177 INFO     app.ui.main_window : Écran : guest_select
+2026-10-11 17:18:09,193 INFO     app.ui.main_window : Écran : email_entry
+2026-10-11 17:18:09,772 INFO     app.ui.main_window : Écran : format_select
+2026-10-11 17:18:11,056 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 17:18:26,544 INFO     app.ui.main_window : Écran : capture
+2026-10-11 17:18:29,138 INFO     app.core.webcam : Caméra 0 ouverte (backend 700) : 1280x720
+2026-10-11 17:18:29,286 INFO     app.core.segmentation : Détourage IA : 1 masque(s), part de personne dans l'image = 0.26
+2026-10-11 17:18:33,688 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 17:18:36,012 INFO     app.ui.main_window : Écran : capture
+2026-10-11 17:18:37,824 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 17:18:40,526 INFO     app.ui.main_window : Écran : capture
+2026-10-11 17:18:42,468 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 17:18:44,670 INFO     app.ui.main_window : Écran : capture
+2026-10-11 17:18:50,310 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 17:18:51,759 INFO     app.ui.main_window : Écran : capture
+2026-10-11 17:18:57,774 INFO     app.core.compositor : Aperçu avec décor : 86 ms par image (12 images/s max) en 960x540
+2026-10-11 17:18:59,287 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 17:19:02,559 INFO     app.ui.main_window : Écran : capture
+2026-10-11 17:19:04,173 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 17:19:07,204 INFO     app.ui.main_window : Écran : capture
+2026-10-11 17:19:10,228 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 17:19:14,003 INFO     app.ui.main_window : Écran : capture
+2026-10-11 17:19:16,575 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 17:19:19,879 INFO     app.ui.main_window : Écran : capture
+2026-10-11 17:19:22,754 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 17:19:24,776 INFO     app.ui.main_window : Fermeture du logiciel
+2026-10-11 17:19:25,312 INFO     app.core.camera : Caméra arrêtée
+2026-10-11 17:20:05,130 INFO     photobooth : Démarrage (détourage=ia, poses=4)
+2026-10-11 17:20:05,240 INFO     app.ui.main_window : Écran : home
+2026-10-11 17:20:06,912 INFO     app.core.segmentation : Détourage IA prêt (selfie_segmenter_landscape.tflite, entrée 256x144)
+2026-10-11 17:20:06,912 INFO     app.ui.main_window : Écran : guest_select
+2026-10-11 17:20:06,928 INFO     app.ui.main_window : Écran : email_entry
+2026-10-11 17:20:07,428 INFO     app.ui.main_window : Écran : format_select
+2026-10-11 17:20:07,975 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 17:20:10,240 INFO     app.ui.main_window : Écran : capture
+2026-10-11 17:20:12,828 INFO     app.core.webcam : Caméra 0 ouverte (backend 700) : 1280x720
+2026-10-11 17:20:12,980 INFO     app.core.segmentation : Détourage IA : 1 masque(s), part de personne dans l'image = 0.27
+2026-10-11 17:20:14,599 INFO     app.ui.main_window : Fermeture du logiciel
+2026-10-11 17:20:15,194 INFO     app.core.camera : Caméra arrêtée
+2026-10-11 17:20:32,859 INFO     photobooth : Démarrage (détourage=ia, poses=4)
+2026-10-11 17:20:32,968 INFO     app.ui.main_window : Écran : home
+2026-10-11 17:20:34,641 INFO     app.core.segmentation : Détourage IA prêt (selfie_segmenter_landscape.tflite, entrée 256x144)
+2026-10-11 17:20:34,656 INFO     app.ui.main_window : Écran : guest_select
+2026-10-11 17:20:34,985 INFO     app.ui.main_window : Écran : email_entry
+2026-10-11 17:20:35,641 INFO     app.ui.main_window : Écran : format_select
+2026-10-11 17:20:36,188 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 17:20:38,159 INFO     app.ui.main_window : Écran : capture
+2026-10-11 17:20:40,674 INFO     app.core.webcam : Caméra 0 ouverte (backend 700) : 1280x720
+2026-10-11 17:20:40,829 INFO     app.core.segmentation : Détourage IA : 1 masque(s), part de personne dans l'image = 0.27
+2026-10-11 17:20:42,245 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 17:20:43,114 INFO     app.ui.main_window : Écran : capture
+2026-10-11 17:20:45,167 INFO     app.ui.main_window : Fermeture du logiciel
+2026-10-11 17:20:45,781 INFO     app.core.camera : Caméra arrêtée
+2026-10-11 17:21:27,653 INFO     photobooth : Démarrage (détourage=ia, poses=4)
+2026-10-11 17:21:27,762 INFO     app.ui.main_window : Écran : home
+2026-10-11 17:21:29,435 INFO     app.core.segmentation : Détourage IA prêt (selfie_segmenter_landscape.tflite, entrée 256x144)
+2026-10-11 17:21:29,903 INFO     app.ui.main_window : Écran : guest_select
+2026-10-11 17:21:30,513 INFO     app.ui.main_window : Écran : email_entry
+2026-10-11 17:21:31,028 INFO     app.ui.main_window : Écran : format_select
+2026-10-11 17:21:31,497 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 17:21:33,533 WARNING  app.ui.screens.background_select : Miniature impossible, image ignorée : C:\photobooth\fonds\films\scream ghostface.jpeg
+2026-10-11 17:21:44,957 INFO     app.ui.main_window : Écran : capture
+2026-10-11 17:21:47,598 INFO     app.core.webcam : Caméra 0 ouverte (backend 700) : 1280x720
+2026-10-11 17:21:47,757 INFO     app.core.segmentation : Détourage IA : 1 masque(s), part de personne dans l'image = 0.27
+2026-10-11 17:21:51,289 WARNING  app.ui.screens.background_select : Miniature impossible, image ignorée : C:\photobooth\fonds\films\scream ghostface.jpeg
+2026-10-11 17:21:51,298 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 17:22:04,532 INFO     app.ui.main_window : Écran : capture
+2026-10-11 17:22:06,558 INFO     app.ui.main_window : Fermeture du logiciel
+2026-10-11 17:22:07,069 INFO     app.core.camera : Caméra arrêtée
+2026-10-11 17:25:21,730 INFO     photobooth : Démarrage (détourage=ia, poses=4)
+2026-10-11 17:25:21,839 INFO     app.ui.main_window : Écran : home
+2026-10-11 17:25:23,587 INFO     app.core.segmentation : Détourage IA prêt (selfie_segmenter_landscape.tflite, entrée 256x144)
+2026-10-11 17:25:23,587 INFO     app.ui.main_window : Écran : guest_select
+2026-10-11 17:25:24,227 INFO     app.ui.main_window : Écran : email_entry
+2026-10-11 17:25:25,462 INFO     app.ui.main_window : Écran : format_select
+2026-10-11 17:25:26,227 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 17:25:44,997 INFO     app.ui.main_window : Écran : capture
+2026-10-11 17:25:47,607 INFO     app.core.webcam : Caméra 0 ouverte (backend 700) : 1280x720
+2026-10-11 17:25:47,765 INFO     app.core.segmentation : Détourage IA : 1 masque(s), part de personne dans l'image = 0.24
+2026-10-11 17:25:52,664 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 17:25:53,647 INFO     app.ui.main_window : Écran : capture
+2026-10-11 17:25:57,229 INFO     app.ui.main_window : Fermeture du logiciel
+2026-10-11 17:25:57,743 INFO     app.core.camera : Caméra arrêtée
+2026-10-11 20:17:19,770 INFO     photobooth : Démarrage (détourage=ia, poses=4)
+2026-10-11 20:17:20,113 INFO     app.ui.main_window : Écran : home
+2026-10-11 20:17:22,333 INFO     app.core.segmentation : Détourage IA prêt (selfie_segmenter_landscape.tflite, entrée 256x144)
+2026-10-11 20:18:02,057 INFO     app.ui.main_window : Fermeture du logiciel
+2026-10-11 20:21:02,873 WARNING  app.config : config.ini introuvable, création avec les valeurs par défaut : C:\photobooth\config.ini
+2026-10-11 20:21:02,920 INFO     photobooth : Démarrage (détourage=ia, poses=4)
+2026-10-11 20:21:03,029 INFO     app.ui.main_window : Écran : home
+2026-10-11 20:21:04,811 INFO     app.core.segmentation : Détourage IA prêt (selfie_segmenter_landscape.tflite, entrée 256x144)
+2026-10-11 20:22:56,208 INFO     app.ui.main_window : Fermeture du logiciel
+2026-10-11 20:22:58,833 INFO     photobooth : Démarrage (détourage=ia, poses=4)
+2026-10-11 20:22:58,926 INFO     app.ui.main_window : Écran : home
+2026-10-11 20:23:00,600 INFO     app.core.segmentation : Détourage IA prêt (selfie_segmenter_landscape.tflite, entrée 256x144)
+2026-10-11 20:23:12,278 INFO     app.ui.main_window : Écran : guest_select
+2026-10-11 20:23:14,591 INFO     app.ui.main_window : Écran : email_entry
+2026-10-11 20:23:16,184 INFO     app.ui.main_window : Écran : format_select
+2026-10-11 20:24:07,778 INFO     app.ui.main_window : Écran : background_select
+2026-10-11 20:24:22,171 INFO     app.ui.main_window : Écran : capture
+2026-10-11 20:24:24,916 INFO     app.core.webcam : Caméra 0 ouverte (backend 700) : 1280x720
+2026-10-11 20:24:25,080 INFO     app.core.segmentation : Détourage IA : 1 masque(s), part de personne dans l'image = 0.19
+2026-10-11 20:24:33,109 INFO     app.core.compositor : Aperçu avec décor : 106 ms par image (9 images/s max) en 960x540
+2026-10-11 20:24:42,602 INFO     app.core.compositor : Aperçu avec décor : 122 ms par image (8 images/s max) en 960x540
+2026-10-11 20:24:44,094 INFO     app.core.storage : Bande enregistrée : C:\photobooth\photos\2026-10-11\202444.jpg (4 poses)
+2026-10-11 20:24:44,848 INFO     app.ui.main_window : Écran : review
+2026-10-11 20:24:54,634 INFO     app.ui.main_window : Écran : sending
+2026-10-11 20:24:58,176 INFO     app.core.camera : Caméra arrêtée
+2026-10-11 20:24:58,191 INFO     app.ui.main_window : Écran : home
+2026-10-11 20:26:15,021 INFO     app.ui.main_window : Fermeture du logiciel
+2026-10-12 00:08:51,214 INFO     app.config : config.ini complété (1 ajout(s)) : mail.obligatoire
+2026-10-12 00:08:51,292 INFO     photobooth : Démarrage (détourage=ia, poses=4)
+2026-10-12 00:08:51,401 INFO     app.ui.main_window : Écran : home
+2026-10-12 00:08:53,340 INFO     app.core.segmentation : Détourage IA prêt (selfie_segmenter_landscape.tflite, entrée 256x144)
+2026-10-12 00:08:53,340 ERROR    app.ui.screens.guest_select : Liste d'invités : openpyxl n'est pas installé. Lance : pip install -r requirements.txt
+2026-10-12 00:08:53,340 INFO     app.ui.main_window : Écran : guest_select
+2026-10-12 00:09:32,134 INFO     app.ui.main_window : Fermeture du logiciel
+2026-10-12 00:09:56,314 INFO     app.core.guests : Liste d'invités vide créée : C:\photobooth\invites.xlsx
+2026-10-12 00:09:56,314 INFO     photobooth : Démarrage (détourage=ia, poses=4)
+2026-10-12 00:09:56,423 INFO     app.ui.main_window : Écran : home
+2026-10-12 00:09:58,034 INFO     app.core.segmentation : Détourage IA prêt (selfie_segmenter_landscape.tflite, entrée 256x144)
+2026-10-12 00:09:58,081 INFO     app.core.guests : Liste d'invités chargée : 0 invités, 0 avec une adresse mail
+2026-10-12 00:09:58,081 INFO     app.ui.main_window : Écran : guest_select
+2026-10-12 00:10:08,503 INFO     app.ui.main_window : Fermeture du logiciel
+2026-10-12 00:15:48,125 INFO     photobooth : Démarrage (détourage=ia, poses=4)
+2026-10-12 00:15:48,234 INFO     app.ui.main_window : Écran : home
+2026-10-12 00:15:49,907 INFO     app.core.segmentation : Détourage IA prêt (selfie_segmenter_landscape.tflite, entrée 256x144)
+2026-10-12 00:15:50,250 INFO     app.core.guests : Liste d'invités chargée : 2 invités, 2 avec une adresse mail
+2026-10-12 00:15:50,250 INFO     app.ui.main_window : Écran : guest_select
+2026-10-12 00:15:51,922 INFO     app.ui.main_window : Écran : email_entry
+2026-10-12 00:15:55,125 INFO     app.ui.main_window : Écran : format_select
+2026-10-12 00:15:59,125 INFO     app.ui.main_window : Écran : background_select
+2026-10-12 00:16:07,687 INFO     app.ui.main_window : Écran : capture
+2026-10-12 00:16:10,293 INFO     app.core.webcam : Caméra 0 ouverte (backend 700) : 1280x720
+2026-10-12 00:16:10,442 INFO     app.core.segmentation : Détourage IA : 1 masque(s), part de personne dans l'image = 0.05
+2026-10-12 00:16:16,549 INFO     app.core.compositor : Aperçu avec décor : 87 ms par image (11 images/s max) en 960x540
+2026-10-12 00:16:21,328 INFO     app.core.storage : Photo enregistrée : C:\photobooth\photos\2026-10-12\001621_cyril-mury.jpg
+2026-10-12 00:16:22,065 INFO     app.ui.main_window : Écran : review
+2026-10-12 00:16:25,323 INFO     app.ui.main_window : Écran : capture
+2026-10-12 00:16:31,449 INFO     app.core.compositor : Aperçu avec décor : 85 ms par image (12 images/s max) en 960x540
+2026-10-12 00:16:37,086 INFO     app.core.storage : Photo enregistrée : C:\photobooth\photos\2026-10-12\001637_cyril-mury.jpg
+2026-10-12 00:16:37,814 INFO     app.ui.main_window : Écran : review
+2026-10-12 00:16:44,708 INFO     app.ui.main_window : Écran : sending
+2026-10-12 00:16:48,216 INFO     app.core.camera : Caméra arrêtée
+2026-10-12 00:16:48,226 INFO     app.ui.main_window : Écran : home
+2026-10-12 00:17:02,148 INFO     app.ui.main_window : Écran : guest_select
+2026-10-12 00:17:07,150 INFO     app.ui.main_window : Écran : home
+2026-10-12 00:17:08,353 INFO     app.ui.main_window : Écran : guest_select
+2026-10-12 00:17:09,619 INFO     app.ui.main_window : Écran : email_entry
+2026-10-12 00:17:41,912 INFO     app.ui.main_window : Écran : format_select
+2026-10-12 00:17:44,115 INFO     app.ui.main_window : Écran : background_select
+2026-10-12 00:17:46,412 INFO     app.ui.main_window : Écran : capture
+2026-10-12 00:17:49,015 INFO     app.core.webcam : Caméra 0 ouverte (backend 700) : 1280x720
+2026-10-12 00:17:57,649 INFO     app.core.compositor : Aperçu avec décor : 115 ms par image (9 images/s max) en 960x540
+2026-10-12 00:18:04,831 INFO     app.core.storage : Bande enregistrée : C:\photobooth\photos\2026-10-12\001804.jpg (4 poses)
+2026-10-12 00:18:05,581 INFO     app.ui.main_window : Écran : review
+2026-10-12 00:18:10,635 INFO     app.ui.main_window : Écran : sending
+2026-10-12 00:18:14,239 INFO     app.core.camera : Caméra arrêtée
+2026-10-12 00:18:14,249 INFO     app.ui.main_window : Écran : home
+2026-10-12 00:18:26,440 INFO     app.ui.main_window : Fermeture du logiciel
+2026-10-12 19:43:12,773 INFO     app.config : config.ini complété (6 ajout(s)) : [diaporama], mail.utilisateur, mail.securite, mail.nom_expediteur, mail.objet, mail.message
+2026-10-12 19:43:12,788 INFO     photobooth : Démarrage (détourage=ia, poses=4)
+2026-10-12 19:43:13,524 INFO     app.ui.main_window : Écran : home
+2026-10-12 19:43:16,059 INFO     app.core.segmentation : Détourage IA prêt (selfie_segmenter_landscape.tflite, entrée 256x144)
+2026-10-12 19:43:21,577 INFO     app.core.guests : Liste d'invités chargée : 2 invités, 2 avec une adresse mail
+2026-10-12 19:43:21,577 INFO     app.ui.main_window : Écran : guest_select
+2026-10-12 19:43:23,515 INFO     app.ui.main_window : Écran : email_entry
+2026-10-12 19:43:26,015 INFO     app.ui.main_window : Écran : format_select
+2026-10-12 19:43:29,921 INFO     app.ui.main_window : Écran : background_select
+2026-10-12 19:43:33,702 INFO     app.ui.main_window : Écran : capture
+2026-10-12 19:43:36,543 INFO     app.core.webcam : Caméra 0 ouverte (backend 700) : 1280x720
+2026-10-12 19:43:37,698 INFO     app.core.segmentation : Détourage IA : 1 masque(s), part de personne dans l'image = 0.26
+2026-10-12 19:43:43,894 INFO     app.core.compositor : Aperçu avec décor : 91 ms par image (11 images/s max) en 960x540
+2026-10-12 19:43:49,811 INFO     app.core.storage : Photo enregistrée : C:\photobooth\photos\2026-10-12\194349_cyril-mury.jpg
+2026-10-12 19:43:50,540 INFO     app.ui.main_window : Écran : review
+2026-10-12 19:43:52,384 INFO     app.ui.main_window : Écran : sending
+2026-10-12 19:43:54,015 INFO     app.core.mail_service : Mail envoyé (guest -> cyrilperso@free.fr)
+2026-10-12 19:43:55,882 INFO     app.core.mail_service : Mail envoyé (organizer -> cyril.mury@gmail.com)
+2026-10-12 19:43:56,894 INFO     app.core.camera : Caméra arrêtée
+2026-10-12 19:43:56,907 INFO     app.ui.main_window : Écran : home
+2026-10-12 19:43:58,191 INFO     app.ui.main_window : Écran : guest_select
+2026-10-12 19:43:59,809 INFO     app.ui.main_window : Écran : email_entry
+2026-10-12 19:44:00,996 INFO     app.ui.main_window : Écran : format_select
+2026-10-12 19:44:02,315 INFO     app.ui.main_window : Écran : background_select
+2026-10-12 19:44:11,052 INFO     app.ui.main_window : Écran : capture
+2026-10-12 19:44:13,535 INFO     app.core.webcam : Caméra 0 ouverte (backend 700) : 1280x720
+2026-10-12 19:44:23,480 INFO     app.core.compositor : Aperçu avec décor : 127 ms par image (8 images/s max) en 960x540
+2026-10-12 19:44:30,275 INFO     app.core.storage : Bande enregistrée : C:\photobooth\photos\2026-10-12\194430_cyril-mury.jpg (4 poses)
+2026-10-12 19:44:31,028 INFO     app.ui.main_window : Écran : review
+2026-10-12 19:44:32,831 INFO     app.ui.main_window : Écran : sending
+2026-10-12 19:44:37,361 INFO     app.core.camera : Caméra arrêtée
+2026-10-12 19:44:37,369 INFO     app.ui.main_window : Écran : home
+2026-10-12 19:44:38,240 INFO     app.core.mail_service : Mail envoyé (guest -> cyrilperso@free.fr)
+2026-10-12 19:44:40,799 INFO     app.core.mail_service : Mail envoyé (organizer -> cyril.mury@gmail.com)
+2026-10-12 19:44:41,501 INFO     app.ui.main_window : Écran : guest_select
+2026-10-12 19:44:43,090 INFO     app.ui.main_window : Écran : email_entry
+2026-10-12 19:44:43,956 INFO     app.ui.main_window : Écran : format_select
+2026-10-12 19:44:45,847 INFO     app.ui.main_window : Écran : background_select
+2026-10-12 19:44:56,000 INFO     app.ui.main_window : Écran : format_select
+2026-10-12 19:44:57,463 INFO     app.ui.main_window : Écran : email_entry
+2026-10-12 19:44:58,992 INFO     app.ui.main_window : Écran : guest_select
+2026-10-12 19:44:59,898 INFO     app.ui.main_window : Écran : home
+2026-10-12 19:45:02,211 INFO     app.ui.main_window : Fermeture du logiciel
+2026-10-12 19:47:35,944 INFO     photobooth : Démarrage (détourage=ia, poses=4)
+2026-10-12 19:47:36,053 INFO     app.ui.main_window : Écran : home
+2026-10-12 19:47:37,676 INFO     app.core.segmentation : Détourage IA prêt (selfie_segmenter_landscape.tflite, entrée 256x144)
+2026-10-12 19:47:38,264 INFO     app.core.guests : Liste d'invités chargée : 2 invités, 2 avec une adresse mail
+2026-10-12 19:47:38,264 INFO     app.ui.main_window : Écran : guest_select
+2026-10-12 19:47:41,702 INFO     app.ui.main_window : Écran : email_entry
+2026-10-12 19:47:43,553 INFO     app.ui.main_window : Écran : format_select
+2026-10-12 19:47:45,928 INFO     app.ui.main_window : Écran : background_select
+2026-10-12 19:47:54,758 INFO     app.ui.main_window : Écran : capture
+2026-10-12 19:47:57,435 INFO     app.core.webcam : Caméra 0 ouverte (backend 700) : 1280x720
+2026-10-12 19:47:57,586 INFO     app.core.segmentation : Détourage IA : 1 masque(s), part de personne dans l'image = 0.26
+2026-10-12 19:48:05,427 INFO     app.core.storage : Photo enregistrée : C:\photobooth\photos\2026-10-12\194805.jpg
+2026-10-12 19:48:05,911 INFO     app.core.compositor : Aperçu avec décor : 110 ms par image (9 images/s max) en 960x540
+2026-10-12 19:48:06,157 INFO     app.ui.main_window : Écran : review
+2026-10-12 19:48:08,148 INFO     app.ui.main_window : Écran : sending
+2026-10-12 19:48:09,800 INFO     app.core.mail_service : Mail envoyé (organizer -> cyril.mury@gmail.com)
+2026-10-12 19:48:12,668 INFO     app.core.camera : Caméra arrêtée
+2026-10-12 19:48:12,677 INFO     app.ui.main_window : Écran : home
+2026-10-12 19:48:15,612 INFO     app.ui.main_window : Fermeture du logiciel
+2026-10-13 19:47:25,561 INFO     photobooth : Démarrage de Photo Booth 1.0.0 (détourage=ia, poses=4)
+2026-10-13 19:47:25,561 INFO     app.power : Veille Windows empêchée
+2026-10-13 19:47:26,421 INFO     app.ui.main_window : Écran : home
+2026-10-13 19:47:29,140 INFO     app.core.segmentation : Détourage IA prêt (selfie_segmenter_landscape.tflite, entrée 256x144)
+2026-10-13 19:47:29,656 INFO     app.core.guests : Liste d'invités chargée : 2 invités, 2 avec une adresse mail
+2026-10-13 19:47:29,656 INFO     app.ui.main_window : Écran : guest_select
+2026-10-13 19:47:32,017 INFO     app.ui.main_window : Écran : email_entry
+2026-10-13 19:47:33,644 INFO     app.ui.main_window : Écran : format_select
+2026-10-13 19:47:38,944 INFO     app.ui.main_window : Écran : background_select
+2026-10-13 19:47:52,604 INFO     app.ui.main_window : Écran : capture
+2026-10-13 19:47:55,474 INFO     app.core.webcam : Caméra 0 ouverte (backend 700) : 1280x720
+2026-10-13 19:47:55,650 INFO     app.core.segmentation : Détourage IA : 1 masque(s), part de personne dans l'image = 0.00
+2026-10-13 19:48:01,911 INFO     app.core.compositor : Aperçu avec décor : 89 ms par image (11 images/s max) en 960x540
+2026-10-13 19:48:11,603 INFO     app.core.compositor : Aperçu avec décor : 131 ms par image (8 images/s max) en 960x540
+2026-10-13 19:48:16,755 INFO     app.core.storage : Bande enregistrée : C:\photobooth\photos\2026-10-13\194816_cyril-mury.jpg (4 poses)
+2026-10-13 19:48:17,532 INFO     app.ui.main_window : Écran : review
+2026-10-13 19:48:19,669 INFO     app.ui.main_window : Écran : sending
+2026-10-13 19:48:21,656 INFO     app.core.mail_service : Mail envoyé (guest -> cyrilperso@free.fr)
+2026-10-13 19:48:23,410 INFO     app.core.mail_service : Mail envoyé (organizer -> cyril.mury@gmail.com)
+2026-10-13 19:48:24,205 INFO     app.core.camera : Caméra arrêtée
+2026-10-13 19:48:24,216 INFO     app.ui.main_window : Écran : home
+2026-10-13 19:48:30,572 INFO     app.ui.admin_dialog : Accès administrateur ouvert
+2026-10-13 19:48:43,845 INFO     app.ui.main_window : Fermeture du logiciel
+2026-10-13 19:48:43,924 INFO     app.power : Veille Windows de nouveau autorisée
