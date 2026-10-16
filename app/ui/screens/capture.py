@@ -60,6 +60,7 @@ class CaptureScreen(BaseScreen):
         self._poses: list[np.ndarray] = []              # poses déjà prises (images finales, décor inclus)
         self._error_text = ""
         self._renderer: SceneRenderer | None = None
+        self._last_source_frame: np.ndarray | None = None
         self._background_cache: tuple | None = None   # (chemin, image) : évite de relire le décor à chaque reprise
         self._frame_overlay: np.ndarray | None = None
         self._frame_buttons: dict[Path, QToolButton] = {}
@@ -336,6 +337,7 @@ class CaptureScreen(BaseScreen):
         if self.config.miroir:
             # même inversion que l'aperçu : la photo est exactement ce que l'invité a vu
             frame = cv2.flip(frame, 1)   # avant le décor : le décor n'est jamais inversé
+        self._last_source_frame = frame.copy()
         if self._renderer is not None:
             try:
                 frame = self._renderer.render_photo(frame)
@@ -393,8 +395,15 @@ class CaptureScreen(BaseScreen):
                     effect=self.session.gif_effect, hold_last=self.session.gif_hold_last,
                 )
                 self.session.photos.append(path)
+                self.session.photo_source_frame = None
+                self.session.photo_style = "original"
+                self.session.photo_style_person_only = False
             elif self._total == 1:
-                self.session.photos.append(storage.save_photo(self.config, self._poses[0], guest))
+                path = storage.save_photo(self.config, self._poses[0], guest)
+                self.session.photos.append(path)
+                self.session.photo_source_frame = self._last_source_frame
+                self.session.photo_style = "original"
+                self.session.photo_style_person_only = False
             else:
                 style = strip_builder.StripStyle(
                     title=self.config.pm_titre, date_text=datetime.now().strftime("%d/%m/%Y"),
@@ -403,6 +412,9 @@ class CaptureScreen(BaseScreen):
                 path, pose_paths = storage.save_strip(self.config, strip, self._poses, guest)
                 self.session.photos.append(path)
                 self.session.poses = pose_paths
+                self.session.photo_source_frame = None
+                self.session.photo_style = "original"
+                self.session.photo_style_person_only = False
         except (OSError, ValueError, cv2.error):
             log.exception("Échec de l'enregistrement de la photo")
             self._fail(SAVE_ERROR)

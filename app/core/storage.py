@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 
 import cv2
+import numpy as np
 
 from ..config import Config
 
@@ -55,6 +56,21 @@ def _write_jpeg(frame, dest: Path) -> None:
     tmp = dest.with_suffix(".jpg.tmp")
     tmp.write_bytes(buffer.tobytes())
     os.replace(tmp, dest)
+
+
+def load_photo(path: Path):
+    """Lit une photo BGR, y compris si son chemin Windows contient des caractères accentués."""
+    data = np.fromfile(path, dtype=np.uint8)
+    image = cv2.imdecode(data, cv2.IMREAD_COLOR)
+    if image is None:
+        raise ValueError(f"Image illisible : {path}")
+    return image
+
+
+def replace_photo(path: Path, frame) -> None:
+    """Remplace atomiquement une photo après validation d'un rendu."""
+    _write_jpeg(frame, path)
+    log.info("Photo mise à jour : %s", path)
 
 
 def save_photo(config: Config, frame, guest_name: str = "", now: datetime | None = None) -> Path:

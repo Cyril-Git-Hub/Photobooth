@@ -105,6 +105,9 @@ Le mode administrateur affiche l'état des envois et permet de renvoyer ceux en 
 
 L'invité choisit « Une seule photo » ou « Photomaton » : `nb_poses` photos (4 par défaut) prises à la suite, avec un décompte avant chacune (`duree_decompte` pour la première, `decompte_entre_poses` ensuite), puis assemblées en une bande verticale avec un titre et la date (section `[photomaton]` de `config.ini` : titre, couleurs). La bande est enregistrée dans `photos/AAAA-MM-JJ/` et les poses individuelles dans `photos/AAAA-MM-JJ/poses/`.
 
+## Styles photo
+
+Sur l'écran de résultat, l'invité peut comparer l'original à cinq rendus OpenCV : bande dessinée, croquis, aquarelle, pop-art et manga noir et blanc. Il peut appliquer le style à toute l'image, ou au sujet seul si le détourage est disponible. Les aperçus réduits sont chronométrés dans le journal ; le rendu final est calculé à pleine résolution après validation.
 ## GIF animé
 
 Le format « GIF animé » propose des poses espacées ou une rafale courte, puis une boucle, un boomerang, un rendu accéléré ou ralenti, avec une pause finale facultative. Le GIF est aperçu avant validation, affiché en animation dans le diaporama et joint aux mails. Les réglages de `[gif]` dans `config.ini` activent le format, définissent le nombre d'images, le rythme et la taille maximale (8 Mo par défaut) ; l'application réduit la résolution et la palette pour respecter cette limite.

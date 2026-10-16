@@ -53,6 +53,22 @@ QLabel#badge[level="error"] { color: white; background-color: #e5484d; }
 QToolButton { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3b3680, stop:1 #2b2757); border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 16px; padding: 10px; font-size: 18px; }
 QToolButton:hover { border-color: rgba(255, 255, 255, 0.42); }
 QToolButton:pressed { background: #3b3680; }
+QPushButton#styleCard {
+    background: #201d40;
+    border: 2px solid rgba(255, 255, 255, 0.18);
+    border-radius: 16px;
+    padding: 6px;
+    font-size: 20px;
+}
+QPushButton#styleCard:hover { border-color: rgba(255, 255, 255, 0.55); background: #29264f; }
+QPushButton#styleCard:checked { border: 3px solid #ffd166; background: #302b5d; }
+QLabel#styleThumbnail { background-color: #0b0a1a; border-radius: 8px; color: #b8b2d9; font-size: 14px; }
+QLabel#styleCardLabel { background: transparent; color: #f4f1ff; font-size: 17px; font-weight: 600; }
+QLabel#styleGalleryTitle { background: transparent; color: #ffd166; font-size: 18px; font-weight: 700; }
+QWidget#reviewScreen QCheckBox { spacing: 12px; font-size: 20px; }
+QWidget#reviewScreen QCheckBox::indicator { width: 28px; height: 28px; }
+QWidget#reviewScreen QCheckBox::indicator:unchecked { border: 2px solid #b8b2d9; border-radius: 6px; background: #201d40; }
+QWidget#reviewScreen QCheckBox::indicator:checked { border: 2px solid #ffd166; border-radius: 6px; background: #3b3680; }
 QFrame#boothFrame, QStackedWidget { background-color: transparent; }
 QScrollArea, QScrollArea > QWidget > QWidget { background-color: transparent; }
 """
