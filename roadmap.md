@@ -54,7 +54,8 @@ Les fonctions optionnelles devront pouvoir être activées ou désactivées dans
 ## Étape 17 — Styles photo classiques *(développée, à tester)*
 
 - Ajouter des rendus OpenCV : bande dessinée, croquis, aquarelle, pop-art et manga noir et blanc.
-- Comparer les styles sur l’écran de résultat à partir de l’original.
+- Présenter l’original et les styles dans une galerie tactile de vignettes, avec aperçu agrandi au toucher et commandes toujours visibles.
+- Renforcer les rendus : aplats et contours BD, papier ivoire pour le croquis, pigments aquarelle, tramage pop-art et trames manga.
 - Autoriser le rendu sur toute l’image ou seulement sur la personne lorsque le détourage est disponible.
 - Garder le rendu final haute qualité et mesurer le coût de l’aperçu avant d’activer un effet en direct.
 - Les rendus ne sont pas appliqués pendant la capture : l'invité compare l'original et les aperçus réduits à l'écran de résultat ; le style choisi est recalculé à pleine résolution lors de la validation.
