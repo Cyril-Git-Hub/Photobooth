@@ -40,6 +40,7 @@
 ## Si internet tombe (ou n'est jamais là)
 
 - Les photos sont **toujours prises et enregistrées** ; seuls les mails attendent. Ils repartent **tout seuls** au retour du réseau (même après un redémarrage), et sans limite de temps.
+- Les refus temporaires du serveur sont aussi réessayés sans limite, avec un délai plafonné à deux minutes. Les erreurs définitives (par exemple identifiants invalides) restent signalées en rouge : corrige la configuration, puis utilise **Réessayer maintenant**.
 - Un **petit voyant orange ou rouge** apparaît en haut à droite de la borne, seulement quand il y a un souci : « Hors-ligne · 3 mails en attente » (orange), « mails en échec » ou « sauvegarde en panne » (rouge). Rien ne s'affiche quand tout va bien (réglage `indicateur_organisateur`).
 - L'invité voit alors « Pas de connexion pour l'instant : ta photo partira dès que le réseau sera revenu ».
 - **Secours** : mode admin > **Exporter les envois non partis** crée un dossier dans `exports\` avec les photos et un tableau `envois.csv` (adresse de chaque invité) pour tout envoyer à la main. Les envois partiront aussi tout seuls au retour du réseau : ne les fais pas deux fois.

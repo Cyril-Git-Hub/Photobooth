@@ -84,7 +84,7 @@ python tools\tester_mail.py
 ```
 
 Chaque photo donne un envoi à l'invité et un envoi à l'organisateur, mis en file d'attente (`data/envois.sqlite3`) et partis en arrière-plan : l'invité n'attend jamais le réseau.
-Sans connexion, les envois restent en attente et repartent seuls dès que le réseau revient, même après un redémarrage du logiciel. Les photos sont toujours enregistrées dans `photos/`.
+Sans connexion ou lors d'un refus temporaire du serveur, les envois restent en attente et repartent seuls dès que possible, même après un redémarrage du logiciel. Le délai entre essais est plafonné à deux minutes, sans limite du nombre d'essais. Les erreurs définitives restent signalées pour intervention dans le mode administrateur. Les photos sont toujours enregistrées dans `photos/`.
 `objet` et `message` (avec `{prenom}`, `{nom}`, `{salutation}`, `{titre}`, `{date}` et `\n` pour un retour à la ligne) personnalisent le mail de l'invité.
 Le mode administrateur affiche l'état des envois et permet de renvoyer ceux en échec. Gmail limite à environ 500 mails par jour.
 
