@@ -17,13 +17,13 @@ class FormatSelectScreen(BaseScreen):
         heading.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self._single = BigButton("Une seule photo")
-        self._single.setMinimumSize(px(420), px(220))
+        self._single.setMinimumSize(px(340), px(170))
         self._single.clicked.connect(lambda: self._choose("single"))
         self._strip = BigButton("Photomaton")
-        self._strip.setMinimumSize(px(420), px(220))
+        self._strip.setMinimumSize(px(340), px(170))
         self._strip.clicked.connect(lambda: self._choose("strip"))
-        self._framed = BigButton("Photo avec cadre", "secondary")
-        self._framed.setMinimumSize(px(420), px(110))
+        self._framed = BigButton("Photo avec cadre")
+        self._framed.setMinimumSize(px(340), px(90))
         self._framed.clicked.connect(self._choose_framed)
 
         self._hint = QLabel("")

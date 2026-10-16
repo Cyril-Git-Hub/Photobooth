@@ -17,6 +17,7 @@ if errorlevel 1 goto erreur
 rem Fichiers qui doivent se trouver a cote de l'executable
 if exist models xcopy /E /I /Y models "dist\photobooth\models" >nul
 if exist cadres xcopy /E /I /Y cadres "dist\photobooth\cadres" >nul
+if exist themes xcopy /E /I /Y themes "dist\photobooth\themes" >nul
 copy /Y MODE_EMPLOI.md "dist\photobooth\" >nul
 copy /Y lancer.bat "dist\photobooth\" >nul
 

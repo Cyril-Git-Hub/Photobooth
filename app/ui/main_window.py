@@ -4,9 +4,11 @@ from __future__ import annotations
 import logging
 import time
 
-from PyQt6.QtCore import QEvent, QObject, QRect, Qt, QTimer
-from PyQt6.QtGui import QKeySequence, QMouseEvent, QShortcut
-from PyQt6.QtWidgets import QApplication, QFrame, QLabel, QMainWindow, QScrollArea, QScroller, QStackedWidget, QWidget
+from PyQt6.QtCore import QEvent, QObject, QRect, QSize, Qt, QTimer
+from PyQt6.QtGui import QKeySequence, QMouseEvent, QPixmap, QShortcut
+from PyQt6.QtWidgets import (
+    QApplication, QFrame, QLabel, QMainWindow, QScrollArea, QScroller, QStackedLayout, QStackedWidget, QWidget,
+)
 
 from ..config import Config
 from ..core.backup import BackupService
@@ -38,6 +40,7 @@ class MainWindow(QMainWindow):
     def __init__(self, config: Config, fullscreen: bool = True, slideshow_windowed: bool = False) -> None:
         super().__init__()
         self.config = config
+        self.theme = getattr(config, "active_theme", None)
         self.session = Session()
         self.current_name = ""
         self._admin_taps: list[float] = []
@@ -51,9 +54,16 @@ class MainWindow(QMainWindow):
         self._segmenter: Segmenter | None = None
         self._segmenter_key: tuple | None = None
 
-        self.setWindowTitle("Photo Booth")
+        self.setWindowTitle(self.theme.app_title if self.theme else "Photo Booth")
         self._stack = QStackedWidget()
-        self.setCentralWidget(self._stack)
+        self._booth_frame = QFrame()
+        self._booth_frame.setObjectName("boothFrame")
+        frame_layout = QStackedLayout(self._booth_frame)
+        frame_layout.setStackingMode(QStackedLayout.StackingMode.StackAll)
+        frame_layout.setContentsMargins(0, 0, 0, 0)
+        self._frame_layout = frame_layout
+        frame_layout.addWidget(self._stack)
+        self.setCentralWidget(self._booth_frame)
 
         self._screens: dict[str, BaseScreen] = {}
         self._wrappers: dict[str, QScrollArea] = {}
@@ -68,6 +78,16 @@ class MainWindow(QMainWindow):
         self._badge.setObjectName("badge")
         self._badge.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._badge.hide()
+        self._frame_overlay = QLabel(self._booth_frame)
+        self._frame_overlay.setObjectName("screenFrameOverlay")
+        self._frame_overlay.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._frame_overlay.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self._frame_overlay.setAttribute(Qt.WidgetAttribute.WA_AlwaysStackOnTop)
+        self._frame_overlay.setStyleSheet("background: transparent; border: none;")
+        self._frame_layout.addWidget(self._frame_overlay)
+        self._frame_overlay.raise_()
+        self._frame_pixmap: QPixmap | None = None
+        self._load_screen_frame()
         self._badge_timer = QTimer(self)
         self._badge_timer.setInterval(3000)
         self._badge_timer.timeout.connect(self._refresh_badge)
@@ -116,6 +136,19 @@ class MainWindow(QMainWindow):
             self._segmenter = None
             self._segmenter_key = None
 
+    def reload_theme(self) -> None:
+        from ..core.themes import load_theme
+        from .theme import build_stylesheet
+        self.theme = load_theme(self.config)
+        self.config.active_theme = self.theme
+        self.setWindowTitle(self.theme.app_title)
+        QApplication.instance().setApplicationName(self.theme.app_title)
+        QApplication.instance().setStyleSheet(build_stylesheet(theme=self.theme))
+        self._load_screen_frame()
+        home = self._screens.get("home")
+        if home is not None and hasattr(home, "apply_theme"):
+            home.apply_theme(self.theme)
+
     def _warm_up(self) -> None:
         try:
             self.get_segmenter()
@@ -151,6 +184,9 @@ class MainWindow(QMainWindow):
         screen = self._screens[name]
         self._stack.setCurrentWidget(self._wrappers[name])
         screen.on_enter()
+        # Changing the current page may raise the stack above sibling overlays.
+        # Reapply the frame after the page switch so its transparent PNG stays in front.
+        self._apply_screen_frame_mode()
         self._restart_inactivity()
         log.info("Écran : %s", name)
         self._refresh_badge()
@@ -238,6 +274,51 @@ class MainWindow(QMainWindow):
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         self._place_badge()
+        self._apply_screen_frame_mode()
+
+    def _load_screen_frame(self) -> None:
+        path = self.theme.screen_frame if self.theme else None
+        self._frame_pixmap = QPixmap(str(path)) if path is not None else None
+        if self._frame_pixmap is None or self._frame_pixmap.isNull():
+            self._frame_overlay.clear()
+            self._frame_overlay.hide()
+            self._stack.setContentsMargins(scale.px(14), scale.px(14), scale.px(14), scale.px(14))
+            if path is not None:
+                log.warning("Cadre d'interface illisible : %s", path)
+            return
+        self._update_screen_frame()
+        self._apply_screen_frame_mode()
+
+    def _update_screen_frame(self) -> None:
+        if self._frame_pixmap is None or self._frame_pixmap.isNull():
+            return
+        available = QSize(self._booth_frame.width(), self._booth_frame.height())
+        frame_size = self._frame_pixmap.size().scaled(available, Qt.AspectRatioMode.KeepAspectRatio)
+        left = (self._booth_frame.width() - frame_size.width()) // 2
+        top = (self._booth_frame.height() - frame_size.height()) // 2
+        self._frame_overlay.setGeometry(left, top, frame_size.width(), frame_size.height())
+        self._frame_overlay.setPixmap(self._frame_pixmap.scaled(
+            frame_size, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+
+    def _apply_screen_frame_mode(self) -> None:
+        """Le cadre est au premier plan, son centre transparent laisse voir l'écran ; il disparaît à la capture."""
+        if self._frame_pixmap is None or self._frame_pixmap.isNull():
+            self._stack.setContentsMargins(scale.px(14), scale.px(14), scale.px(14), scale.px(14))
+            return
+        if self.current_name == "capture":
+            self._stack.setContentsMargins(scale.px(14), scale.px(14), scale.px(14), scale.px(14))
+            self._frame_overlay.hide()
+            return
+        width, height = self._booth_frame.width(), self._booth_frame.height()
+        self._stack.setContentsMargins(
+            round(width * 0.065), round(height * 0.08),
+            round(width * 0.065), round(height * 0.16),
+        )
+        self._update_screen_frame()
+        self._frame_overlay.show()
+        self._frame_overlay.raise_()
+        if self._badge.isVisible():
+            self._badge.raise_()
 
     def closeEvent(self, event) -> None:
         log.info("Fermeture du logiciel")

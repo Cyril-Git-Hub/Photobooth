@@ -5,6 +5,7 @@ Ils servent à valider dès maintenant la navigation, la session et le retour au
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout
 
 from ..widgets.big_button import BigButton
@@ -21,15 +22,15 @@ class PlaceholderScreen(BaseScreen):
     def __init__(self, nav) -> None:
         super().__init__(nav)
         layout = QVBoxLayout(self)
+        self._layout = layout
         layout.setContentsMargins(px(60), px(60), px(60), px(60))
         layout.setSpacing(px(24))
 
         self._title = self._label(self.title, "title")
         self._note = self._label(self.note, "note")
-        self._summary = self._label("", "summary")
 
         layout.addStretch(1)
-        for label in (self._title, self._note, self._summary):
+        for label in (self._title, self._note):
             layout.addWidget(label)
         layout.addStretch(1)
 
@@ -55,20 +56,37 @@ class PlaceholderScreen(BaseScreen):
             back.clicked.connect(lambda: self.nav.go_back())
             row.addWidget(back)
         forward = BigButton(self.next_label)
+        self._forward = forward
         forward.clicked.connect(lambda: self.nav.go_next())
         row.addWidget(forward)
 
-    def on_enter(self) -> None:
-        s = self.session
-        decor = s.background_path.name if s.background_path else "—"
-        self._summary.setText(
-            f"Invité : {s.display_name or '—'}   |   Mail : {s.email or '—'}   |   "
-            f"Format : {s.photo_format}   |   Décor : {decor}   |   Photos : {len(s.photos)}"
-        )
-
-
 class HomeScreen(PlaceholderScreen):
     title = "Photo Booth"
-    note = "Accueil : gros bouton « Commencer » (visuel thématique à venir)."
+    note = "Prêt à créer un souvenir ?"
     show_back = False
     next_label = "Commencer"
+
+    def __init__(self, nav) -> None:
+        super().__init__(nav)
+        self.apply_theme(nav.theme)
+
+    def apply_theme(self, theme) -> None:
+        if theme is None:
+            return
+        self._title.setText(theme.welcome_title)
+        self._note.setText(theme.welcome_message)
+        self._forward.setText(theme.start_button)
+        image_path = theme.welcome_image or theme.logo
+        existing = getattr(self, "_welcome_visual", None)
+        if existing is not None:
+            existing.deleteLater()
+            self._welcome_visual = None
+        if image_path is not None:
+            image = QPixmap(str(image_path))
+            if not image.isNull():
+                visual = QLabel()
+                visual.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                visual.setPixmap(image.scaled(px(600), px(260), Qt.AspectRatioMode.KeepAspectRatio,
+                                              Qt.TransformationMode.SmoothTransformation))
+                self._layout.insertWidget(1, visual)
+                self._welcome_visual = visual
