@@ -10,6 +10,7 @@
 | `invites.xlsx` | La liste des invités : `.xlsx`, `.xls` ou `.ods`, avec les colonnes `nom`, `prénom`, `mail` (le mail peut rester vide) |
 | `fonds\` | Les décors : une image 16/9 par fichier, un sous-dossier par thème |
 | `cadres\` | Les cadres pour les photos uniques : PNG ou WebP avec transparence |
+| `masques\` | Les masques PNG ajoutés par l'utilisateur (lunettes, moustache, etc.) |
 | `photos\` | Les photos de la soirée, un dossier par jour (les poses du photomaton sont dans `poses\`) |
 | `models\` | Les modèles de détourage IA |
 | `logs\` | Le journal de bord (`photobooth.log`) et le dernier diagnostic |
@@ -21,15 +22,16 @@
 2. **Décors** : dépose tes images (jpg, png) dans `fonds\films`, `fonds\series`, etc.
 3. **Invités** : remplis `invites.xlsx` (ou un fichier `.xls`/`.ods`) avec les colonnes `nom`, `prénom`, `mail`. Si le fichier a un autre nom ou emplacement, indique-le dans `[chemins]` avec `fichier_invites = ...`. Ferme-le dans ton tableur avant de lancer la borne.
 4. **Cadres photo** (facultatif) : dépose des PNG ou WebP transparents dans `cadres\`. Ils seront proposés avec « Photo avec cadre ». Une image au format de la photo (par défaut 16:9) donnera le rendu le plus ajusté.
-5. **Mails** : dans `config.ini`, section `[mail]`, renseigne `expediteur`, `mot_de_passe_application` et `adresse_organisateur` (tu reçois une copie de chaque photo).
+5. **Masques virtuels** (facultatif) : des lunettes, une couronne, une moustache et des oreilles de lapin sont inclus. Ajoute tes PNG transparents dans `masques\` et commence leur nom par `yeux_`, `bouche_`, `nez_`, `oreille_` ou `cheveux_` pour choisir leur placement. Pour `oreille_`, dessine une seule oreille : elle sera affichée deux fois, en miroir, de chaque côté du visage. Les anciens noms comme `lunettes`, `moustache`, `couronne` et `oreilles_lapin` restent reconnus. Les masques sont proposés sur l'écran caméra et appliqués à chaque photo, pose photomaton ou image du GIF.
+6. **Mails** : dans `config.ini`, section `[mail]`, renseigne `expediteur`, `mot_de_passe_application` et `adresse_organisateur` (tu reçois une copie de chaque photo).
    Avec Gmail : active la validation en 2 étapes, puis crée un « mot de passe d'application » (Compte Google > Sécurité). Gmail limite à environ 500 mails par jour.
    Ne partage jamais `config.ini` : le mot de passe y est en clair.
-6. **Titre de la bande photomaton** : section `[photomaton]`, ligne `titre = ...` (et les couleurs si tu veux).
-7. **Sauvegarde (conseillé)** : section `[sauvegarde]`, ligne `dossier = E:/sauvegarde-photos` (clé USB, disque externe...). Chaque photo validée y est recopiée toute seule.
-8. **Thème** (facultatif) : choisis `theme = classique` dans `[general]`. Les thèmes sont dans `themes/<nom>/`; copie le dossier `classique` pour en créer un et modifier ses couleurs, textes, mail et ressources. Un cadre PNG/WebP transparent déclaré avec `cadre_interface` dans `[ressources]` s'affiche au premier plan sur les écrans du parcours, sauf pendant la prise de vue.
-9. **GIF animé** (facultatif) : le bouton apparaît dans le choix du format. Réglages de disponibilité, nombre d'images, rythme et limite de poids dans la section `[gif]` de `config.ini`.
-10. **Code administrateur** : change `code_admin` dans `config.ini` (1234 par défaut).
-11. **Vérifie tout** : `photobooth-outils.exe --autotest` (caméra, modèle, décors, invités, mails, écrans) puis `photobooth-outils.exe --test-mail` (envoie un vrai mail de test).
+7. **Titre de la bande photomaton** : section `[photomaton]`, ligne `titre = ...` (et les couleurs si tu veux).
+8. **Sauvegarde (conseillé)** : section `[sauvegarde]`, ligne `dossier = E:/sauvegarde-photos` (clé USB, disque externe...). Chaque photo validée y est recopiée toute seule.
+9. **Thème** (facultatif) : choisis `theme = classique` dans `[general]`. Les thèmes sont dans `themes/<nom>/`; copie le dossier `classique` pour en créer un et modifier ses couleurs, textes, mail et ressources. Un cadre PNG/WebP transparent déclaré avec `cadre_interface` dans `[ressources]` s'affiche au premier plan sur les écrans du parcours, sauf pendant la prise de vue.
+10. **GIF animé** (facultatif) : le bouton apparaît dans le choix du format. Réglages de disponibilité, nombre d'images, rythme et limite de poids dans la section `[gif]` de `config.ini`.
+11. **Code administrateur** : change `code_admin` dans `config.ini` (1234 par défaut).
+12. **Vérifie tout** : `photobooth-outils.exe --autotest` (caméra, modèle, décors, invités, mails, écrans) puis `photobooth-outils.exe --test-mail` (envoie un vrai mail de test).
 
 ## Le jour J
 

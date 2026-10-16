@@ -309,6 +309,10 @@ class Config:
         return self.dossier_themes / name
 
     @property
+    def dossier_masques(self) -> Path:
+        return self.base_dir / "masques"
+
+    @property
     def dossier_donnees(self) -> Path:
         return self.base_dir / "data"
 
@@ -496,12 +500,13 @@ class Config:
         self.__dict__.update(fresh.__dict__)
 
     def ensure_directories(self) -> None:
-        """Crée les dossiers de travail, de cadres et les thèmes par défaut."""
+        """Crée les dossiers de travail, cadres, masques et thèmes par défaut."""
         self.dossier_logs.mkdir(parents=True, exist_ok=True)
         self.dossier_photos.mkdir(parents=True, exist_ok=True)
         self.dossier_modeles.mkdir(parents=True, exist_ok=True)
         self.dossier_donnees.mkdir(parents=True, exist_ok=True)
         self.dossier_cadres.mkdir(parents=True, exist_ok=True)
+        self.dossier_masques.mkdir(parents=True, exist_ok=True)
         for folder in ("fonds", "cadres", "visuels", "sons"):
             (self.dossier_themes / "classique" / folder).mkdir(parents=True, exist_ok=True)
         if not self.dossier_fonds.exists():

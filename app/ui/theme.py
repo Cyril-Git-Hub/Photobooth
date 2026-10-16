@@ -53,6 +53,10 @@ QLabel#badge[level="error"] { color: white; background-color: #e5484d; }
 QToolButton { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3b3680, stop:1 #2b2757); border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 16px; padding: 10px; font-size: 18px; }
 QToolButton:hover { border-color: rgba(255, 255, 255, 0.42); }
 QToolButton:pressed { background: #3b3680; }
+QToolButton#virtualMaskButton { border-radius: 10px; padding: 2px; }
+QToolButton#virtualMaskButton:checked { border: 3px solid #ffd166; background: #3b3680; }
+QToolButton#captureChoiceButton { border-radius: 10px; padding: 2px; }
+QToolButton#captureChoiceButton:checked { border: 3px solid #ffd166; background: #3b3680; }
 QPushButton#styleCard {
     background: #201d40;
     border: 2px solid rgba(255, 255, 255, 0.18);

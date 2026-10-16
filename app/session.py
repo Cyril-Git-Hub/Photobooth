@@ -19,6 +19,7 @@ class Session:
     background_path: Path | None = None
     frame_mode: bool = False
     frame_path: Path | None = None
+    virtual_mask_path: Path | None = None
     photo_source_frame: np.ndarray | None = None  # image caméra sans décor, gardée pour segmenter le sujet au résultat
     photo_style: str = "original"
     photo_style_person_only: bool = False

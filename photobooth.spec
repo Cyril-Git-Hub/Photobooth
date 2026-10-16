@@ -13,6 +13,7 @@ from PyInstaller.utils.hooks import collect_all, collect_submodules
 
 ROOT = os.path.abspath(SPECPATH)
 ICON = os.path.join(ROOT, "assets", "photobooth.ico")
+FACE_CASCADE = os.path.join(ROOT, "assets", "haarcascade_frontalface_default.xml")
 
 # MediaPipe embarque des bibliothèques et des fichiers de données que l'analyse automatique ne voit pas toujours
 datas, binaries, hiddenimports = collect_all("mediapipe")
@@ -20,6 +21,8 @@ hiddenimports += collect_submodules("xlrd")
 hiddenimports += collect_submodules("odf")
 hiddenimports += collect_submodules("PIL")
 datas.append((ICON, "assets"))                       # icône de la fenêtre (paths.resource_path)
+datas.append((os.path.join(ROOT, "assets", "masques"), "assets/masques"))
+datas.append((FACE_CASCADE, "assets"))                # classificateur OpenCV pour les masques virtuels
 
 a = Analysis(
     [os.path.join(ROOT, "main.py")],

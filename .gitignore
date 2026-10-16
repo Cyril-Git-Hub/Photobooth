@@ -18,6 +18,8 @@ fonds/*
 !fonds/.gitkeep
 cadres/*
 !cadres/.gitkeep
+masques/*
+!masques/.gitkeep
 
 # Médias de thèmes personnalisés ; les manifestes et dossiers classiques restent versionnés
 themes/*/fonds/*
