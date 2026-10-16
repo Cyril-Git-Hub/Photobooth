@@ -47,6 +47,10 @@ puis une ligne par invité (le mail peut rester vide : l'invité le saisira). Le
 s'il a changé ; ferme-le dans ton tableur avant de lancer le logiciel. L'invité peut chercher son nom au clavier tactile, ou choisir
 « Je ne suis pas dans la liste ». Réglage `obligatoire` de `[mail]` : `true` supprime le bouton « Passer » de l'écran du mail.
 
+## Cadres photo
+
+Dépose des images PNG ou WebP avec transparence dans `cadres/`. Le bouton « Photo avec cadre » ouvre la caméra sans décor ; l'invité peut choisir un cadre et voir le rendu en direct avant la prise. Une image au même format que la photo (16:9 par défaut) remplit le mieux l'aperçu.
+
 ## config.ini se complète tout seul
 
 Au lancement, les réglages apparus dans les nouvelles versions sont ajoutés à `config.ini` (à la fin de leur section, avec leur commentaire).

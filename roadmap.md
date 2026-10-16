@@ -4,7 +4,7 @@ L’étape 10 est terminée et constitue la base actuelle. Cette feuille de rout
 
 Les fonctions optionnelles devront pouvoir être activées ou désactivées dans la configuration afin de garder un parcours simple pour les invités. Les médias (cadres, sons, masques, thèmes) resteront remplaçables sans modifier le code, lorsque c’est adapté.
 
-## Étape 11 — Formats de fichier pour la liste d’invités *(développée, à tester)*
+## Étape 11 — Formats de fichier pour la liste d’invités *(validée)*
 
 - Conserver le format `.xlsx` et ajouter `.xls` et `.ods` pour les listes d’invités.
 - Lire les mêmes colonnes (nom, prénom, mail), reconnaître les variantes de titres déjà acceptées et conserver le comportement actuel de recherche/tri.
@@ -12,12 +12,12 @@ Les fonctions optionnelles devront pouvoir être activées ou désactivées dans
 - Ajouter les dépendances nécessaires et les inclure dans les instructions et l’empaquetage de l’application.
 - Ne pas convertir ni modifier le fichier source de l’utilisateur.
 
-## Étape 12 — Cadre sur une photo unique sans décor ajouté
+## Étape 12 — Cadre sur une photo unique sans décor ajouté *(développée, à tester)*
 
 - Ajouter au parcours un choix explicite, par exemple un bouton « Photo avec cadre » à côté de la photo sans décor classique.
 - Après ce choix, ouvrir la caméra sans décor ajouté et proposer les cadres disponibles dans un répertoire dédié que l’organisateur pourra alimenter.
 - Afficher le cadre sélectionné en superposition dans l’aperçu caméra, afin que l’invité puisse voir le rendu avant de prendre la photo et changer de cadre.
-- Prévoir des images de cadre avec transparence, adaptées à la composition de la photo ; ignorer proprement les fichiers invalides.
+- Prévoir un dossier `cadres/` alimentable avec des images PNG ou WebP transparentes, adaptées à la composition de la photo ; ignorer proprement les fichiers invalides.
 - Appliquer exactement le rendu affiché à la photo finale enregistrée et envoyée.
 - Laisser inchangés le parcours sans cadre, les photos avec décor et les bandes photomaton.
 
