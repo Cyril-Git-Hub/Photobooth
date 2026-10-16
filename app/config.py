@@ -132,6 +132,7 @@ echelle_interface = auto
 
 [chemins]
 dossier_photos = photos
+# Liste d'invités au format .xlsx, .xls ou .ods
 fichier_invites = invites.xlsx
 dossier_fonds = fonds
 # Dossier des modèles de détourage IA (téléchargés par tools/telecharger_modele.py)

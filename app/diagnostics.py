@@ -35,6 +35,8 @@ _LIBRARIES = (   # (module, nom, attribut de version)
     ("numpy", "NumPy", "__version__"),
     ("PIL", "Pillow", "__version__"),
     ("openpyxl", "openpyxl", "__version__"),
+    ("xlrd", "xlrd (.xls)", "__version__"),
+    ("odf", "odfpy (.ods)", "__version__"),
     ("mediapipe", "MediaPipe", "__version__"),
 )
 

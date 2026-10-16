@@ -42,9 +42,9 @@ le masque et le temps de calcul.
 
 ## Liste d'invités
 
-`invites.xlsx` (à côté de `main.py`, créé vide au premier lancement) : la première ligne contient les titres `nom`, `prénom`, `mail`,
+Le fichier de la liste d'invités, configuré par `[chemins] fichier_invites`, peut être `.xlsx`, `.xls` ou `.ods` (par défaut `invites.xlsx`). La première ligne contient les titres `nom`, `prénom`, `mail`,
 puis une ligne par invité (le mail peut rester vide : l'invité le saisira). Le fichier est relu à chaque passage sur l'écran « Qui es-tu ? »
-s'il a changé ; ferme-le dans Excel avant de lancer le logiciel. L'invité peut chercher son nom au clavier tactile, ou choisir
+s'il a changé ; ferme-le dans ton tableur avant de lancer le logiciel. L'invité peut chercher son nom au clavier tactile, ou choisir
 « Je ne suis pas dans la liste ». Réglage `obligatoire` de `[mail]` : `true` supprime le bouton « Passer » de l'écran du mail.
 
 ## config.ini se complète tout seul
