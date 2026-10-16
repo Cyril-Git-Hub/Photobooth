@@ -7,7 +7,7 @@
 | `lancer.bat` | **Lance la borne** (la relance toute seule si elle plante) |
 | `photobooth-outils.exe` | Les mêmes outils avec une console : diagnostic, test des mails, téléchargement des modèles |
 | `config.ini` | Tous les réglages (créé au premier lancement, se complète tout seul) |
-| `invites.xlsx` | La liste des invités : colonnes `nom`, `prénom`, `mail` (le mail peut rester vide) |
+| `invites.xlsx` | La liste des invités : `.xlsx`, `.xls` ou `.ods`, avec les colonnes `nom`, `prénom`, `mail` (le mail peut rester vide) |
 | `fonds\` | Les décors : une image 16/9 par fichier, un sous-dossier par thème |
 | `photos\` | Les photos de la soirée, un dossier par jour (les poses du photomaton sont dans `poses\`) |
 | `models\` | Les modèles de détourage IA |
@@ -18,7 +18,7 @@
 
 1. **Modèles de détourage** (internet requis) : dans une console, `photobooth-outils.exe --telecharger-modeles`.
 2. **Décors** : dépose tes images (jpg, png) dans `fonds\films`, `fonds\series`, etc.
-3. **Invités** : remplis `invites.xlsx` (ferme-le dans Excel avant de lancer la borne).
+3. **Invités** : remplis `invites.xlsx` (ou un fichier `.xls`/`.ods`) avec les colonnes `nom`, `prénom`, `mail`. Si le fichier a un autre nom ou emplacement, indique-le dans `[chemins]` avec `fichier_invites = ...`. Ferme-le dans ton tableur avant de lancer la borne.
 4. **Mails** : dans `config.ini`, section `[mail]`, renseigne `expediteur`, `mot_de_passe_application` et `adresse_organisateur` (tu reçois une copie de chaque photo).
    Avec Gmail : active la validation en 2 étapes, puis crée un « mot de passe d'application » (Compte Google > Sécurité). Gmail limite à environ 500 mails par jour.
    Ne partage jamais `config.ini` : le mot de passe y est en clair.
@@ -86,7 +86,7 @@ En dernier recours, un écran de la borne plus haut que l'écran du PC reste uti
 | Mails « en attente » | Pas d'internet : ils repartent seuls au retour du réseau (ou exporte-les à la main, mode admin) |
 | Voyant rouge « sauvegarde en panne » | La clé USB ou le disque est débranché : rebranche-le, la copie reprend toute seule |
 | Pas de diaporama | Windows + P > Étendre ; vérifie `second_ecran_active = true` |
-| « Ouvert dans Excel » | Ferme `invites.xlsx` dans Excel |
+| « Ouvert dans un tableur » | Ferme le fichier de la liste d'invités dans Excel ou LibreOffice |
 | La borne a planté | `lancer.bat` la relance seule ; la cause est dans `logs\photobooth.log` |
 | Un réglage n'a pas d'effet | Mode admin > Recharger la configuration (ou relance la borne ; `echelle_interface` demande toujours un relancement) |
 | Boutons du bas coupés, interface trop grande ou trop petite | Voir « Si des boutons sont coupés (petit écran) » : réglage `echelle_interface` |
