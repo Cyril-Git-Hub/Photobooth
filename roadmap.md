@@ -12,7 +12,7 @@ Les fonctions optionnelles devront pouvoir être activées ou désactivées dans
 - Ajouter les dépendances nécessaires et les inclure dans les instructions et l’empaquetage de l’application.
 - Ne pas convertir ni modifier le fichier source de l’utilisateur.
 
-## Étape 12 — Cadre sur une photo unique sans décor ajouté *(développée, à tester)*
+## Étape 12 — Cadre sur une photo unique sans décor ajouté *(validée)*
 
 - Ajouter au parcours un choix explicite, par exemple un bouton « Photo avec cadre » à côté de la photo sans décor classique.
 - Après ce choix, ouvrir la caméra sans décor ajouté et proposer les cadres disponibles dans un répertoire dédié que l’organisateur pourra alimenter.
@@ -21,11 +21,11 @@ Les fonctions optionnelles devront pouvoir être activées ou désactivées dans
 - Appliquer exactement le rendu affiché à la photo finale enregistrée et envoyée.
 - Laisser inchangés le parcours sans cadre, les photos avec décor et les bandes photomaton.
 
-## Étape 13 — Fiabilité de la file d’envoi
+## Étape 13 — Fiabilité de la file d’envoi *(développée, à tester)*
 
-- Réessayer les envois en attente sans limite de durée, avec un délai croissant raisonnable.
-- Ajouter un indicateur discret d’envois en attente sur l’interface de la borne.
-- Ajouter dans l’administration une action « Tout renvoyer maintenant » et un export de secours associant adresse et photo.
+- *(Déjà présent dans la base)* La file sur disque, l’indicateur discret, le renvoi immédiat depuis l’administration et l’export CSV avec les photos.
+- Réessayer sans limite les erreurs temporaires, avec un délai croissant plafonné ; les erreurs définitives restent signalées pour intervention manuelle.
+- Reprendre automatiquement les envois qui avaient été abandonnés à 60 essais par une ancienne version.
 - Préserver la file sur disque et son fonctionnement après redémarrage.
 
 ## Étape 14 — Copie de sauvegarde des photos

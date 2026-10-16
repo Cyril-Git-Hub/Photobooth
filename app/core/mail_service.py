@@ -12,7 +12,7 @@ from typing import Callable
 from ..config import Config
 from .emails import is_valid_email, normalize_email
 from .export import ExportResult, export_unsent
-from .mail_queue import GUEST, ORGANIZER, FAILED, PENDING, MailQueue
+from .mail_queue import GUEST, ORGANIZER, PENDING, MailQueue
 from .mailer import MailSettings, NetworkError, PermanentMailError, SmtpSender, TemporaryMailError
 
 log = logging.getLogger(__name__)
@@ -202,10 +202,8 @@ class MailService:
                     log.warning("Pas de connexion, nouvel essai plus tard : %s", exc)
                     return sent                       # inutile d'essayer les suivants : ils échoueraient pareil
                 except TemporaryMailError as exc:
-                    status = self._queue.mark_retry(job.id, str(exc))
+                    self._queue.mark_retry(job.id, str(exc))
                     log.warning("Envoi différé (%s -> %s) : %s", job.kind, job.recipient, exc)
-                    if status == FAILED:
-                        log.error("Envoi abandonné après trop d'essais (%s) : %s", job.recipient, exc)
                 except Exception as exc:               # imprévu : traité comme provisoire pour ne rien perdre
                     self._queue.mark_retry(job.id, f"Erreur inattendue : {exc!r}")
                     log.exception("Erreur inattendue pendant l'envoi à %s", job.recipient)
