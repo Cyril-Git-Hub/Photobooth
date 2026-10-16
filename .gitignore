@@ -16,6 +16,8 @@ exports/
 debug/
 fonds/*
 !fonds/.gitkeep
+cadres/*
+!cadres/.gitkeep
 
 # Modèles IA (téléchargés par photobooth-outils --telecharger-modeles)
 models/*.tflite

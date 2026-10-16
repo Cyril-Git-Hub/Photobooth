@@ -50,6 +50,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "dossier_photos": "photos",
         "fichier_invites": "invites.xlsx",
         "dossier_fonds": "fonds",
+        "dossier_cadres": "cadres",
         "dossier_modeles": "models",
     },
     "sauvegarde": {
@@ -135,6 +136,8 @@ dossier_photos = photos
 # Liste d'invités au format .xlsx, .xls ou .ods
 fichier_invites = invites.xlsx
 dossier_fonds = fonds
+# Dossier des cadres PNG/WebP transparents pour les photos uniques sans décor
+dossier_cadres = cadres
 # Dossier des modèles de détourage IA (téléchargés par tools/telecharger_modele.py)
 dossier_modeles = models
 
@@ -223,6 +226,7 @@ class Config:
     dossier_photos: Path = Path("photos")
     fichier_invites: Path = Path("invites.xlsx")
     dossier_fonds: Path = Path("fonds")
+    dossier_cadres: Path = Path("cadres")
     dossier_modeles: Path = Path("models")
     # [photomaton]
     pm_decompte_entre_poses: int = 2
@@ -393,6 +397,7 @@ class Config:
             dossier_photos=get_path("chemins", "dossier_photos"),
             fichier_invites=get_path("chemins", "fichier_invites"),
             dossier_fonds=get_path("chemins", "dossier_fonds"),
+            dossier_cadres=get_path("chemins", "dossier_cadres"),
             dossier_modeles=get_path("chemins", "dossier_modeles"),
             pm_decompte_entre_poses=get_int("photomaton", "decompte_entre_poses", 1, 10),
             pm_titre=get_str("photomaton", "titre"),
@@ -433,11 +438,12 @@ class Config:
         self.__dict__.update(fresh.__dict__)
 
     def ensure_directories(self) -> None:
-        """Crée les dossiers de travail ; au premier lancement, crée aussi les dossiers de thèmes."""
+        """Crée les dossiers de travail, de cadres et les thèmes par défaut."""
         self.dossier_logs.mkdir(parents=True, exist_ok=True)
         self.dossier_photos.mkdir(parents=True, exist_ok=True)
         self.dossier_modeles.mkdir(parents=True, exist_ok=True)
         self.dossier_donnees.mkdir(parents=True, exist_ok=True)
+        self.dossier_cadres.mkdir(parents=True, exist_ok=True)
         if not self.dossier_fonds.exists():
             for theme in THEMES_PAR_DEFAUT:
                 (self.dossier_fonds / theme).mkdir(parents=True, exist_ok=True)

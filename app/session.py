@@ -12,6 +12,8 @@ class Session:
     email: str = ""
     photo_format: str = "single"        # "single" (photo unique) ou "strip" (photomaton)
     background_path: Path | None = None
+    frame_mode: bool = False
+    frame_path: Path | None = None
     photos: list[Path] = field(default_factory=list)
     poses: list[Path] = field(default_factory=list)   # poses individuelles de la bande (mode photomaton)
 

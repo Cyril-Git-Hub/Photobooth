@@ -9,6 +9,7 @@
 | `config.ini` | Tous les réglages (créé au premier lancement, se complète tout seul) |
 | `invites.xlsx` | La liste des invités : `.xlsx`, `.xls` ou `.ods`, avec les colonnes `nom`, `prénom`, `mail` (le mail peut rester vide) |
 | `fonds\` | Les décors : une image 16/9 par fichier, un sous-dossier par thème |
+| `cadres\` | Les cadres pour les photos uniques : PNG ou WebP avec transparence |
 | `photos\` | Les photos de la soirée, un dossier par jour (les poses du photomaton sont dans `poses\`) |
 | `models\` | Les modèles de détourage IA |
 | `logs\` | Le journal de bord (`photobooth.log`) et le dernier diagnostic |
@@ -19,13 +20,14 @@
 1. **Modèles de détourage** (internet requis) : dans une console, `photobooth-outils.exe --telecharger-modeles`.
 2. **Décors** : dépose tes images (jpg, png) dans `fonds\films`, `fonds\series`, etc.
 3. **Invités** : remplis `invites.xlsx` (ou un fichier `.xls`/`.ods`) avec les colonnes `nom`, `prénom`, `mail`. Si le fichier a un autre nom ou emplacement, indique-le dans `[chemins]` avec `fichier_invites = ...`. Ferme-le dans ton tableur avant de lancer la borne.
-4. **Mails** : dans `config.ini`, section `[mail]`, renseigne `expediteur`, `mot_de_passe_application` et `adresse_organisateur` (tu reçois une copie de chaque photo).
+4. **Cadres photo** (facultatif) : dépose des PNG ou WebP transparents dans `cadres\`. Ils seront proposés avec « Photo avec cadre ». Une image au format de la photo (par défaut 16:9) donnera le rendu le plus ajusté.
+5. **Mails** : dans `config.ini`, section `[mail]`, renseigne `expediteur`, `mot_de_passe_application` et `adresse_organisateur` (tu reçois une copie de chaque photo).
    Avec Gmail : active la validation en 2 étapes, puis crée un « mot de passe d'application » (Compte Google > Sécurité). Gmail limite à environ 500 mails par jour.
    Ne partage jamais `config.ini` : le mot de passe y est en clair.
-5. **Titre de la bande photomaton** : section `[photomaton]`, ligne `titre = ...` (et les couleurs si tu veux).
-6. **Sauvegarde (conseillé)** : section `[sauvegarde]`, ligne `dossier = E:/sauvegarde-photos` (clé USB, disque externe...). Chaque photo validée y est recopiée toute seule.
-7. **Code administrateur** : change `code_admin` dans `config.ini` (1234 par défaut).
-8. **Vérifie tout** : `photobooth-outils.exe --autotest` (caméra, modèle, décors, invités, mails, écrans) puis `photobooth-outils.exe --test-mail` (envoie un vrai mail de test).
+6. **Titre de la bande photomaton** : section `[photomaton]`, ligne `titre = ...` (et les couleurs si tu veux).
+7. **Sauvegarde (conseillé)** : section `[sauvegarde]`, ligne `dossier = E:/sauvegarde-photos` (clé USB, disque externe...). Chaque photo validée y est recopiée toute seule.
+8. **Code administrateur** : change `code_admin` dans `config.ini` (1234 par défaut).
+9. **Vérifie tout** : `photobooth-outils.exe --autotest` (caméra, modèle, décors, invités, mails, écrans) puis `photobooth-outils.exe --test-mail` (envoie un vrai mail de test).
 
 ## Le jour J
 

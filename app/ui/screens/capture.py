@@ -7,16 +7,19 @@ from __future__ import annotations
 
 import logging
 from enum import Enum, auto
+from pathlib import Path
 
 from datetime import datetime
 
 import cv2
 import numpy as np
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QImage
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout
+from PyQt6.QtCore import QSize, Qt, QTimer
+from PyQt6.QtGui import QImage, QIcon, QPixmap
+from PyQt6.QtWidgets import (
+    QFrame, QHBoxLayout, QLabel, QScrollArea, QScroller, QToolButton, QVBoxLayout, QWidget,
+)
 
-from ...core import backgrounds, storage, strip_builder
+from ...core import backgrounds, frames, storage, strip_builder
 from ...core.compositor import SceneRenderer
 from ...core.qt_image import bgr_to_qimage
 from ...core.segmentation import SegmentationError
@@ -32,6 +35,8 @@ SAVE_ERROR = "Impossible d'enregistrer la photo.\nVérifie le dossier des photos
 NO_FRAME_ERROR = "La caméra n'a pas fourni d'image."
 BACKGROUND_ERROR = "Impossible de charger le décor choisi.\nReviens en arrière et choisis-en un autre, ou prends la photo sans décor."
 PROCESS_ERROR = "Le détourage a échoué.\nRéessaie, ou reviens en arrière et prends la photo sans décor."
+NO_FRAMES_ERROR = "Aucun cadre utilisable trouvé.\nAjoute des images PNG/WebP transparentes dans le dossier configuré, puis reviens ici."
+FRAME_ERROR = "Impossible de charger ce cadre.\nChoisis-en un autre ou reviens à l'écran précédent."
 FLASH_PAUSE_MS = 700        # on laisse le flash se voir avant de passer à l'aperçu du résultat
 POSE_REVIEW_MS = 1600       # photomaton : durée d'affichage de la pose qui vient d'être prise
 
@@ -56,13 +61,38 @@ class CaptureScreen(BaseScreen):
         self._error_text = ""
         self._renderer: SceneRenderer | None = None
         self._background_cache: tuple | None = None   # (chemin, image) : évite de relire le décor à chaque reprise
+        self._frame_overlay: np.ndarray | None = None
+        self._frame_buttons: dict[Path, QToolButton] = {}
 
         self._preview = PreviewWidget()
+        self._frame_panel = QWidget()
+        frame_layout = QVBoxLayout(self._frame_panel)
+        frame_layout.setContentsMargins(0, 0, 0, 0)
+        frame_layout.setSpacing(px(4))
+        self._frame_heading = QLabel("Choisis ton cadre — le rendu apparaît directement sur la caméra")
+        self._frame_heading.setObjectName("note")
+        self._frame_heading.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        frame_layout.addWidget(self._frame_heading)
+        self._frame_host = QWidget()
+        self._frame_row = QHBoxLayout(self._frame_host)
+        self._frame_row.setContentsMargins(px(8), px(4), px(8), px(4))
+        self._frame_row.setSpacing(px(12))
+        self._frame_scroll = QScrollArea()
+        self._frame_scroll.setWidgetResizable(True)
+        self._frame_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self._frame_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self._frame_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._frame_scroll.setFixedHeight(px(132))
+        self._frame_scroll.setWidget(self._frame_host)
+        QScroller.grabGesture(self._frame_scroll.viewport(), QScroller.ScrollerGestureType.LeftMouseButtonGesture)
+        frame_layout.addWidget(self._frame_scroll)
+        self._frame_panel.setVisible(False)
+
         self._status = QLabel("")
         self._status.setObjectName("note")
         self._status.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._back = BigButton("Retour", "secondary")
-        self._back.clicked.connect(lambda: self.nav.go_back())
+        self._back.clicked.connect(self._go_back)
         self._action = BigButton("Prendre la photo")
         self._action.clicked.connect(lambda: self._on_action())
 
@@ -70,6 +100,7 @@ class CaptureScreen(BaseScreen):
         layout.setContentsMargins(px(30), px(30), px(30), px(30))
         layout.setSpacing(px(16))
         layout.addWidget(self._preview, 1)
+        layout.addWidget(self._frame_panel)
         layout.addWidget(self._status)
         row = QHBoxLayout()
         row.setSpacing(px(30))
@@ -101,6 +132,7 @@ class CaptureScreen(BaseScreen):
         self._active = False
         self._timer.stop()
         self._poses = []
+        self._frame_overlay = None
         self._preview.overlay.clear()
         camera = self.nav.camera
         camera.set_preview_processor(None)
@@ -121,6 +153,11 @@ class CaptureScreen(BaseScreen):
         camera = self.nav.camera
         camera.set_preview_processor(None)
         self._renderer = None
+        self._frame_overlay = None
+        if self.session.frame_mode:
+            self._frame_panel.setVisible(True)
+            return self._prepare_frame()
+        self._frame_panel.setVisible(False)
         path = self.session.background_path
         if path is None:                       # « Sans décor » : photo normale
             return True
@@ -139,6 +176,60 @@ class CaptureScreen(BaseScreen):
             camera.set_preview_processor(self._renderer.render_preview)
         return True
 
+    def _prepare_frame(self) -> bool:
+        """Construit le choix de cadres et démarre l'aperçu avec le cadre sélectionné."""
+        while self._frame_row.count():
+            widget = self._frame_row.takeAt(0).widget()
+            if widget is not None:
+                widget.deleteLater()
+        self._frame_buttons.clear()
+        icon_size = QSize(px(140), px(70))
+        for path in frames.scan_frames(self.config.dossier_cadres):
+            overlay = frames.load_frame(path)
+            if overlay is None:
+                continue
+            rgba = cv2.cvtColor(overlay, cv2.COLOR_BGRA2RGBA)
+            height, width = rgba.shape[:2]
+            image = QImage(rgba.data, width, height, width * 4, QImage.Format.Format_RGBA8888).copy()
+            thumbnail = image.scaled(icon_size, Qt.AspectRatioMode.KeepAspectRatio,
+                                     Qt.TransformationMode.SmoothTransformation)
+            button = QToolButton()
+            button.setIcon(QIcon(QPixmap.fromImage(thumbnail)))
+            button.setIconSize(icon_size)
+            button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
+            button.setText(path.stem)
+            button.setMinimumSize(px(172), px(112))
+            button.clicked.connect(lambda _checked=False, p=path: self._select_frame(p))
+            self._frame_row.addWidget(button)
+            self._frame_buttons[path] = button
+        if not self._frame_buttons:
+            self._fail(f"{NO_FRAMES_ERROR}\n({self.config.dossier_cadres})")
+            return False
+
+        selected = self.session.frame_path if self.session.frame_path in self._frame_buttons else next(iter(self._frame_buttons))
+        return self._select_frame(selected)
+
+    def _select_frame(self, path: Path) -> bool:
+        overlay = frames.load_frame(path)
+        if overlay is None:
+            self._frame_overlay = None
+            self._fail(FRAME_ERROR)
+            return False
+        self._frame_overlay = overlay
+        self.session.frame_path = path
+        self.nav.camera.set_preview_processor(lambda frame, selected=overlay: frames.apply_frame(frame, selected))
+        for button_path, button in self._frame_buttons.items():
+            button.setText(("✓ " if button_path == path else "") + button_path.stem)
+        if self._state is State.ERROR:
+            self._set_state(State.ERROR)  # recalcule l'état du bouton « Réessayer » après un changement de cadre
+        return True
+
+    def _go_back(self) -> None:
+        if self.session.frame_mode:
+            self.nav.go_to("format_select")
+        else:
+            self.nav.go_back()
+
     def _load_background(self, path):
         if self._background_cache is not None and self._background_cache[0] == path:
             return self._background_cache[1]
@@ -153,14 +244,18 @@ class CaptureScreen(BaseScreen):
         busy = state in (State.COUNTING, State.POSE_REVIEW, State.SAVING)
         planned = self._planned_poses()
         self._back.setEnabled(not busy)
-        self._action.setEnabled(state in (State.READY, State.ERROR))
+        for button in self._frame_buttons.values():
+            button.setEnabled(not busy)
+        frame_ready = not self.session.frame_mode or self._frame_overlay is not None
+        self._action.setEnabled(state in (State.READY, State.ERROR) and frame_ready)
         self._action.setText("Réessayer" if state is State.ERROR
                              else "Prendre la photo" if planned == 1 else "Lancer le photomaton")
         self._status.setText("")
         if state is State.STARTING:
             self._preview.set_message("Démarrage de la caméra…")
         elif state is State.READY:
-            self._status.setText("Place-toi dans le cadre, puis appuie sur le bouton !" if planned == 1 else
+            self._status.setText("Place-toi et prends la photo !" if self.session.frame_mode else
+                                 "Place-toi dans le cadre, puis appuie sur le bouton !" if planned == 1 else
                                  f"Place-toi dans le cadre : {planned} photos vont être prises à la suite !")
         elif state is State.ERROR:
             self._preview.set_message(self._error_text)
@@ -236,6 +331,13 @@ class CaptureScreen(BaseScreen):
             except Exception:
                 log.exception("Échec du détourage de la photo")
                 self._fail(PROCESS_ERROR)
+                return None
+        elif self.session.frame_mode and self._frame_overlay is not None:
+            try:
+                frame = frames.apply_frame(frame, self._frame_overlay)
+            except Exception:
+                log.exception("Échec de l'incrustation du cadre")
+                self._fail(FRAME_ERROR)
                 return None
         return frame
 

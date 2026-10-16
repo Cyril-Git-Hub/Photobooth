@@ -22,6 +22,9 @@ class FormatSelectScreen(BaseScreen):
         self._strip = BigButton("Photomaton")
         self._strip.setMinimumSize(px(420), px(220))
         self._strip.clicked.connect(lambda: self._choose("strip"))
+        self._framed = BigButton("Photo avec cadre", "secondary")
+        self._framed.setMinimumSize(px(420), px(110))
+        self._framed.clicked.connect(self._choose_framed)
 
         self._hint = QLabel("")
         self._hint.setObjectName("note")
@@ -36,6 +39,10 @@ class FormatSelectScreen(BaseScreen):
         choices.addWidget(self._single)
         choices.addWidget(self._strip)
         choices.addStretch(1)
+        framed_row = QHBoxLayout()
+        framed_row.addStretch(1)
+        framed_row.addWidget(self._framed)
+        framed_row.addStretch(1)
         footer = QHBoxLayout()
         footer.addStretch(1)
         footer.addWidget(back)
@@ -47,6 +54,7 @@ class FormatSelectScreen(BaseScreen):
         layout.addWidget(heading)
         layout.addStretch(1)
         layout.addLayout(choices)
+        layout.addLayout(framed_row)
         layout.addWidget(self._hint)
         layout.addStretch(1)
         layout.addLayout(footer)
@@ -61,4 +69,14 @@ class FormatSelectScreen(BaseScreen):
 
     def _choose(self, photo_format: str) -> None:
         self.session.photo_format = photo_format
+        self.session.background_path = None
+        self.session.frame_mode = False
+        self.session.frame_path = None
         self.nav.go_next()
+
+    def _choose_framed(self) -> None:
+        self.session.photo_format = "single"
+        self.session.background_path = None
+        self.session.frame_mode = True
+        self.session.frame_path = None
+        self.nav.go_to("capture")
