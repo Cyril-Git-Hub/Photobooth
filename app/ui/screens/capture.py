@@ -16,14 +16,15 @@ import numpy as np
 from PyQt6.QtCore import QSize, Qt, QTimer
 from PyQt6.QtGui import QImage, QIcon, QPixmap
 from PyQt6.QtWidgets import (
-    QFrame, QHBoxLayout, QLabel, QScrollArea, QScroller, QToolButton, QVBoxLayout, QWidget,
+    QFrame, QHBoxLayout, QLabel, QScrollArea, QScroller, QStyle, QToolButton, QVBoxLayout, QWidget,
 )
 
-from ...core import backgrounds, frames, gif_builder, storage, strip_builder
+from ...core import backgrounds, frames, gif_builder, storage, strip_builder, virtual_masks
 from ...core.compositor import SceneRenderer
 from ...core.qt_image import bgr_to_qimage
 from ...core.segmentation import SegmentationError
 from ...core.webcam import shrink
+from ...paths import resource_path
 from ..widgets.big_button import BigButton
 from ..widgets.preview_widget import PreviewWidget
 from .base import BaseScreen
@@ -64,30 +65,53 @@ class CaptureScreen(BaseScreen):
         self._background_cache: tuple | None = None   # (chemin, image) : évite de relire le décor à chaque reprise
         self._frame_overlay: np.ndarray | None = None
         self._frame_buttons: dict[Path, QToolButton] = {}
+        self._mask_assets: dict[Path, virtual_masks.MaskAsset] = {}
+        self._mask_buttons: dict[Path | None, QToolButton] = {}
+        self._mask_processor: virtual_masks.FaceMaskRenderer | None = None
+        self._mask_error = ""
 
         self._preview = PreviewWidget()
         self._frame_panel = QWidget()
         frame_layout = QVBoxLayout(self._frame_panel)
         frame_layout.setContentsMargins(0, 0, 0, 0)
-        frame_layout.setSpacing(px(4))
-        self._frame_heading = QLabel("Choisis ton cadre — le rendu apparaît directement sur la caméra")
-        self._frame_heading.setObjectName("note")
-        self._frame_heading.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        frame_layout.addWidget(self._frame_heading)
+        frame_layout.setSpacing(0)
         self._frame_host = QWidget()
         self._frame_row = QHBoxLayout(self._frame_host)
-        self._frame_row.setContentsMargins(px(8), px(4), px(8), px(4))
-        self._frame_row.setSpacing(px(12))
+        self._frame_row.setContentsMargins(px(4), px(2), px(4), px(2))
+        self._frame_row.setSpacing(px(6))
         self._frame_scroll = QScrollArea()
         self._frame_scroll.setWidgetResizable(True)
         self._frame_scroll.setFrameShape(QFrame.Shape.NoFrame)
         self._frame_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self._frame_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self._frame_scroll.setFixedHeight(px(132))
+        self._frame_scroll.setFixedHeight(px(70))
         self._frame_scroll.setWidget(self._frame_host)
         QScroller.grabGesture(self._frame_scroll.viewport(), QScroller.ScrollerGestureType.LeftMouseButtonGesture)
+        QScroller.grabGesture(self._frame_scroll.viewport(), QScroller.ScrollerGestureType.TouchGesture)
         frame_layout.addWidget(self._frame_scroll)
         self._frame_panel.setVisible(False)
+
+        self._mask_panel = QWidget()
+        mask_layout = QVBoxLayout(self._mask_panel)
+        mask_layout.setContentsMargins(0, 0, 0, 0)
+        mask_layout.setSpacing(0)
+        self._mask_host = QWidget()
+        self._mask_row = QHBoxLayout(self._mask_host)
+        self._mask_row.setContentsMargins(px(4), px(2), px(4), px(2))
+        self._mask_row.setSpacing(px(6))
+        self._mask_scroll = QScrollArea()
+        self._mask_scroll.setWidgetResizable(True)
+        self._mask_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self._mask_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self._mask_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        # Une bande compacte laisse davantage de hauteur à l'aperçu caméra.
+        # La rangée reste défilante horizontalement, au doigt ou avec la barre.
+        self._mask_scroll.setFixedHeight(px(70))
+        self._mask_scroll.setWidget(self._mask_host)
+        QScroller.grabGesture(self._mask_scroll.viewport(), QScroller.ScrollerGestureType.LeftMouseButtonGesture)
+        QScroller.grabGesture(self._mask_scroll.viewport(), QScroller.ScrollerGestureType.TouchGesture)
+        mask_layout.addWidget(self._mask_scroll)
+        self._mask_panel.setVisible(False)
 
         self._status = QLabel("")
         self._status.setObjectName("note")
@@ -102,6 +126,7 @@ class CaptureScreen(BaseScreen):
         layout.setSpacing(px(16))
         layout.addWidget(self._preview, 1)
         layout.addWidget(self._frame_panel)
+        layout.addWidget(self._mask_panel)
         layout.addWidget(self._status)
         row = QHBoxLayout()
         row.setSpacing(px(30))
@@ -139,6 +164,7 @@ class CaptureScreen(BaseScreen):
         camera.set_preview_processor(None)
         camera.set_preview_enabled(False)
         self._renderer = None
+        self._mask_processor = None
 
     def _begin(self) -> None:
         """Prépare le décor puis démarre (ou reprend) l'aperçu. Appelé à l'arrivée et par « Réessayer »."""
@@ -155,12 +181,16 @@ class CaptureScreen(BaseScreen):
         camera.set_preview_processor(None)
         self._renderer = None
         self._frame_overlay = None
+        self._mask_processor = None
+        self._mask_error = ""
+        self._prepare_mask_gallery()
         if self.session.frame_mode:
             self._frame_panel.setVisible(True)
             return self._prepare_frame()
         self._frame_panel.setVisible(False)
         path = self.session.background_path
         if path is None:                       # « Sans décor » : photo normale
+            self._update_preview_processor()
             return True
         background = self._load_background(path)
         if background is None:
@@ -173,9 +203,120 @@ class CaptureScreen(BaseScreen):
             self._fail(exc.args[0])
             return False
         self._renderer = SceneRenderer(segmenter, background)
-        if self.config.apercu_incruste:
-            camera.set_preview_processor(self._renderer.render_preview)
+        self._update_preview_processor()
         return True
+
+    def _prepare_mask_gallery(self) -> None:
+        """Construit la rangée de masques fournis et ceux ajoutés dans masques/."""
+        while self._mask_row.count():
+            widget = self._mask_row.takeAt(0).widget()
+            if widget is not None:
+                widget.deleteLater()
+        self._mask_buttons.clear()
+        defaults = resource_path("assets/masques")
+        assets = virtual_masks.scan_masks([defaults, self.config.dossier_masques])
+        self._mask_assets = {asset.path: asset for asset in assets}
+        self._mask_panel.setVisible(bool(assets))
+        if not assets:
+            self.session.virtual_mask_path = None
+            return
+
+        none = QToolButton()
+        none.setObjectName("virtualMaskButton")
+        none.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogCancelButton))
+        none.setIconSize(QSize(px(30), px(30)))
+        none.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+        none.setToolTip("Aucun masque")
+        none.setAccessibleName("Aucun masque")
+        none.setCheckable(True)
+        none.setFixedSize(px(52), px(52))
+        none.clicked.connect(lambda _checked=False: self._select_mask(None))
+        self._mask_row.addWidget(none)
+        self._mask_buttons[None] = none
+        icon_size = QSize(px(40), px(40))
+        for asset in assets:
+            rgba = cv2.cvtColor(asset.image, cv2.COLOR_BGRA2RGBA)
+            height, width = rgba.shape[:2]
+            image = QImage(rgba.data, width, height, width * 4, QImage.Format.Format_RGBA8888).copy()
+            thumbnail = image.scaled(icon_size, Qt.AspectRatioMode.KeepAspectRatio,
+                                     Qt.TransformationMode.SmoothTransformation)
+            button = QToolButton()
+            button.setObjectName("virtualMaskButton")
+            button.setIcon(QIcon(QPixmap.fromImage(thumbnail)))
+            button.setIconSize(icon_size)
+            button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+            button.setToolTip(asset.name)
+            button.setAccessibleName(asset.name)
+            button.setCheckable(True)
+            button.setFixedSize(px(52), px(52))
+            button.clicked.connect(lambda _checked=False, p=asset.path: self._select_mask(p))
+            self._mask_row.addWidget(button)
+            self._mask_buttons[asset.path] = button
+        selected = self.session.virtual_mask_path
+        if selected not in self._mask_assets:
+            selected = None
+        self._select_mask(selected)
+
+    def _select_mask(self, path: Path | None) -> None:
+        self.session.virtual_mask_path = path
+        self._mask_processor = None
+        self._mask_error = ""
+        if path is not None:
+            asset = self._mask_assets.get(path)
+            if asset is not None:
+                try:
+                    self._mask_processor = virtual_masks.FaceMaskRenderer(asset)
+                except Exception as exc:
+                    log.warning("Détection des visages indisponible : %s", exc)
+                    self._mask_error = "Détection visage indisponible : masque désactivé."
+                    self.session.virtual_mask_path = None
+                    path = None
+        for button_path, button in self._mask_buttons.items():
+            button.setChecked(button_path == path)
+        self._update_preview_processor()
+        if self._state is State.READY:
+            self._update_mask_status()
+
+    def _update_preview_processor(self) -> None:
+        """Compose décor/cadre et masque dans cet ordre, pour l'aperçu webcam."""
+        scene_processor = self._renderer.render_preview if self._renderer and self.config.apercu_incruste else None
+        frame_overlay = self._frame_overlay if self.session.frame_mode else None
+        mask_processor = self._mask_processor
+        if scene_processor is None and frame_overlay is None and mask_processor is None:
+            self.nav.camera.set_preview_processor(None)
+            return
+
+        def process(frame: np.ndarray) -> np.ndarray:
+            rendered = scene_processor(frame) if scene_processor is not None else frame
+            if frame_overlay is not None:
+                rendered = frames.apply_frame(rendered, frame_overlay)
+            if mask_processor is not None:
+                rendered = mask_processor.process_preview(frame, rendered)
+            return rendered
+
+        self.nav.camera.set_preview_processor(process)
+
+    def _update_mask_status(self) -> None:
+        if self._state is not State.READY:
+            return
+        if self._mask_error:
+            self._status.setText(self._mask_error)
+        elif self._mask_processor is not None:
+            if self._mask_processor.disabled:
+                self._status.setText("Masque désactivé : la détection était trop lente. La photo reste disponible.")
+            elif self._mask_processor.last_face_count == 0:
+                self._status.setText("Place ton visage face à la caméra pour afficher le masque.")
+            else:
+                self._status.setText(f"Masque actif · {self._mask_processor.last_face_count} visage(s) détecté(s).")
+        else:
+            self._status.setText(self._ready_status_text())
+
+    def _ready_status_text(self) -> str:
+        planned = self._planned_poses()
+        return ("Place-toi et prends la photo !" if self.session.frame_mode else
+                f"Prépare-toi : {planned} images pour ton GIF animé !" if self.session.photo_format == "gif" else
+                "Place-toi dans le cadre, puis appuie sur le bouton !" if planned == 1 else
+                f"Place-toi dans le cadre : {planned} photos vont être prises à la suite !")
 
     def _prepare_frame(self) -> bool:
         """Construit le choix de cadres et démarre l'aperçu avec le cadre sélectionné."""
@@ -184,7 +325,7 @@ class CaptureScreen(BaseScreen):
             if widget is not None:
                 widget.deleteLater()
         self._frame_buttons.clear()
-        icon_size = QSize(px(140), px(70))
+        icon_size = QSize(px(40), px(40))
         frame_folder = self.nav.theme.frames if self.nav.theme and self.nav.theme.frames.exists() else self.config.dossier_cadres
         available_frames = [(path, frames.load_frame(path)) for path in frames.scan_frames(frame_folder)]
         available_frames = [(path, overlay) for path, overlay in available_frames if overlay is not None]
@@ -199,11 +340,14 @@ class CaptureScreen(BaseScreen):
             thumbnail = image.scaled(icon_size, Qt.AspectRatioMode.KeepAspectRatio,
                                      Qt.TransformationMode.SmoothTransformation)
             button = QToolButton()
+            button.setObjectName("captureChoiceButton")
             button.setIcon(QIcon(QPixmap.fromImage(thumbnail)))
             button.setIconSize(icon_size)
-            button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
-            button.setText(path.stem)
-            button.setMinimumSize(px(172), px(112))
+            button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+            button.setToolTip(path.stem)
+            button.setAccessibleName(path.stem)
+            button.setCheckable(True)
+            button.setFixedSize(px(52), px(52))
             button.clicked.connect(lambda _checked=False, p=path: self._select_frame(p))
             self._frame_row.addWidget(button)
             self._frame_buttons[path] = button
@@ -222,9 +366,9 @@ class CaptureScreen(BaseScreen):
             return False
         self._frame_overlay = overlay
         self.session.frame_path = path
-        self.nav.camera.set_preview_processor(lambda frame, selected=overlay: frames.apply_frame(frame, selected))
+        self._update_preview_processor()
         for button_path, button in self._frame_buttons.items():
-            button.setText(("✓ " if button_path == path else "") + button_path.stem)
+            button.setChecked(button_path == path)
         if self._state is State.ERROR:
             self._set_state(State.ERROR)  # recalcule l'état du bouton « Réessayer » après un changement de cadre
         return True
@@ -253,6 +397,8 @@ class CaptureScreen(BaseScreen):
         self._back.setEnabled(not busy)
         for button in self._frame_buttons.values():
             button.setEnabled(not busy)
+        for button in self._mask_buttons.values():
+            button.setEnabled(not busy)
         frame_ready = not self.session.frame_mode or self._frame_overlay is not None
         self._action.setEnabled(state in (State.READY, State.ERROR) and frame_ready)
         action_text = "Lancer le GIF" if self.session.photo_format == "gif" else "Lancer le photomaton"
@@ -262,10 +408,8 @@ class CaptureScreen(BaseScreen):
         if state is State.STARTING:
             self._preview.set_message("Démarrage de la caméra…")
         elif state is State.READY:
-            self._status.setText("Place-toi et prends la photo !" if self.session.frame_mode else
-                                 f"Prépare-toi : {planned} images pour ton GIF animé !" if self.session.photo_format == "gif" else
-                                 "Place-toi dans le cadre, puis appuie sur le bouton !" if planned == 1 else
-                                 f"Place-toi dans le cadre : {planned} photos vont être prises à la suite !")
+            self._status.setText(self._ready_status_text())
+            self._update_mask_status()
         elif state is State.ERROR:
             self._preview.set_message(self._error_text)
 
@@ -291,6 +435,8 @@ class CaptureScreen(BaseScreen):
             self._preview.set_image(image)
             if self._state is State.STARTING:
                 self._set_state(State.READY)
+            elif self._state is State.READY:
+                self._update_mask_status()
         finally:
             self.nav.camera.preview_consumed()
 
@@ -352,6 +498,8 @@ class CaptureScreen(BaseScreen):
                 log.exception("Échec de l'incrustation du cadre")
                 self._fail(FRAME_ERROR)
                 return None
+        if self._mask_processor is not None:
+            frame = self._mask_processor.apply_photo(self._last_source_frame, frame)
         return frame
 
     def _capture_pose(self) -> None:

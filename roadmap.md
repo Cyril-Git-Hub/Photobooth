@@ -62,10 +62,11 @@ Les fonctions optionnelles devront pouvoir être activées ou désactivées dans
 
 ## Étape 18 — Masques virtuels
 
-- Ajouter des masques PNG transparents dans un dossier de ressources : lunettes, couronne, oreilles, moustache, etc.
-- Détecter et suivre les visages, avec calcul à résolution réduite et lissage.
-- Désactiver les masques si la détection échoue ou ralentit trop l’aperçu.
-- Mesurer les performances sur le portable cible et vérifier l’empaquetage.
+- Ajouter des masques PNG transparents et permettre d'en ajouter dans `masques/` avec des préfixes de placement (`yeux_`, `bouche_`, `nez_`, `oreille_`, `cheveux_`) ; un masque `oreille_` représente une oreille, dupliquée en miroir.
+- Détecter les visages à résolution réduite, lisser leur position et appliquer le masque à chaque personne détectée.
+- Afficher le masque sur l'aperçu puis sur les photos, poses photomaton et images GIF.
+- Désactiver le masque si la détection échoue ou ralentit trop l'aperçu, sans bloquer la prise de vue.
+- Vérifier les performances et l'empaquetage PyInstaller. *(développée, à tester sur le poste cible)*
 
 ## Étape 19 — Mode défi
 
