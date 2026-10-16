@@ -4,8 +4,8 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from PyQt6.QtCore import Qt, QVariantAnimation
-from PyQt6.QtGui import QColor, QFont, QImage, QImageReader, QLinearGradient, QPainter
+from PyQt6.QtCore import QSize, Qt, QVariantAnimation
+from PyQt6.QtGui import QColor, QFont, QImage, QImageReader, QLinearGradient, QMovie, QPainter
 from PyQt6.QtWidgets import QApplication, QWidget
 
 from . import scale
@@ -22,6 +22,7 @@ class SlideshowWindow(QWidget):
         self._title = config.pm_titre or "Photo Booth"
         self._current: QImage | None = None
         self._previous: QImage | None = None
+        self._movie: QMovie | None = None
         self._fade = 1.0
         self._idle = True
         self.setWindowTitle("Photo Booth : diaporama")
@@ -53,6 +54,7 @@ class SlideshowWindow(QWidget):
     # ---------- contenu ----------
 
     def show_idle(self, title: str | None = None) -> None:
+        self._stop_movie()
         self._title = title or self._title
         self._current = self._previous = None
         self._idle = True
@@ -60,6 +62,25 @@ class SlideshowWindow(QWidget):
 
     def show_photo(self, path: Path) -> bool:
         """Affiche la photo avec un fondu. False si elle est illisible (le contrôleur la retire alors de la liste)."""
+        self._stop_movie()
+        if path.suffix.lower() == ".gif":
+            movie = QMovie(str(path), parent=self)
+            reader = QImageReader(str(path))
+            size = reader.size()
+            if size.isValid():
+                movie.setScaledSize(size.scaled(self.size(), Qt.AspectRatioMode.KeepAspectRatio))
+            if not movie.isValid():
+                log.warning("GIF illisible, retiré du diaporama : %s", path)
+                movie.deleteLater()
+                return False
+            self._movie = movie
+            movie.frameChanged.connect(lambda _frame: self.update())
+            self._current = self._previous = None
+            self._idle = False
+            self._anim.stop()
+            self._fade = 1.0
+            movie.start()
+            return True
         reader = QImageReader(str(path))
         reader.setAutoTransform(True)
         size = reader.size()
@@ -75,6 +96,16 @@ class SlideshowWindow(QWidget):
         self._fade = 0.0
         self._anim.start()
         return True
+
+    def _stop_movie(self) -> None:
+        if self._movie is not None:
+            self._movie.stop()
+            self._movie.deleteLater()
+            self._movie = None
+
+    def closeEvent(self, event) -> None:
+        self._stop_movie()
+        super().closeEvent(event)
 
     def _on_fade(self, value) -> None:
         self._fade = float(value)
@@ -107,6 +138,10 @@ class SlideshowWindow(QWidget):
             painter.setPen(QColor("#b8b2d9"))
             painter.drawText(self.rect().adjusted(40, self.height() // 2 + self.height() // 12, -40, 0),
                              Qt.AlignmentFlag.AlignHCenter.value | Qt.AlignmentFlag.AlignTop.value, IDLE_NOTE)
+        elif self._movie is not None:
+            image = self._movie.currentImage()
+            if not image.isNull():
+                self._draw_centered(painter, image)
         else:
             if self._previous is not None and self._fade < 1.0:
                 self._draw_centered(painter, self._previous)         # l'ancienne photo reste dessous pendant le fondu

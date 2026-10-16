@@ -152,7 +152,10 @@ def build_message(settings: MailSettings, job: MailJob, now: datetime | None = N
     message["Message-ID"] = make_msgid(domain=settings.sender.rpartition("@")[2] or None)
     message.set_content(body)
     message.add_alternative(text_to_html(body), subtype="html")
-    message.add_attachment(photo, maintype="image", subtype="jpeg", filename=f"photobooth_{job.photo_path.stem}.jpg")
+    is_gif = job.photo_path.suffix.lower() == ".gif"
+    extension, subtype = ("gif", "gif") if is_gif else ("jpg", "jpeg")
+    message.add_attachment(photo, maintype="image", subtype=subtype,
+                           filename=f"photobooth_{job.photo_path.stem}.{extension}")
     return message
 
 

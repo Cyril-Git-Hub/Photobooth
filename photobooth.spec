@@ -18,6 +18,7 @@ ICON = os.path.join(ROOT, "assets", "photobooth.ico")
 datas, binaries, hiddenimports = collect_all("mediapipe")
 hiddenimports += collect_submodules("xlrd")
 hiddenimports += collect_submodules("odf")
+hiddenimports += collect_submodules("PIL")
 datas.append((ICON, "assets"))                       # icône de la fenêtre (paths.resource_path)
 
 a = Analysis(
