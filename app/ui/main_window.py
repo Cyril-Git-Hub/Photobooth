@@ -25,7 +25,7 @@ from .screens.base import BaseScreen
 
 log = logging.getLogger(__name__)
 
-FLOW = list(SCREENS)                       # ordre du parcours = ordre du registre
+FLOW = [name for name in SCREENS if name != "gif_options"]  # écran de réglage accessible uniquement depuis le choix du format
 ADMIN_CORNER = QRect(0, 0, 120, 120)       # coin haut gauche
 ADMIN_TAPS = 3                             # 3 appuis dans le coin...
 ADMIN_WINDOW_S = 3.0                       # ...en moins de 3 secondes

@@ -67,6 +67,15 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "couleur_fond": "#ffffff",
         "couleur_texte": "#1c1c1c",
     },
+    "gif": {
+        "actif": "true",
+        "limite_mo": "8",
+        "poses_espacees": "5",
+        "poses_rafale": "8",
+        "intervalle_rafale_ms": "180",
+        "duree_image_ms": "350",
+        "pause_derniere_image_ms": "1200",
+    },
     "fond_vert": {
         "teinte_min": "35",
         "teinte_max": "85",
@@ -166,6 +175,21 @@ titre =
 couleur_fond = #ffffff
 couleur_texte = #1c1c1c
 
+[gif]
+# Proposer le format GIF animé dans le parcours
+actif = true
+# Taille maximale du fichier final (en Mo)
+limite_mo = 8
+# Nombre d'images en mode poses espacées / rafale courte
+poses_espacees = 5
+poses_rafale = 8
+# Intervalle entre les images d'une rafale (en millisecondes)
+intervalle_rafale_ms = 180
+# Durée d'affichage normale de chaque image (en millisecondes)
+duree_image_ms = 350
+# Durée de la dernière image si l'option est activée
+pause_derniere_image_ms = 1200
+
 [fond_vert]
 # Réglages du mode fond_vert (teinte de 0 à 179 : le vert est autour de 60)
 teinte_min = 35
@@ -238,6 +262,14 @@ class Config:
     pm_titre: str = ""
     pm_couleur_fond: str = "#ffffff"
     pm_couleur_texte: str = "#1c1c1c"
+    # [gif]
+    gif_actif: bool = True
+    gif_limite_mo: int = 8
+    gif_poses_espacees: int = 5
+    gif_poses_rafale: int = 8
+    gif_intervalle_rafale_ms: int = 180
+    gif_duree_image_ms: int = 350
+    gif_pause_derniere_image_ms: int = 1200
     # [sauvegarde]
     dossier_sauvegarde: Path | None = None
     # [diaporama]
@@ -422,6 +454,13 @@ class Config:
             pm_titre=get_str("photomaton", "titre"),
             pm_couleur_fond=get_color("photomaton", "couleur_fond"),
             pm_couleur_texte=get_color("photomaton", "couleur_texte"),
+            gif_actif=get_bool("gif", "actif"),
+            gif_limite_mo=get_int("gif", "limite_mo", 1, 50),
+            gif_poses_espacees=get_int("gif", "poses_espacees", 2, 12),
+            gif_poses_rafale=get_int("gif", "poses_rafale", 2, 20),
+            gif_intervalle_rafale_ms=get_int("gif", "intervalle_rafale_ms", 80, 1000),
+            gif_duree_image_ms=get_int("gif", "duree_image_ms", 80, 2000),
+            gif_pause_derniere_image_ms=get_int("gif", "pause_derniere_image_ms", 300, 5000),
             dossier_sauvegarde=(paths.resolve(get_str("sauvegarde", "dossier"), base) if get_str("sauvegarde", "dossier") else None),
             dp_duree=get_int("diaporama", "duree", 2, 60),
             dp_ordre=ordre,

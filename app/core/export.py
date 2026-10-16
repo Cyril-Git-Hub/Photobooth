@@ -60,7 +60,8 @@ def export_unsent(queue: MailQueue, exports_root: Path, now: datetime | None = N
     rows, exported, missing = [], 0, 0
     for index, item in enumerate(items, start=1):
         job = item.job
-        filename = f"{index:03d}_{slugify(job.guest_name) or 'invite'}.jpg"
+        extension = ".gif" if job.photo_path.suffix.lower() == ".gif" else ".jpg"
+        filename = f"{index:03d}_{slugify(job.guest_name) or 'invite'}{extension}"
         if job.photo_path.is_file():
             shutil.copy2(job.photo_path, folder / filename)
             exported += 1

@@ -25,6 +25,9 @@ class FormatSelectScreen(BaseScreen):
         self._framed = BigButton("Photo avec cadre")
         self._framed.setMinimumSize(px(340), px(90))
         self._framed.clicked.connect(self._choose_framed)
+        self._gif = BigButton("GIF animé")
+        self._gif.setMinimumSize(px(340), px(90))
+        self._gif.clicked.connect(self._choose_gif)
 
         self._hint = QLabel("")
         self._hint.setObjectName("note")
@@ -42,6 +45,8 @@ class FormatSelectScreen(BaseScreen):
         framed_row = QHBoxLayout()
         framed_row.addStretch(1)
         framed_row.addWidget(self._framed)
+        framed_row.addSpacing(px(20))
+        framed_row.addWidget(self._gif)
         framed_row.addStretch(1)
         footer = QHBoxLayout()
         footer.addStretch(1)
@@ -64,6 +69,7 @@ class FormatSelectScreen(BaseScreen):
         has_strip = poses >= 2             # un « photomaton » d'une seule pose n'aurait pas de sens
         self._strip.setText(f"Photomaton\n{poses} photos en bande")
         self._strip.setVisible(has_strip)
+        self._gif.setVisible(self.config.gif_actif)
         self._hint.setText(f"Le photomaton prend {poses} photos à la suite : change de position à chaque fois !"
                            if has_strip else "")
 
@@ -80,3 +86,10 @@ class FormatSelectScreen(BaseScreen):
         self.session.frame_mode = True
         self.session.frame_path = None
         self.nav.go_to("capture")
+
+    def _choose_gif(self) -> None:
+        self.session.photo_format = "gif"
+        self.session.background_path = None
+        self.session.frame_mode = False
+        self.session.frame_path = None
+        self.nav.go_to("gif_options")

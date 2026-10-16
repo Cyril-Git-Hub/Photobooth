@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QScrollArea, QScroller, QToolButton, QVBoxLayout, QWidget,
 )
 
-from ...core import backgrounds, frames, storage, strip_builder
+from ...core import backgrounds, frames, gif_builder, storage, strip_builder
 from ...core.compositor import SceneRenderer
 from ...core.qt_image import bgr_to_qimage
 from ...core.segmentation import SegmentationError
@@ -229,7 +229,9 @@ class CaptureScreen(BaseScreen):
         return True
 
     def _go_back(self) -> None:
-        if self.session.frame_mode:
+        if self.session.photo_format == "gif":
+            self.nav.go_to("gif_options")
+        elif self.session.frame_mode:
             self.nav.go_to("format_select")
         else:
             self.nav.go_back()
@@ -252,19 +254,24 @@ class CaptureScreen(BaseScreen):
             button.setEnabled(not busy)
         frame_ready = not self.session.frame_mode or self._frame_overlay is not None
         self._action.setEnabled(state in (State.READY, State.ERROR) and frame_ready)
+        action_text = "Lancer le GIF" if self.session.photo_format == "gif" else "Lancer le photomaton"
         self._action.setText("Réessayer" if state is State.ERROR
-                             else "Prendre la photo" if planned == 1 else "Lancer le photomaton")
+                             else "Prendre la photo" if planned == 1 else action_text)
         self._status.setText("")
         if state is State.STARTING:
             self._preview.set_message("Démarrage de la caméra…")
         elif state is State.READY:
             self._status.setText("Place-toi et prends la photo !" if self.session.frame_mode else
+                                 f"Prépare-toi : {planned} images pour ton GIF animé !" if self.session.photo_format == "gif" else
                                  "Place-toi dans le cadre, puis appuie sur le bouton !" if planned == 1 else
                                  f"Place-toi dans le cadre : {planned} photos vont être prises à la suite !")
         elif state is State.ERROR:
             self._preview.set_message(self._error_text)
 
     def _planned_poses(self) -> int:
+        if self.session.photo_format == "gif":
+            return (self.config.gif_poses_rafale if self.session.gif_capture_mode == "burst"
+                    else self.config.gif_poses_espacees)
         return self.config.nb_poses if self.session.photo_format == "strip" and self.config.nb_poses >= 2 else 1
 
     def _fail(self, text: str) -> None:
@@ -354,9 +361,17 @@ class CaptureScreen(BaseScreen):
             return
         self._poses.append(frame)
         if len(self._poses) < self._total:
-            self._show_pose(frame)
+            if self.session.photo_format == "gif" and self.session.gif_capture_mode == "burst":
+                self._status.setText(f"Image {len(self._poses)}/{self._total}…")
+                QTimer.singleShot(self.config.gif_intervalle_rafale_ms, self._capture_burst_frame)
+            else:
+                self._show_pose(frame)
         else:
             self._save_and_finish()
+
+    def _capture_burst_frame(self) -> None:
+        if self._active and self._state is State.SAVING:
+            self._capture_pose()
 
     def _show_pose(self, frame: np.ndarray) -> None:
         """Photomaton : la pose qui vient d'être prise reste affichée un instant, puis le décompte reprend."""
@@ -372,7 +387,13 @@ class CaptureScreen(BaseScreen):
     def _save_and_finish(self) -> None:
         guest = self.session.display_name
         try:
-            if self._total == 1:
+            if self.session.photo_format == "gif":
+                path = gif_builder.save_gif(
+                    self.config, self._poses, guest,
+                    effect=self.session.gif_effect, hold_last=self.session.gif_hold_last,
+                )
+                self.session.photos.append(path)
+            elif self._total == 1:
                 self.session.photos.append(storage.save_photo(self.config, self._poses[0], guest))
             else:
                 style = strip_builder.StripStyle(
