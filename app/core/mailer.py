@@ -65,11 +65,21 @@ class MailSettings:
 
     @classmethod
     def from_config(cls, config: Config) -> "MailSettings":
+        theme = getattr(config, "active_theme", None)
+        subject, body, sender_name = config.mail_objet, config.mail_message, config.mail_nom_expediteur
+        if theme is not None:
+            from .mail_defaults import DEFAULT_BODY, DEFAULT_SENDER_NAME, DEFAULT_SUBJECT
+            if subject == DEFAULT_SUBJECT:
+                subject = theme.mail_subject
+            if body == DEFAULT_BODY:
+                body = theme.mail_body
+            if sender_name == DEFAULT_SENDER_NAME:
+                sender_name = theme.mail_sender
         return cls(host=config.smtp_hote, port=config.smtp_port, security=config.mail_securite,
                    user=config.mail_utilisateur or config.expediteur, sender=config.expediteur,
-                   password=config.mot_de_passe_application, display_name=config.mail_nom_expediteur,
-                   organizer=config.adresse_organisateur, subject_template=config.mail_objet,
-                   body_template=config.mail_message, event_title=config.pm_titre)
+                   password=config.mot_de_passe_application, display_name=sender_name,
+                   organizer=config.adresse_organisateur, subject_template=subject,
+                   body_template=body, event_title=config.pm_titre)
 
     @property
     def configured(self) -> bool:

@@ -45,6 +45,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "code_admin": "1234",
         "indicateur_organisateur": "true",
         "echelle_interface": "auto",
+        "theme": "classique",
     },
     "chemins": {
         "dossier_photos": "photos",
@@ -130,6 +131,8 @@ indicateur_organisateur = true
 # Taille de l'interface : auto (adaptée à l'écran) ou un nombre entre 0.4 et 2.0 (1.0 = écran 1920x1080, 0.7 = plus petit).
 # Si des boutons du bas sont coupés, essaie 0.7. Ne prend effet qu'au prochain lancement de la borne.
 echelle_interface = auto
+# Thème visuel chargé depuis themes/<nom>/theme.ini
+theme = classique
 
 [chemins]
 dossier_photos = photos
@@ -222,6 +225,8 @@ class Config:
     code_admin: str = "1234"
     indicateur_organisateur: bool = True
     echelle_interface: float | None = None      # None : automatique
+    theme: str = "classique"
+    active_theme: object | None = None
     # [chemins]
     dossier_photos: Path = Path("photos")
     fichier_invites: Path = Path("invites.xlsx")
@@ -261,6 +266,15 @@ class Config:
     @property
     def dossier_logs(self) -> Path:
         return self.base_dir / "logs"
+
+    @property
+    def dossier_themes(self) -> Path:
+        return self.base_dir / "themes"
+
+    @property
+    def dossier_theme(self) -> Path:
+        name = self.theme if re.fullmatch(r"[A-Za-z0-9_-]+", self.theme) else "classique"
+        return self.dossier_themes / name
 
     @property
     def dossier_donnees(self) -> Path:
@@ -355,6 +369,10 @@ class Config:
             if echelle is None or not (MIN_MANUAL <= echelle <= MAX_MANUAL):
                 log.warning("[general] echelle_interface invalide (%r) : automatique", raw_scale)
                 echelle = None
+        theme_name = get_str("general", "theme")
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", theme_name):
+            log.warning("[general] theme invalide (%r) : thème classique utilisé", theme_name)
+            theme_name = "classique"
         ia_modele = get_str("general", "ia_modele").lower()
         if ia_modele not in MODEL_NAMES:
             log.warning("[general] ia_modele invalide (%r) : valeur par défaut %s", ia_modele, DEFAULTS["general"]["ia_modele"])
@@ -394,6 +412,7 @@ class Config:
             code_admin=get_str("general", "code_admin") or DEFAULTS["general"]["code_admin"],
             indicateur_organisateur=get_bool("general", "indicateur_organisateur"),
             echelle_interface=echelle,
+            theme=theme_name or "classique",
             dossier_photos=get_path("chemins", "dossier_photos"),
             fichier_invites=get_path("chemins", "fichier_invites"),
             dossier_fonds=get_path("chemins", "dossier_fonds"),
@@ -444,6 +463,8 @@ class Config:
         self.dossier_modeles.mkdir(parents=True, exist_ok=True)
         self.dossier_donnees.mkdir(parents=True, exist_ok=True)
         self.dossier_cadres.mkdir(parents=True, exist_ok=True)
+        for folder in ("fonds", "cadres", "visuels", "sons"):
+            (self.dossier_themes / "classique" / folder).mkdir(parents=True, exist_ok=True)
         if not self.dossier_fonds.exists():
             for theme in THEMES_PAR_DEFAUT:
                 (self.dossier_fonds / theme).mkdir(parents=True, exist_ok=True)

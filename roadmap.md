@@ -21,23 +21,24 @@ Les fonctions optionnelles devront pouvoir être activées ou désactivées dans
 - Appliquer exactement le rendu affiché à la photo finale enregistrée et envoyée.
 - Laisser inchangés le parcours sans cadre, les photos avec décor et les bandes photomaton.
 
-## Étape 13 — Fiabilité de la file d’envoi *(développée, à tester)*
+## Étape 13 — Fiabilité de la file d’envoi *(validée)*
 
 - *(Déjà présent dans la base)* La file sur disque, l’indicateur discret, le renvoi immédiat depuis l’administration et l’export CSV avec les photos.
 - Réessayer sans limite les erreurs temporaires, avec un délai croissant plafonné ; les erreurs définitives restent signalées pour intervention manuelle.
 - Reprendre automatiquement les envois qui avaient été abandonnés à 60 essais par une ancienne version.
 - Préserver la file sur disque et son fonctionnement après redémarrage.
 
-## Étape 14 — Copie de sauvegarde des photos
+## Étape 14 — Copie de sauvegarde des photos *(validée)*
 
 - Pouvoir copier les photos vers un second dossier configurable, par exemple un disque externe ou une clé USB.
 - Gérer proprement l’absence ou la déconnexion de la destination sans interrompre la séance.
 - Signaler l’état de la sauvegarde dans les diagnostics et les journaux.
 
-## Étape 15 — Thèmes configurables
+## Étape 15 — Thèmes configurables *(développée, à tester)*
 
 - Introduire un dossier par thème regroupant les couleurs, textes, visuels d’accueil, cadres/logos, modèles de mail, décors et sons.
 - Garder un thème par défaut équivalent à l’apparence actuelle.
+- Habiller les écrans existants avec l’identité du thème (accueil visuel, textes utiles et cadre d’interface PNG/WebP : illustration complète à l’accueil, pourtour dégagé sur les autres écrans, masqué pendant la prise de vue).
 - Sélectionner le thème dans la configuration, puis prévoir sa sélection dans l’administration si elle apporte une vraie simplicité.
 - Vérifier l’inclusion des ressources dans l’exécutable.
 

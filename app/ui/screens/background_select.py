@@ -76,7 +76,10 @@ class BackgroundSelectScreen(BaseScreen):
     # ---------- affichage ----------
 
     def on_enter(self) -> None:
-        self._themes = backgrounds.scan_backgrounds(self.config.dossier_fonds)   # relu à chaque passage
+        folder = self.nav.theme.backgrounds if self.nav.theme and self.nav.theme.backgrounds.exists() else self.config.dossier_fonds
+        self._themes = backgrounds.scan_backgrounds(folder)   # relu à chaque passage
+        if not self._themes and folder != self.config.dossier_fonds:
+            self._themes = backgrounds.scan_backgrounds(self.config.dossier_fonds)
         if self._current >= len(self._themes):
             self._current = 0
         self._build_tabs()

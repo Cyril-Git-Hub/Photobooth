@@ -184,10 +184,14 @@ class CaptureScreen(BaseScreen):
                 widget.deleteLater()
         self._frame_buttons.clear()
         icon_size = QSize(px(140), px(70))
-        for path in frames.scan_frames(self.config.dossier_cadres):
-            overlay = frames.load_frame(path)
-            if overlay is None:
-                continue
+        frame_folder = self.nav.theme.frames if self.nav.theme and self.nav.theme.frames.exists() else self.config.dossier_cadres
+        available_frames = [(path, frames.load_frame(path)) for path in frames.scan_frames(frame_folder)]
+        available_frames = [(path, overlay) for path, overlay in available_frames if overlay is not None]
+        if not available_frames and frame_folder != self.config.dossier_cadres:
+            frame_folder = self.config.dossier_cadres
+            available_frames = [(path, frames.load_frame(path)) for path in frames.scan_frames(frame_folder)]
+            available_frames = [(path, overlay) for path, overlay in available_frames if overlay is not None]
+        for path, overlay in available_frames:
             rgba = cv2.cvtColor(overlay, cv2.COLOR_BGRA2RGBA)
             height, width = rgba.shape[:2]
             image = QImage(rgba.data, width, height, width * 4, QImage.Format.Format_RGBA8888).copy()
@@ -203,7 +207,7 @@ class CaptureScreen(BaseScreen):
             self._frame_row.addWidget(button)
             self._frame_buttons[path] = button
         if not self._frame_buttons:
-            self._fail(f"{NO_FRAMES_ERROR}\n({self.config.dossier_cadres})")
+            self._fail(f"{NO_FRAMES_ERROR}\n({frame_folder})")
             return False
 
         selected = self.session.frame_path if self.session.frame_path in self._frame_buttons else next(iter(self._frame_buttons))

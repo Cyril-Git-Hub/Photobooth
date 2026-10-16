@@ -19,6 +19,16 @@ fonds/*
 cadres/*
 !cadres/.gitkeep
 
+# Médias de thèmes personnalisés ; les manifestes et dossiers classiques restent versionnés
+themes/*/fonds/*
+!themes/*/fonds/.gitkeep
+themes/*/cadres/*
+!themes/*/cadres/.gitkeep
+themes/*/visuels/*
+!themes/*/visuels/.gitkeep
+themes/*/sons/*
+!themes/*/sons/.gitkeep
+
 # Modèles IA (téléchargés par photobooth-outils --telecharger-modeles)
 models/*.tflite
 

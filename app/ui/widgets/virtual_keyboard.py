@@ -9,10 +9,12 @@ from ..scale import px
 
 
 class KeyButton(QPushButton):
-    def __init__(self, label: str, parent=None) -> None:
+    def __init__(self, label: str, parent=None, compact: bool = False) -> None:
         super().__init__(label, parent)
         self.setProperty("variant", "key")
-        self.setMinimumHeight(px(76))
+        if compact:
+            self.setObjectName("compactKeyButton")
+        self.setMinimumHeight(px(54 if compact else 76))
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)   # le clavier ne vole jamais le focus
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
@@ -24,17 +26,19 @@ class VirtualKeyboard(QWidget):
     backspace_pressed = pyqtSignal()
     clear_pressed = pyqtSignal()
 
-    def __init__(self, rows: list[list[Key]], parent=None) -> None:
+    def __init__(self, rows: list[list[Key]], parent=None, compact: bool = False) -> None:
         super().__init__(parent)
         self.buttons: list[tuple[Key, KeyButton]] = []
         layout = QVBoxLayout(self)
         layout.setContentsMargins(px(0), px(0), px(0), px(0))
-        layout.setSpacing(px(10))
+        layout.setSpacing(px(5 if compact else 10))
+        if compact:
+            self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         for row in rows:
             line = QHBoxLayout()
-            line.setSpacing(px(10))
+            line.setSpacing(px(5 if compact else 10))
             for key in row:
-                button = KeyButton(key.label)
+                button = KeyButton(key.label, compact=compact)
                 button.clicked.connect(lambda _checked=False, k=key: self.press(k))
                 line.addWidget(button, key.weight)
                 self.buttons.append((key, button))

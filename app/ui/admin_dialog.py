@@ -130,6 +130,7 @@ class AdminDialog(QDialog):
 
     def _reload(self) -> None:
         self._window.config.reload()
+        self._window.reload_theme()
         self._window.mail.reload_settings()
         self._window.slideshow.reload()
         self._refresh_info()

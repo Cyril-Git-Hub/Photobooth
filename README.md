@@ -47,6 +47,19 @@ puis une ligne par invité (le mail peut rester vide : l'invité le saisira). Le
 s'il a changé ; ferme-le dans ton tableur avant de lancer le logiciel. L'invité peut chercher son nom au clavier tactile, ou choisir
 « Je ne suis pas dans la liste ». Réglage `obligatoire` de `[mail]` : `true` supprime le bouton « Passer » de l'écran du mail.
 
+## Thèmes
+
+Le thème actif se choisit avec `theme = classique` dans `[general]` de `config.ini`. Chaque thème est un dossier sous `themes/` contenant
+un `theme.ini` et, au besoin, les sous-dossiers `fonds/`, `cadres/`, `visuels/` et `sons/`. Le manifeste permet de régler les couleurs,
+le titre et le texte d'accueil, le nom de l'application et le modèle de mail. Les images d'accueil, le logo et un cadre d'interface PNG/WebP
+transparent (avec le centre évidé, idéalement au format 16:9) sont facultatifs et se déclarent dans `[ressources]` avec un chemin relatif au thème,
+par exemple `cadre_interface = visuels/cadre-film.png`. Le cadre complet décore l'accueil ; son seul pourtour encadre les autres écrans sans passer sous leur contenu. Il est masqué pendant la prise de vue.
+Le thème classique reprend les couleurs actuelles. Les anciennes ressources `fonds/`
+et `cadres/` à la racine restent utilisées si les dossiers du thème ne contiennent aucune image.
+
+Pour créer un thème, copie `themes/classique/`, renomme le dossier, modifie son `theme.ini`, puis sélectionne son nom dans `config.ini`.
+Les modifications sont prises en compte au démarrage ou avec **Recharger la configuration** dans le mode administrateur.
+
 ## Cadres photo
 
 Dépose des images PNG ou WebP avec transparence dans `cadres/`. Le bouton « Photo avec cadre » ouvre la caméra sans décor ; l'invité peut choisir un cadre et voir le rendu en direct avant la prise. Une image au même format que la photo (16:9 par défaut) remplit le mieux l'aperçu.
