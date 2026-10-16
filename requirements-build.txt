@@ -1,0 +1,2 @@
+# À installer seulement pour construire l'exécutable (construire.bat s'en charge)
+pyinstaller

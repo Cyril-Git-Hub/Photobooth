@@ -1,0 +1,24 @@
+# Environnement et construction
+.venv/
+__pycache__/
+build/
+dist/
+*.pyc
+
+# Données de la soirée : ne jamais versionner (photos d'invités, adresses mail, mot de passe)
+config.ini
+config.ini.bak
+invites.xlsx
+photos/
+data/
+logs/
+exports/
+debug/
+fonds/*
+!fonds/.gitkeep
+
+# Modèles IA (téléchargés par photobooth-outils --telecharger-modeles)
+models/*.tflite
+
+# Cache local de PowerShell (créé automatiquement par Windows)
+/Microsoft/Windows/PowerShell/ModuleAnalysisCache
