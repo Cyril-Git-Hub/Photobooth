@@ -105,6 +105,10 @@ Le mode administrateur affiche l'état des envois et permet de renvoyer ceux en 
 
 L'invité choisit « Une seule photo » ou « Photomaton » : `nb_poses` photos (4 par défaut) prises à la suite, avec un décompte avant chacune (`duree_decompte` pour la première, `decompte_entre_poses` ensuite), puis assemblées en une bande verticale avec un titre et la date (section `[photomaton]` de `config.ini` : titre, couleurs). La bande est enregistrée dans `photos/AAAA-MM-JJ/` et les poses individuelles dans `photos/AAAA-MM-JJ/poses/`.
 
+## Styles photo
+
+Sur l'écran de résultat, l'invité peut comparer l'original à cinq rendus OpenCV : bande dessinée, croquis, aquarelle, pop-art et manga noir et blanc. Il peut appliquer le style à toute l'image, ou au sujet seul si le détourage est disponible. Les aperçus réduits sont chronométrés dans le journal ; le rendu final est calculé à pleine résolution après validation.
+
 ## Fluidité de l'aperçu
 
 Le temps de calcul s'affiche dans `logs/photobooth.log` (« ms par image »). Si l'aperçu est trop lent, réduis `apercu_largeur` dans `config.ini` (640 par exemple) : la photo finale reste en pleine résolution.

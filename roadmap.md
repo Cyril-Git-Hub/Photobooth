@@ -34,7 +34,7 @@ Les fonctions optionnelles devront pouvoir être activées ou désactivées dans
 - Gérer proprement l’absence ou la déconnexion de la destination sans interrompre la séance.
 - Signaler l’état de la sauvegarde dans les diagnostics et les journaux.
 
-## Étape 15 — Thèmes configurables *(développée, à tester)*
+## Étape 15 — Thèmes configurables *(validée)*
 
 - Introduire un dossier par thème regroupant les couleurs, textes, visuels d’accueil, cadres/logos, modèles de mail, décors et sons.
 - Garder un thème par défaut équivalent à l’apparence actuelle.
@@ -42,19 +42,20 @@ Les fonctions optionnelles devront pouvoir être activées ou désactivées dans
 - Sélectionner le thème dans la configuration, puis prévoir sa sélection dans l’administration si elle apporte une vraie simplicité.
 - Vérifier l’inclusion des ressources dans l’exécutable.
 
-## Étape 16 — GIF animé
+## Étape 16 — GIF animé *(validée)*
 
 - Ajouter deux modes de capture : poses espacées et rafale courte.
 - Proposer boucle, boomerang, accéléré/ralenti et durée prolongée sur la dernière image.
 - Réduire les dimensions et optimiser le poids du GIF ; conserver une limite de taille configurable.
 - Afficher les GIF dans le diaporama et vérifier leur compatibilité avec l’envoi par mail.
 
-## Étape 17 — Styles photo classiques
+## Étape 17 — Styles photo classiques *(développée, à tester)*
 
 - Ajouter des rendus OpenCV : bande dessinée, croquis, aquarelle, pop-art et manga noir et blanc.
 - Comparer les styles sur l’écran de résultat à partir de l’original.
 - Autoriser le rendu sur toute l’image ou seulement sur la personne lorsque le détourage est disponible.
 - Garder le rendu final haute qualité et mesurer le coût de l’aperçu avant d’activer un effet en direct.
+- Les rendus ne sont pas appliqués pendant la capture : l'invité compare l'original et les aperçus réduits à l'écran de résultat ; le style choisi est recalculé à pleine résolution lors de la validation.
 
 ## Étape 18 — Masques virtuels
 
