@@ -13,6 +13,9 @@ class Session:
     guest_first_name: str = ""
     email: str = ""
     photo_format: str = "single"        # "single" (photo unique) ou "strip" (photomaton)
+    gif_capture_mode: str = "spaced"     # "spaced" ou "burst"
+    gif_effect: str = "loop"             # loop, boomerang, fast ou slow
+    gif_hold_last: bool = False
     background_path: Path | None = None
     frame_mode: bool = False
     frame_path: Path | None = None

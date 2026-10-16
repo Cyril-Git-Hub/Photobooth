@@ -6,14 +6,17 @@ import time
 
 import cv2
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QApplication, QCheckBox, QComboBox, QHBoxLayout, QLabel, QMessageBox, QVBoxLayout
+from PyQt6.QtGui import QImage, QMovie
+from PyQt6.QtWidgets import (
+    QApplication, QCheckBox, QComboBox, QHBoxLayout, QLabel, QMessageBox, QVBoxLayout,
+)
 
 from ...core import photo_styles, storage
 from ...core.qt_image import bgr_to_qimage
+from ..scale import px
 from ..widgets.big_button import BigButton
 from ..widgets.preview_widget import PreviewWidget
 from .base import BaseScreen
-from ..scale import px
 
 log = logging.getLogger(__name__)
 
@@ -24,6 +27,7 @@ class ReviewScreen(BaseScreen):
         self._preview = PreviewWidget()
         self._styles = QComboBox()
         self._subject_mask_cache = None
+        self._movie: QMovie | None = None
         for key, label in photo_styles.STYLE_NAMES.items():
             self._styles.addItem(label, key)
         self._styles.currentIndexChanged.connect(self._show_selection)
@@ -33,7 +37,7 @@ class ReviewScreen(BaseScreen):
         self._note.setObjectName("note")
         self._note.setAlignment(Qt.AlignmentFlag.AlignCenter)
         redo = BigButton("Recommencer", "secondary")
-        redo.clicked.connect(lambda: self._redo())
+        redo.clicked.connect(self._redo)
         validate = BigButton("Valider")
         validate.clicked.connect(self._validate)
 
@@ -42,7 +46,8 @@ class ReviewScreen(BaseScreen):
         layout.setSpacing(px(10))
         controls = QHBoxLayout()
         controls.addStretch(1)
-        controls.addWidget(QLabel("Style :"))
+        self._style_label = QLabel("Style :")
+        controls.addWidget(self._style_label)
         controls.addWidget(self._styles)
         controls.addSpacing(px(20))
         controls.addWidget(self._person_only)
@@ -59,6 +64,7 @@ class ReviewScreen(BaseScreen):
         layout.addLayout(row)
 
     def on_enter(self) -> None:
+        self._stop_movie()
         self._subject_mask_cache = None
         self._styles.blockSignals(True)
         self._styles.setCurrentIndex(0)
@@ -67,20 +73,37 @@ class ReviewScreen(BaseScreen):
         self._person_only.setChecked(False)
         self._person_only.setEnabled(self.session.photo_source_frame is not None)
         self._person_only.blockSignals(False)
-        self._note.setText("Compare les rendus ; l'original reste intact jusqu'à la validation.")
         if not self.session.photos:
             self._preview.set_message("Aucune photo à afficher.")
             return
-        image = QImage(str(self.session.photos[-1]))
+
+        path = self.session.photos[-1]
+        is_gif = path.suffix.lower() == ".gif"
+        self._style_label.setVisible(not is_gif)
+        self._styles.setVisible(not is_gif)
+        self._person_only.setVisible(not is_gif)
+        if is_gif:
+            self._note.setText("Aperçu du GIF animé.")
+            movie = QMovie(str(path))
+            if movie.isValid():
+                self._movie = movie
+                movie.frameChanged.connect(lambda _frame: self._preview.set_image(movie.currentImage()))
+                movie.start()
+            else:
+                self._preview.set_message("Impossible d'afficher le GIF.")
+            return
+
+        self._note.setText("Compare les rendus ; l'original reste intact jusqu'à la validation.")
+        image = QImage(str(path))
         if image.isNull():
-            log.error("Photo illisible : %s", self.session.photos[-1])
+            log.error("Photo illisible : %s", path)
             self._preview.set_message("Impossible d'afficher la photo.")
-        else:
-            self._preview.set_image(image)
+            return
+        self._preview.set_image(image)
         self._show_selection()
 
     def _show_selection(self, *_args) -> None:
-        if not self.session.photos:
+        if not self.session.photos or self.session.photos[-1].suffix.lower() == ".gif":
             return
         style = self._styles.currentData()
         self.session.photo_style = style
@@ -149,6 +172,10 @@ class ReviewScreen(BaseScreen):
         if not self.session.photos:
             self.nav.go_next()
             return
+        path = self.session.photos[-1]
+        if path.suffix.lower() == ".gif":
+            self.nav.go_next()
+            return
         style = self._styles.currentData()
         self.session.photo_style = style
         self.session.photo_style_person_only = self._person_only.isChecked()
@@ -156,7 +183,6 @@ class ReviewScreen(BaseScreen):
             try:
                 self._note.setText("Calcul du rendu final en haute résolution…")
                 QApplication.processEvents()
-                path = self.session.photos[-1]
                 original = storage.load_photo(path)
                 started = time.perf_counter()
                 styled = photo_styles.apply_style(original, style)
@@ -174,9 +200,16 @@ class ReviewScreen(BaseScreen):
                 return
         self.nav.go_next()
 
+    def on_leave(self) -> None:
+        self._stop_movie()
+
+    def _stop_movie(self) -> None:
+        if self._movie is not None:
+            self._movie.stop()
+            self._movie = None
+
     def _redo(self) -> None:
-        """La photo refusée (et, pour une bande, ses poses) est supprimée du disque et de la session,
-        puis on reprend la prise de vue."""
+        """Supprime le résultat refusé et reprend la prise de vue."""
         rejected = ([self.session.photos.pop()] if self.session.photos else []) + self.session.poses
         self.session.poses = []
         self.session.photo_source_frame = None

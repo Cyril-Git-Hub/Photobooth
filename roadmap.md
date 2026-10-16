@@ -38,7 +38,7 @@ Les fonctions optionnelles devront pouvoir être activées ou désactivées dans
 
 - Introduire un dossier par thème regroupant les couleurs, textes, visuels d’accueil, cadres/logos, modèles de mail, décors et sons.
 - Garder un thème par défaut équivalent à l’apparence actuelle.
-- Habiller les écrans existants avec l’identité du thème (accueil visuel, textes utiles et cadre d’interface PNG/WebP : illustration complète à l’accueil, pourtour dégagé sur les autres écrans, masqué pendant la prise de vue).
+- Habiller les écrans existants avec l’identité du thème (accueil visuel, textes utiles et cadre d’interface PNG/WebP au premier plan, masqué pendant la prise de vue).
 - Sélectionner le thème dans la configuration, puis prévoir sa sélection dans l’administration si elle apporte une vraie simplicité.
 - Vérifier l’inclusion des ressources dans l’exécutable.
 
@@ -48,6 +48,8 @@ Les fonctions optionnelles devront pouvoir être activées ou désactivées dans
 - Proposer boucle, boomerang, accéléré/ralenti et durée prolongée sur la dernière image.
 - Réduire les dimensions et optimiser le poids du GIF ; conserver une limite de taille configurable.
 - Afficher les GIF dans le diaporama et vérifier leur compatibilité avec l’envoi par mail.
+- Réglages dans `[gif]` : activation, nombre d'images, intervalle de rafale, durée des images et limite maximale en Mo.
+- Choix invité : poses espacées ou rafale courte ; boucle, boomerang, accéléré ou ralenti ; pause finale facultative.
 
 ## Étape 17 — Styles photo classiques *(développée, à tester)*
 
