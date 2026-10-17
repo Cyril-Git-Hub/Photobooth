@@ -103,7 +103,7 @@ Les fonctions optionnelles devront pouvoir être activées ou désactivées dans
 
 ## Étapes suivantes — ordre de priorité proposé
 
-### Étape 23 — Autocollants tactiles *(à cadrer)*
+### Étape 23 — Autocollants tactiles *(développée, à tester)*
 
 - Depuis l'aperçu du résultat, choisir des autocollants et les placer au doigt sur la photo.
 - Déplacer, redimensionner, tourner ou retirer chaque autocollant avant de valider ; appliquer le même montage au fichier final.

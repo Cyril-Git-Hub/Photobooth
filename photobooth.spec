@@ -25,6 +25,7 @@ datas.append((ICON, "assets"))                       # icône de la fenêtre (pa
 datas.append((os.path.join(ROOT, "assets", "masques"), "assets/masques"))
 datas.append((os.path.join(ROOT, "assets", "defis.json"), "assets"))
 datas.append((os.path.join(ROOT, "assets", "defis"), "assets/defis"))
+datas.append((os.path.join(ROOT, "assets", "autocollants"), "assets/autocollants"))
 datas.append((FACE_CASCADE, "assets"))                # classificateur OpenCV pour les masques virtuels
 
 a = Analysis(
