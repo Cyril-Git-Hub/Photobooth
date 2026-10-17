@@ -1,0 +1,75 @@
+[
+  {
+    "id": "copie_pose",
+    "titre": "Copie cette pose",
+    "consigne": "Observe la personne sur l’image et reproduis sa pose le plus fidèlement possible !",
+    "format": "single",
+    "decor": "none",
+    "image": "assets/defis/pose_reference.svg"
+  },
+  {
+    "id": "statue_liberte",
+    "titre": "La statue de la Liberté",
+    "consigne": "Lève un bras bien haut, écarte l’autre et prends ton air le plus majestueux.",
+    "format": "single",
+    "decor": "none"
+  },
+  {
+    "id": "rockstar",
+    "titre": "Rock star en concert",
+    "consigne": "Fais comme si tu venais de finir le concert de ta vie. Guitare imaginaire autorisée !",
+    "format": "single",
+    "decor": "none",
+    "masque": "lunettes",
+    "style": "pop_art"
+  },
+  {
+    "id": "couverture_magazine",
+    "titre": "Une de magazine",
+    "consigne": "Prends une pose de star : regard assuré, menton levé, sourire mystérieux.",
+    "format": "single",
+    "decor": "none"
+  },
+  {
+    "id": "quatre_emotions",
+    "titre": "Quatre émotions",
+    "consigne": "Change d’expression à chaque photo : joie, surprise, sérieux, puis fou rire !",
+    "format": "strip",
+    "decor": "none"
+  },
+  {
+    "id": "photomaton_statue",
+    "titre": "Statue de cire",
+    "consigne": "Reste parfaitement immobile et garde exactement la même pose pendant toute la bande.",
+    "format": "strip",
+    "decor": "none"
+  },
+  {
+    "id": "gif_danse",
+    "titre": "Danse au ralenti",
+    "consigne": "Prépare trois mouvements de danse très expressifs. Le photobooth s’occupe du GIF !",
+    "format": "gif",
+    "decor": "none"
+  },
+  {
+    "id": "gif_explosion",
+    "titre": "Explosion de joie",
+    "consigne": "Commence tout calme, puis laisse éclater ta joie en une pose spectaculaire !",
+    "format": "gif",
+    "decor": "none"
+  },
+  {
+    "id": "aventure_decor",
+    "titre": "Choisis ton aventure",
+    "consigne": "Choisis le décor qui t’inspire, puis prends la pose de l’explorateur ou de l’exploratrice.",
+    "format": "single",
+    "decor": "choose"
+  },
+  {
+    "id": "touriste_surprise",
+    "titre": "Touriste surpris",
+    "consigne": "Découvre le décor surprise et réagis comme si tu venais d’arriver dans un lieu incroyable !",
+    "format": "single",
+    "decor": "random"
+  }
+]

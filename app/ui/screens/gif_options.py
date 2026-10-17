@@ -52,7 +52,7 @@ class GifOptionsScreen(BaseScreen):
 
         self._hold = QCheckBox("Marquer une pause sur la dernière image")
         back = BigButton("Retour", "secondary")
-        back.clicked.connect(lambda: self.nav.go_to("format_select"))
+        back.clicked.connect(lambda: self.nav.go_to("challenge" if self.session.challenge_id else "format_select"))
         start = BigButton("Continuer")
         start.clicked.connect(lambda: self.nav.go_to("capture"))
         footer = QHBoxLayout()

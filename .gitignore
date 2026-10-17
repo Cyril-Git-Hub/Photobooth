@@ -30,6 +30,9 @@ themes/*/visuels/*
 !themes/*/visuels/.gitkeep
 themes/*/sons/*
 !themes/*/sons/.gitkeep
+!themes/classique/sons/compte_a_rebours.wav
+!themes/classique/sons/declencheur.wav
+!themes/classique/sons/reussite.wav
 
 # Modèles IA (téléchargés par photobooth-outils --telecharger-modeles)
 models/*.tflite

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import configparser
 import logging
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -34,6 +35,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "resolution_largeur": "1920",
         "resolution_hauteur": "1080",
         "son_active": "true",
+        "son_volume": "70",
         "second_ecran_active": "true",
         "plein_ecran": "true",
         "miroir": "true",
@@ -76,6 +78,9 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "duree_image_ms": "350",
         "pause_derniere_image_ms": "1200",
     },
+    "defis": {
+        "actif": "true",
+    },
     "fond_vert": {
         "teinte_min": "35",
         "teinte_max": "85",
@@ -117,6 +122,8 @@ camera_index = 0
 resolution_largeur = 1920
 resolution_hauteur = 1080
 son_active = true
+# Volume des effets sonores (0 à 100)
+son_volume = 70
 second_ecran_active = true
 plein_ecran = true
 # Image en miroir (comme devant une glace). S'applique à l'aperçu ET à la photo finale :
@@ -190,6 +197,10 @@ duree_image_ms = 350
 # Durée de la dernière image si l'option est activée
 pause_derniere_image_ms = 1200
 
+[defis]
+# Proposer le bouton « Défi surprise » dans le parcours
+actif = true
+
 [fond_vert]
 # Réglages du mode fond_vert (teinte de 0 à 179 : le vert est autour de 60)
 teinte_min = 35
@@ -238,6 +249,7 @@ class Config:
     resolution_largeur: int = 1920
     resolution_hauteur: int = 1080
     son_active: bool = True
+    son_volume: int = 70
     second_ecran_active: bool = True
     plein_ecran: bool = True
     miroir: bool = True
@@ -270,6 +282,7 @@ class Config:
     gif_intervalle_rafale_ms: int = 180
     gif_duree_image_ms: int = 350
     gif_pause_derniere_image_ms: int = 1200
+    defis_actifs: bool = True
     # [sauvegarde]
     dossier_sauvegarde: Path | None = None
     # [diaporama]
@@ -437,6 +450,7 @@ class Config:
             resolution_largeur=get_int("general", "resolution_largeur", 320, 7680),
             resolution_hauteur=get_int("general", "resolution_hauteur", 240, 4320),
             son_active=get_bool("general", "son_active"),
+            son_volume=get_int("general", "son_volume", 0, 100),
             second_ecran_active=get_bool("general", "second_ecran_active"),
             plein_ecran=get_bool("general", "plein_ecran"),
             miroir=get_bool("general", "miroir"),
@@ -465,6 +479,7 @@ class Config:
             gif_intervalle_rafale_ms=get_int("gif", "intervalle_rafale_ms", 80, 1000),
             gif_duree_image_ms=get_int("gif", "duree_image_ms", 80, 2000),
             gif_pause_derniere_image_ms=get_int("gif", "pause_derniere_image_ms", 300, 5000),
+            defis_actifs=get_bool("defis", "actif"),
             dossier_sauvegarde=(paths.resolve(get_str("sauvegarde", "dossier"), base) if get_str("sauvegarde", "dossier") else None),
             dp_duree=get_int("diaporama", "duree", 2, 60),
             dp_ordre=ordre,
@@ -498,6 +513,40 @@ class Config:
         """Relit config.ini en place (les écrans gardent la même référence)."""
         fresh = Config.load(self.config_path, self.base_dir)
         self.__dict__.update(fresh.__dict__)
+
+    def save_sound_settings(self, active: bool, volume: int) -> None:
+        """Enregistre les réglages sonores en préservant le reste du fichier de configuration."""
+        volume = max(0, min(100, int(volume)))
+        lines = self.config_path.read_text(encoding="utf-8-sig").splitlines()
+        section_start = next((index for index, line in enumerate(lines)
+                              if re.match(r"^\s*\[general\]\s*(?:[;#].*)?$", line, re.IGNORECASE)), None)
+        if section_start is None:
+            lines.extend(["", "[general]"])
+            section_start = len(lines) - 1
+        section_end = next((index for index in range(section_start + 1, len(lines))
+                            if re.match(r"^\s*\[[^\]]+\]", lines[index])), len(lines))
+        updates = {"son_active": "true" if active else "false", "son_volume": str(volume)}
+        found: set[str] = set()
+        for index in range(section_start + 1, section_end):
+            match = re.match(r"^(\s*)(son_active|son_volume)(\s*=).*$", lines[index], re.IGNORECASE)
+            if match:
+                key = match.group(2).lower()
+                lines[index] = f"{match.group(1)}{key}{match.group(3)} {updates[key]}"
+                found.add(key)
+        insertion = section_end
+        for key, value in updates.items():
+            if key not in found:
+                lines.insert(insertion, f"{key} = {value}")
+                insertion += 1
+        content = "\n".join(lines) + "\n"
+        backup = self.config_path.with_suffix(".ini.bak")
+        temporary = self.config_path.with_suffix(self.config_path.suffix + ".tmp")
+        original = self.config_path.read_bytes()
+        backup.write_bytes(original)
+        temporary.write_text(content, encoding="utf-8")
+        os.replace(temporary, self.config_path)
+        self.son_active = bool(active)
+        self.son_volume = volume
 
     def ensure_directories(self) -> None:
         """Crée les dossiers de travail, cadres, masques et thèmes par défaut."""

@@ -2,6 +2,7 @@
 from .background_select import BackgroundSelectScreen
 from .base import BaseScreen
 from .capture import CaptureScreen
+from .challenge import ChallengeScreen
 from .email_entry import EmailEntryScreen
 from .format_select import FormatSelectScreen
 from .gif_options import GifOptionsScreen
@@ -15,6 +16,7 @@ SCREENS: dict[str, type[BaseScreen]] = {
     "guest_select": GuestSelectScreen,
     "email_entry": EmailEntryScreen,
     "format_select": FormatSelectScreen,
+    "challenge": ChallengeScreen,
     "background_select": BackgroundSelectScreen,
     "capture": CaptureScreen,
     "review": ReviewScreen,

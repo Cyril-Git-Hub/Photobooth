@@ -173,7 +173,8 @@ class ReviewScreen(BaseScreen):
 
         self._person_only.setEnabled(self.session.photo_source_frame is not None)
         self._prepare_thumbnails()
-        self._select_style("original")
+        suggested = self.session.challenge_style if self.session.challenge_id else "original"
+        self._select_style(suggested if suggested in self._cards else "original")
 
     def _prepare_thumbnails(self) -> None:
         if self._source is None:
@@ -282,6 +283,7 @@ class ReviewScreen(BaseScreen):
             return
         path = self.session.photos[-1]
         if path.suffix.lower() == ".gif":
+            self.nav.sounds.play("success")
             self.nav.go_next()
             return
         style = self._selected_style
@@ -306,6 +308,7 @@ class ReviewScreen(BaseScreen):
                 log.exception("Rendu final du style impossible")
                 QMessageBox.warning(self, "Style photo", f"Le style n'a pas pu être appliqué :\n{exc}")
                 return
+        self.nav.sounds.play("success")
         self.nav.go_next()
 
     def on_leave(self) -> None:

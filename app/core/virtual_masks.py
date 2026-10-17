@@ -16,7 +16,8 @@ log = logging.getLogger(__name__)
 MASK_EXTENSIONS = {".png"}
 DETECTION_WIDTH = 480
 MAX_SLOW_PREVIEWS = 3
-MAX_PREVIEW_SECONDS = 0.12
+MAX_PREVIEW_SECONDS = 0.22
+PREVIEW_DETECTION_INTERVAL = 0.10
 MAX_TRACK_MISSES = 2
 
 
@@ -107,7 +108,7 @@ def _display_name(path: Path) -> str:
 class FaceMaskRenderer:
     """Détecte plusieurs visages à petite résolution et lisse leurs boîtes dans le temps."""
 
-    def __init__(self, asset: MaskAsset) -> None:
+    def __init__(self, asset: MaskAsset | list[MaskAsset]) -> None:
         # Certains wheels OpenCV (et certaines installations existantes) ne
         # livrent pas cv2/data. Le projet embarque donc sa copie du classificateur.
         cascade_path = resource_path("assets/haarcascade_frontalface_default.xml")
@@ -116,9 +117,12 @@ class FaceMaskRenderer:
         self._detector = cv2.CascadeClassifier(str(cascade_path))
         if self._detector.empty():
             raise RuntimeError(f"Classificateur de visages introuvable : {cascade_path}")
-        self.asset = asset
+        self.assets = tuple(asset) if isinstance(asset, list) else (asset,)
+        self.asset = self.assets[0]
         self._lock = threading.Lock()
         self._tracks: list[tuple[np.ndarray, int]] = []
+        self._preview_boxes: list[tuple[int, int, int, int]] = []
+        self._last_detection_at: float | None = None
         self._slow_count = 0
         self._disabled = False
         self._last_face_count = 0
@@ -138,9 +142,14 @@ class FaceMaskRenderer:
         started = time.perf_counter()
         try:
             with self._lock:
-                boxes = self._detect(source)
-                smoothed = self._smooth_tracks(boxes)
-                out = apply_mask(rendered, self.asset, smoothed)
+                now = time.perf_counter()
+                if (self._last_detection_at is None
+                        or now - self._last_detection_at >= PREVIEW_DETECTION_INTERVAL):
+                    boxes = self._detect(source)
+                    self._preview_boxes = self._smooth_tracks(boxes)
+                    self._last_detection_at = now
+                smoothed = self._preview_boxes
+            out = apply_masks(rendered, self.assets, smoothed)
             elapsed = time.perf_counter() - started
             if elapsed > MAX_PREVIEW_SECONDS:
                 self._slow_count += 1
@@ -165,7 +174,7 @@ class FaceMaskRenderer:
             with self._lock:
                 boxes = self._detect(source)
             self._last_face_count = len(boxes)
-            return apply_mask(rendered, self.asset, boxes)
+            return apply_masks(rendered, self.assets, boxes)
         except Exception:
             log.exception("Masque non appliqué à la photo finale")
             return rendered
@@ -223,7 +232,20 @@ def _iou(first: np.ndarray, second: np.ndarray) -> float:
 def apply_mask(image: np.ndarray, asset: MaskAsset,
                faces: list[tuple[int, int, int, int]]) -> np.ndarray:
     """Redimensionne et alpha-compose le masque pour chacun des visages détectés."""
+    return apply_masks(image, (asset,), faces)
+
+
+def apply_masks(image: np.ndarray, assets: tuple[MaskAsset, ...] | list[MaskAsset],
+                faces: list[tuple[int, int, int, int]]) -> np.ndarray:
+    """Compose plusieurs masques sur une seule copie de l'image pour chaque visage."""
     result = image.copy()
+    for asset in assets:
+        _apply_mask_in_place(result, asset, faces)
+    return result
+
+
+def _apply_mask_in_place(result: np.ndarray, asset: MaskAsset,
+                         faces: list[tuple[int, int, int, int]]) -> None:
     mask_h, mask_w = asset.image.shape[:2]
     for x, y, face_w, face_h in faces:
         if face_w <= 0 or face_h <= 0:
@@ -253,7 +275,6 @@ def apply_mask(image: np.ndarray, asset: MaskAsset,
             top = y + round(face_h * asset.anchor_y) - target_h // 2
         left = x + face_w // 2 - target_w // 2
         _blend_bgra(result, asset.image, left, top, target_w, target_h)
-    return result
 
 
 def _blend_bgra(canvas: np.ndarray, overlay: np.ndarray, x: int, y: int,

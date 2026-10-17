@@ -51,7 +51,7 @@ Les fonctions optionnelles devront pouvoir être activées ou désactivées dans
 - Réglages dans `[gif]` : activation, nombre d'images, intervalle de rafale, durée des images et limite maximale en Mo.
 - Choix invité : poses espacées ou rafale courte ; boucle, boomerang, accéléré ou ralenti ; pause finale facultative.
 
-## Étape 17 — Styles photo classiques *(développée, à tester)*
+## Étape 17 — Styles photo classiques *(validée)*
 
 - Ajouter des rendus OpenCV : bande dessinée, croquis, aquarelle, pop-art et manga noir et blanc.
 - Présenter l’original et les styles dans une galerie tactile de vignettes, avec aperçu agrandi au toucher et commandes toujours visibles.
@@ -60,24 +60,26 @@ Les fonctions optionnelles devront pouvoir être activées ou désactivées dans
 - Garder le rendu final haute qualité et mesurer le coût de l’aperçu avant d’activer un effet en direct.
 - Les rendus ne sont pas appliqués pendant la capture : l'invité compare l'original et les aperçus réduits à l'écran de résultat ; le style choisi est recalculé à pleine résolution lors de la validation.
 
-## Étape 18 — Masques virtuels
+## Étape 18 — Masques virtuels *(validée)*
 
 - Ajouter des masques PNG transparents et permettre d'en ajouter dans `masques/` avec des préfixes de placement (`yeux_`, `bouche_`, `nez_`, `oreille_`, `cheveux_`) ; un masque `oreille_` représente une oreille, dupliquée en miroir.
 - Détecter les visages à résolution réduite, lisser leur position et appliquer le masque à chaque personne détectée.
 - Afficher le masque sur l'aperçu puis sur les photos, poses photomaton et images GIF.
+- Permettre de sélectionner plusieurs masques simultanément et de les retirer individuellement.
 - Désactiver le masque si la détection échoue ou ralentit trop l'aperçu, sans bloquer la prise de vue.
-- Vérifier les performances et l'empaquetage PyInstaller. *(développée, à tester sur le poste cible)*
+- Vérifier les performances et l'empaquetage PyInstaller.
 
-## Étape 19 — Mode défi
+## Étape 19 — Mode défi *(validée)*
 
-- Charger les défis depuis un fichier modifiable.
-- Afficher une consigne avec temps de préparation, puis lancer une photo, une bande ou un GIF.
-- Permettre à un défi de proposer ou imposer un format, un décor, un masque et un style déjà disponibles.
-- Ajouter une légende ou une carte de résultat facultative.
+- Charger les défis depuis un fichier JSON modifiable et laisser désactiver leur bouton dans la configuration.
+- Fournir dix défis de départ : imitation illustrée, statue de la Liberté, star du rock, couverture de magazine, émotions en bande, statue de cire, danse GIF, explosion de joie, décor choisi et décor surprise.
+- Afficher la consigne et l'image de référence avant le parcours photo ; garder la consigne visible sur l'écran de capture.
+- Laisser chaque défi proposer le format photo, photomaton ou GIF, un décor, un masque et un style ; réutiliser les réglages existants du GIF et du photobooth.
+- Inscrire le nom du défi en haut de la photo finale, de chaque image du GIF et de la bande photomaton.
 
-## Étape 20 — Effets sonores
+## Étape 20 — Effets sonores *(développée, à tester)*
 
-- Ajouter les sons de compte à rebours, déclencheur, clap et réussite.
+- Ajouter les sons de compte à rebours, de déclencheur et de réussite.
 - Permettre de régler le volume et de couper les sons depuis l’administration.
 - Continuer sans erreur si un son manque ou ne peut pas être joué.
 - Valider les ressources audio dans l’exécutable Windows.
