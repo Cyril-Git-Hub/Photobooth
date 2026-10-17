@@ -4,8 +4,10 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
-    QApplication, QDialog, QGridLayout, QInputDialog, QLabel, QLineEdit, QMessageBox, QVBoxLayout,
+    QApplication, QCheckBox, QDialog, QGridLayout, QHBoxLayout, QInputDialog, QLabel, QLineEdit,
+    QMessageBox, QSlider, QVBoxLayout,
 )
 
 from .files import open_folder
@@ -50,6 +52,27 @@ class AdminDialog(QDialog):
             label.setWordWrap(True)
             layout.addWidget(label)
 
+        sound_row = QHBoxLayout()
+        self._sound_active = QCheckBox("Effets sonores activés")
+        self._sound_active.setChecked(window.config.son_active)
+        self._sound_active.toggled.connect(self._on_sound_active_changed)
+        sound_row.addWidget(self._sound_active)
+        sound_row.addWidget(QLabel("Volume"))
+        self._sound_volume = QSlider(Qt.Orientation.Horizontal)
+        self._sound_volume.setRange(0, 100)
+        self._sound_volume.setValue(window.config.son_volume)
+        self._sound_volume.valueChanged.connect(self._on_sound_volume_changed)
+        self._sound_volume.sliderReleased.connect(self._persist_sound_settings)
+        sound_row.addWidget(self._sound_volume, 1)
+        self._sound_volume_label = QLabel(f"{window.config.son_volume} %")
+        sound_row.addWidget(self._sound_volume_label)
+        layout.addLayout(sound_row)
+        self._sound_save_timer = QTimer(self)
+        self._sound_save_timer.setSingleShot(True)
+        self._sound_save_timer.setInterval(500)
+        self._sound_save_timer.timeout.connect(self._persist_sound_settings)
+        self.finished.connect(lambda _result: self._persist_sound_settings())
+
         grid = QGridLayout()
         grid.setSpacing(px(12))
         for index, (text, variant, action) in enumerate([
@@ -77,6 +100,24 @@ class AdminDialog(QDialog):
         self._mail_info.setText(self._mail_text())
         self._backup_info.setText(self._backup_text())
         self._slideshow_info.setText(self._slideshow_text())
+
+    def _on_sound_active_changed(self, active: bool) -> None:
+        self._window.sounds.update_settings(active, self._sound_volume.value())
+        self._sound_save_timer.stop()
+        self._persist_sound_settings()
+
+    def _on_sound_volume_changed(self, volume: int) -> None:
+        self._sound_volume_label.setText(f"{volume} %")
+        self._window.sounds.update_settings(self._sound_active.isChecked(), volume)
+        self._sound_save_timer.start()
+
+    def _persist_sound_settings(self) -> None:
+        try:
+            self._window.config.save_sound_settings(
+                self._sound_active.isChecked(), self._sound_volume.value())
+        except OSError as exc:
+            log.exception("Enregistrement des réglages sonores impossible")
+            QMessageBox.warning(self, "Réglages sonores", f"Réglages appliqués pour cette session, mais non enregistrés :\n{exc}")
 
     # ---------- états ----------
 
@@ -129,9 +170,17 @@ class AdminDialog(QDialog):
         self._refresh_info()
 
     def _reload(self) -> None:
+        self._sound_save_timer.stop()
         self._window.config.reload()
         self._window.reload_theme()
         self._window.mail.reload_settings()
         self._window.slideshow.reload()
+        self._sound_active.blockSignals(True)
+        self._sound_active.setChecked(self._window.config.son_active)
+        self._sound_active.blockSignals(False)
+        self._sound_volume.blockSignals(True)
+        self._sound_volume.setValue(self._window.config.son_volume)
+        self._sound_volume.blockSignals(False)
+        self._sound_volume_label.setText(f"{self._window.config.son_volume} %")
         self._refresh_info()
         log.info("Configuration rechargée")

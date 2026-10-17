@@ -16,6 +16,7 @@ from ..core.camera import CameraWorker
 from ..core.mail_service import MailService
 from ..core.status import build_badge
 from ..core.segmentation import Segmenter, SegmentationError, create_segmenter, segmenter_key
+from ..core.sounds import SoundManager
 from ..session import Session
 from . import scale
 from .admin_dialog import open_admin_dialog
@@ -25,7 +26,7 @@ from .screens.base import BaseScreen
 
 log = logging.getLogger(__name__)
 
-FLOW = [name for name in SCREENS if name != "gif_options"]  # écran de réglage accessible uniquement depuis le choix du format
+FLOW = [name for name in SCREENS if name not in {"gif_options", "challenge"}]  # écrans hors parcours linéaire
 ADMIN_CORNER = QRect(0, 0, 120, 120)       # coin haut gauche
 ADMIN_TAPS = 3                             # 3 appuis dans le coin...
 ADMIN_WINDOW_S = 3.0                       # ...en moins de 3 secondes
@@ -41,6 +42,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.config = config
         self.theme = getattr(config, "active_theme", None)
+        self.sounds = SoundManager(config, self)
         self.session = Session()
         self.current_name = ""
         self._admin_taps: list[float] = []
@@ -141,6 +143,7 @@ class MainWindow(QMainWindow):
         from .theme import build_stylesheet
         self.theme = load_theme(self.config)
         self.config.active_theme = self.theme
+        self.sounds.reload()
         self.setWindowTitle(self.theme.app_title)
         QApplication.instance().setApplicationName(self.theme.app_title)
         QApplication.instance().setStyleSheet(build_stylesheet(theme=self.theme))
@@ -327,4 +330,5 @@ class MainWindow(QMainWindow):
         self.mail.stop()
         self.backup.stop()
         self.slideshow.close()
+        self.sounds.stop_all()
         super().closeEvent(event)

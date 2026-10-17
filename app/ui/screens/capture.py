@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
 )
 
 from ...core import backgrounds, frames, gif_builder, storage, strip_builder, virtual_masks
+from ...core.challenge_stamp import stamp_challenge_title
 from ...core.compositor import SceneRenderer
 from ...core.qt_image import bgr_to_qimage
 from ...core.segmentation import SegmentationError
@@ -219,6 +220,7 @@ class CaptureScreen(BaseScreen):
         self._mask_panel.setVisible(bool(assets))
         if not assets:
             self.session.virtual_mask_path = None
+            self.session.virtual_mask_paths.clear()
             return
 
         none = QToolButton()
@@ -230,7 +232,7 @@ class CaptureScreen(BaseScreen):
         none.setAccessibleName("Aucun masque")
         none.setCheckable(True)
         none.setFixedSize(px(52), px(52))
-        none.clicked.connect(lambda _checked=False: self._select_mask(None))
+        none.clicked.connect(lambda _checked=False: self._select_masks([]))
         self._mask_row.addWidget(none)
         self._mask_buttons[None] = none
         icon_size = QSize(px(40), px(40))
@@ -249,30 +251,45 @@ class CaptureScreen(BaseScreen):
             button.setAccessibleName(asset.name)
             button.setCheckable(True)
             button.setFixedSize(px(52), px(52))
-            button.clicked.connect(lambda _checked=False, p=asset.path: self._select_mask(p))
+            button.clicked.connect(lambda checked=False, p=asset.path: self._toggle_mask(p, checked))
             self._mask_row.addWidget(button)
             self._mask_buttons[asset.path] = button
-        selected = self.session.virtual_mask_path
-        if selected not in self._mask_assets:
-            selected = None
-        self._select_mask(selected)
+        selected = list(self.session.virtual_mask_paths)
+        if not selected and self.session.virtual_mask_path is not None:
+            selected = [self.session.virtual_mask_path]
+        if not selected and self.session.challenge_mask:
+            wanted = self.session.challenge_mask.casefold()
+            match = next((asset.path for asset in assets
+                          if asset.path.stem.casefold() == wanted), None)
+            selected = [match] if match is not None else []
+        self._select_masks([path for path in selected if path in self._mask_assets])
 
-    def _select_mask(self, path: Path | None) -> None:
-        self.session.virtual_mask_path = path
+    def _toggle_mask(self, path: Path, checked: bool) -> None:
+        selected = set(self.session.virtual_mask_paths)
+        if checked:
+            selected.add(path)
+        else:
+            selected.discard(path)
+        self._select_masks(sorted(selected, key=lambda item: item.name.casefold()))
+
+    def _select_masks(self, paths: list[Path]) -> None:
+        paths = list(dict.fromkeys(path for path in paths if path in self._mask_assets))
+        self.session.virtual_mask_paths = paths
+        self.session.virtual_mask_path = paths[0] if paths else None
         self._mask_processor = None
         self._mask_error = ""
-        if path is not None:
-            asset = self._mask_assets.get(path)
-            if asset is not None:
-                try:
-                    self._mask_processor = virtual_masks.FaceMaskRenderer(asset)
-                except Exception as exc:
-                    log.warning("Détection des visages indisponible : %s", exc)
-                    self._mask_error = "Détection visage indisponible : masque désactivé."
-                    self.session.virtual_mask_path = None
-                    path = None
+        assets = [self._mask_assets[path] for path in paths]
+        if assets:
+            try:
+                self._mask_processor = virtual_masks.FaceMaskRenderer(assets)
+            except Exception as exc:
+                log.warning("Détection des visages indisponible : %s", exc)
+                self._mask_error = "Détection visage indisponible : masque désactivé."
+                self.session.virtual_mask_paths = []
+                self.session.virtual_mask_path = None
+                paths = []
         for button_path, button in self._mask_buttons.items():
-            button.setChecked(button_path == path)
+            button.setChecked((button_path is None and not paths) or button_path in paths)
         self._update_preview_processor()
         if self._state is State.READY:
             self._update_mask_status()
@@ -300,23 +317,30 @@ class CaptureScreen(BaseScreen):
         if self._state is not State.READY:
             return
         if self._mask_error:
-            self._status.setText(self._mask_error)
+            self._status.setText(self._challenge_status(self._mask_error))
         elif self._mask_processor is not None:
             if self._mask_processor.disabled:
-                self._status.setText("Masque désactivé : la détection était trop lente. La photo reste disponible.")
+                message = "Masque désactivé : la détection était trop lente. La photo reste disponible."
             elif self._mask_processor.last_face_count == 0:
-                self._status.setText("Place ton visage face à la caméra pour afficher le masque.")
+                message = "Place ton visage face à la caméra pour afficher le masque."
             else:
-                self._status.setText(f"Masque actif · {self._mask_processor.last_face_count} visage(s) détecté(s).")
+                message = f"{len(self.session.virtual_mask_paths)} masque(s) actif(s) · {self._mask_processor.last_face_count} visage(s) détecté(s)."
+            self._status.setText(self._challenge_status(message))
         else:
             self._status.setText(self._ready_status_text())
 
     def _ready_status_text(self) -> str:
         planned = self._planned_poses()
-        return ("Place-toi et prends la photo !" if self.session.frame_mode else
-                f"Prépare-toi : {planned} images pour ton GIF animé !" if self.session.photo_format == "gif" else
-                "Place-toi dans le cadre, puis appuie sur le bouton !" if planned == 1 else
-                f"Place-toi dans le cadre : {planned} photos vont être prises à la suite !")
+        message = ("Place-toi et prends la photo !" if self.session.frame_mode else
+                   f"Prépare-toi : {planned} images pour ton GIF animé !" if self.session.photo_format == "gif" else
+                   "Place-toi dans le cadre, puis appuie sur le bouton !" if planned == 1 else
+                   f"Place-toi dans le cadre : {planned} photos vont être prises à la suite !")
+        return self._challenge_status(message)
+
+    def _challenge_status(self, message: str) -> str:
+        if self.session.challenge_instruction:
+            return f"Défi : {self.session.challenge_instruction}\n{message}"
+        return message
 
     def _prepare_frame(self) -> bool:
         """Construit le choix de cadres et démarre l'aperçu avec le cadre sélectionné."""
@@ -374,7 +398,9 @@ class CaptureScreen(BaseScreen):
         return True
 
     def _go_back(self) -> None:
-        if self.session.photo_format == "gif":
+        if self.session.challenge_id:
+            self.nav.go_to("challenge")
+        elif self.session.photo_format == "gif":
             self.nav.go_to("gif_options")
         elif self.session.frame_mode:
             self.nav.go_to("format_select")
@@ -461,6 +487,7 @@ class CaptureScreen(BaseScreen):
     def _start_countdown(self, seconds: int) -> None:
         self._remaining = max(1, seconds)
         self._set_state(State.COUNTING)
+        self.nav.sounds.play("countdown")
         if self._total > 1:
             self._status.setText(f"Pose {len(self._poses) + 1}/{self._total}")
         self._preview.overlay.show_number(str(self._remaining))
@@ -469,6 +496,7 @@ class CaptureScreen(BaseScreen):
     def _tick(self) -> None:
         self._remaining -= 1
         if self._remaining > 0:
+            self.nav.sounds.play("countdown")
             self._preview.overlay.show_number(str(self._remaining))
         else:
             self._timer.stop()
@@ -504,6 +532,7 @@ class CaptureScreen(BaseScreen):
 
     def _capture_pose(self) -> None:
         self._set_state(State.SAVING)
+        self.nav.sounds.play("shutter")
         self._preview.overlay.clear()
         self._preview.overlay.flash()
         frame = self._grab_final_frame()
@@ -536,10 +565,12 @@ class CaptureScreen(BaseScreen):
 
     def _save_and_finish(self) -> None:
         guest = self.session.display_name
+        challenge_title = self.session.challenge_title.strip()
         try:
             if self.session.photo_format == "gif":
+                gif_frames = [stamp_challenge_title(frame, challenge_title) for frame in self._poses]
                 path = gif_builder.save_gif(
-                    self.config, self._poses, guest,
+                    self.config, gif_frames, guest,
                     effect=self.session.gif_effect, hold_last=self.session.gif_hold_last,
                 )
                 self.session.photos.append(path)
@@ -547,7 +578,8 @@ class CaptureScreen(BaseScreen):
                 self.session.photo_style = "original"
                 self.session.photo_style_person_only = False
             elif self._total == 1:
-                path = storage.save_photo(self.config, self._poses[0], guest)
+                photo = stamp_challenge_title(self._poses[0], challenge_title)
+                path = storage.save_photo(self.config, photo, guest)
                 self.session.photos.append(path)
                 self.session.photo_source_frame = self._last_source_frame
                 self.session.photo_style = "original"
@@ -557,6 +589,7 @@ class CaptureScreen(BaseScreen):
                     title=self.config.pm_titre, date_text=datetime.now().strftime("%d/%m/%Y"),
                     background=self.config.pm_couleur_fond, text_color=self.config.pm_couleur_texte)
                 strip = strip_builder.build_strip(self._poses, style)
+                strip = stamp_challenge_title(strip, challenge_title)
                 path, pose_paths = storage.save_strip(self.config, strip, self._poses, guest)
                 self.session.photos.append(path)
                 self.session.poses = pose_paths

@@ -50,7 +50,7 @@ s'il a changé ; ferme-le dans ton tableur avant de lancer le logiciel. L'invit�
 ## Thèmes
 
 Le thème actif se choisit avec `theme = classique` dans `[general]` de `config.ini`. Chaque thème est un dossier sous `themes/` contenant
-un `theme.ini` et, au besoin, les sous-dossiers `fonds/`, `cadres/`, `visuels/` et `sons/`. Le manifeste permet de régler les couleurs,
+un `theme.ini` et, au besoin, les sous-dossiers `fonds/`, `cadres/`, `visuels/` et `sons/`. Le dossier `sons/` accepte les WAV `compte_a_rebours.wav`, `declencheur.wav` et `reussite.wav`. Le manifeste permet de régler les couleurs,
 le titre et le texte d'accueil, le nom de l'application et le modèle de mail. Les images d'accueil, le logo et un cadre d'interface PNG/WebP
 transparent (avec le centre évidé, idéalement au format 16:9) sont facultatifs et se déclarent dans `[ressources]` avec un chemin relatif au thème,
 par exemple `cadre_interface = visuels/cadre-film.png`. Le cadre complet reste au premier plan sur les écrans du parcours, dont le contenu apparaît par son ouverture transparente ; il est masqué pendant la prise de vue.

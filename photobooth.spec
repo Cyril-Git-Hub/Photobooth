@@ -20,8 +20,11 @@ datas, binaries, hiddenimports = collect_all("mediapipe")
 hiddenimports += collect_submodules("xlrd")
 hiddenimports += collect_submodules("odf")
 hiddenimports += collect_submodules("PIL")
+hiddenimports += collect_submodules("PyQt6.QtMultimedia")
 datas.append((ICON, "assets"))                       # icône de la fenêtre (paths.resource_path)
 datas.append((os.path.join(ROOT, "assets", "masques"), "assets/masques"))
+datas.append((os.path.join(ROOT, "assets", "defis.json"), "assets"))
+datas.append((os.path.join(ROOT, "assets", "defis"), "assets/defis"))
 datas.append((FACE_CASCADE, "assets"))                # classificateur OpenCV pour les masques virtuels
 
 a = Analysis(

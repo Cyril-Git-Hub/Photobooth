@@ -23,6 +23,7 @@ QPushButton {
     font-weight: 600;
 }
 QPushButton:hover { border-color: rgba(255, 255, 255, 0.42); }
+QPushButton#formatOptionButton { border-radius: 16px; padding: 10px 18px; font-size: 23px; }
 QPushButton:disabled { color: rgba(244, 241, 255, 0.48); background: #2b2757; border-color: transparent; }
 QPushButton[variant="primary"] {
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ff4d8d, stop:1 #d93a75);
@@ -49,6 +50,7 @@ QLabel#search    { font-size: 34px; color: #ffd166; }
 QLabel#error     { font-size: 26px; color: #ff6b6b; }
 QLabel#badge     { font-size: 18px; font-weight: 600; padding: 6px 16px; border-radius: 14px; color: #14122b; background-color: #ffb347; }
 QLabel#badge[level="error"] { color: white; background-color: #e5484d; }
+QLabel#challengeReference { background-color: #201d40; border: 2px solid rgba(255, 255, 255, 0.16); border-radius: 24px; color: #b8b2d9; font-size: 24px; padding: 12px; }
 
 QToolButton { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3b3680, stop:1 #2b2757); border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 16px; padding: 10px; font-size: 18px; }
 QToolButton:hover { border-color: rgba(255, 255, 255, 0.42); }
