@@ -62,6 +62,16 @@ class SendingScreen(BaseScreen):
             self.nav.backup.add([session.photos[-1], *session.poses])   # seconde copie, indépendante des mails
         except Exception:
             log.exception("Ajout à la sauvegarde impossible")
+        if session.event_id and session.email:
+            try:
+                media_type = ("gif" if session.photos[-1].suffix.casefold() == ".gif" else
+                              "strip" if session.photo_format == "strip" else
+                              "framed" if session.frame_mode else "single")
+                self.nav.events.record_photo(
+                    session.event_id, session.email, session.guest_first_name,
+                    session.guest_last_name, session.photos[-1], media_type)
+            except Exception:
+                log.exception("Indexation de la photo pour la planche-contact impossible")
         try:
             result = self.nav.mail.enqueue_photo(session.photos[-1], session.guest_first_name,
                                                  session.guest_last_name, session.email)

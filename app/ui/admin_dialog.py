@@ -6,10 +6,11 @@ from typing import TYPE_CHECKING
 
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
-    QApplication, QCheckBox, QDialog, QGridLayout, QHBoxLayout, QInputDialog, QLabel, QLineEdit,
+    QApplication, QCheckBox, QComboBox, QDialog, QGridLayout, QHBoxLayout, QInputDialog, QLabel, QLineEdit,
     QMessageBox, QSlider, QVBoxLayout,
 )
 
+from ..core.contact_sheets import create_contact_sheets
 from .files import open_folder
 from .widgets.big_button import BigButton
 from .scale import px
@@ -73,6 +74,26 @@ class AdminDialog(QDialog):
         self._sound_save_timer.timeout.connect(self._persist_sound_settings)
         self.finished.connect(lambda _result: self._persist_sound_settings())
 
+        event_label = QLabel("Soirée et planches-contact")
+        event_label.setStyleSheet("font-weight: bold")
+        layout.addWidget(event_label)
+        event_row = QHBoxLayout()
+        self._event_combo = QComboBox()
+        self._event_combo.setMinimumHeight(px(48))
+        event_row.addWidget(self._event_combo, 1)
+        start_event = BigButton("Démarrer une nouvelle soirée", "secondary")
+        start_event.setMinimumSize(px(280), px(BUTTON_HEIGHT))
+        start_event.clicked.connect(self._start_event)
+        event_row.addWidget(start_event)
+        create_sheets = BigButton("Créer les planches-contact", "primary")
+        create_sheets.setMinimumSize(px(280), px(BUTTON_HEIGHT))
+        create_sheets.clicked.connect(self._generate_contact_sheets)
+        event_row.addWidget(create_sheets)
+        layout.addLayout(event_row)
+        self._event_status = QLabel()
+        self._event_status.setWordWrap(True)
+        layout.addWidget(self._event_status)
+
         grid = QGridLayout()
         grid.setSpacing(px(12))
         for index, (text, variant, action) in enumerate([
@@ -90,6 +111,84 @@ class AdminDialog(QDialog):
         layout.addLayout(grid)
 
         self._refresh_info()
+        self._refresh_events()
+
+    def _refresh_events(self) -> None:
+        events = self._window.events.list_events()
+        active = self._window.events.active_event()
+        self._event_combo.blockSignals(True)
+        self._event_combo.clear()
+        for event in events:
+            guests = self._window.events.guests(event.id)
+            photo_count = sum(guest.count for guest in guests)
+            state = " · en cours" if event.active else ""
+            label = f"{event.name}{state} — {len(guests)} invité(s), {photo_count} média(s)"
+            self._event_combo.addItem(label, event.id)
+        if active is not None:
+            index = self._event_combo.findData(active.id)
+            if index >= 0:
+                self._event_combo.setCurrentIndex(index)
+        self._event_combo.blockSignals(False)
+        if active:
+            self._event_status.setText(
+                f"Soirée active : {active.name}. Les prochaines photos validées avec une adresse mail y seront associées."
+            )
+        else:
+            self._event_status.setText(
+                "Aucune soirée active. Démarre-en une avant la séance pour inclure les prochaines photos aux planches-contact."
+            )
+
+    def _start_event(self) -> None:
+        active = self._window.events.active_event()
+        if active is not None:
+            answer = QMessageBox.question(
+                self, "Démarrer une nouvelle soirée",
+                f"La soirée « {active.name} » sera clôturée. Ses photos resteront disponibles. Continuer ?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if answer != QMessageBox.StandardButton.Yes:
+                return
+        try:
+            event = self._window.events.start_event()
+        except Exception as exc:
+            log.exception("Démarrage de soirée impossible")
+            QMessageBox.warning(self, "Soirée", f"Impossible de démarrer une soirée :\n{exc}")
+            return
+        log.info("Soirée démarrée depuis l'administration : %s", event.id)
+        self._refresh_events()
+
+    def _generate_contact_sheets(self) -> None:
+        event_id = self._event_combo.currentData()
+        if not event_id:
+            QMessageBox.information(self, "Planches-contact", "Aucune soirée n'est disponible.")
+            return
+        event = next((item for item in self._window.events.list_events() if item.id == event_id), None)
+        if event is None:
+            self._refresh_events()
+            QMessageBox.warning(self, "Planches-contact", "Cette soirée n'est plus disponible.")
+            return
+        try:
+            paths, missing = create_contact_sheets(
+                self._window.events, event, self._window.config.dossier_exports)
+        except Exception as exc:
+            log.exception("Génération des planches-contact impossible")
+            QMessageBox.warning(self, "Planches-contact", f"La génération a échoué :\n{exc}")
+            return
+        self._refresh_events()
+        if not paths:
+            QMessageBox.information(
+                self, "Planches-contact",
+                "Aucune planche créée. Vérifie que cette soirée contient des photos encore disponibles associées à une adresse mail."
+                + (f"\n{missing} photo(s) introuvable(s) ou illisible(s)." if missing else ""),
+            )
+            return
+        extra = f"\n{missing} photo(s) introuvable(s) ou illisible(s)." if missing else ""
+        QMessageBox.information(
+            self, "Planches-contact créées",
+            f"{len(paths)} planche(s) créée(s) dans :\n{paths[0].parent}{extra}",
+        )
+        open_folder(paths[0].parent)
 
     def _refresh_info(self) -> None:
         cfg = self._window.config

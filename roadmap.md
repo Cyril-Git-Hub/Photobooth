@@ -77,16 +77,52 @@ Les fonctions optionnelles devront pouvoir être activées ou désactivées dans
 - Laisser chaque défi proposer le format photo, photomaton ou GIF, un décor, un masque et un style ; réutiliser les réglages existants du GIF et du photobooth.
 - Inscrire le nom du défi en haut de la photo finale, de chaque image du GIF et de la bande photomaton.
 
-## Étape 20 — Effets sonores *(développée, à tester)*
+## Étape 20 — Effets sonores *(validée)*
 
 - Ajouter les sons de compte à rebours, de déclencheur et de réussite.
 - Permettre de régler le volume et de couper les sons depuis l’administration.
 - Continuer sans erreur si un son manque ou ne peut pas être joué.
 - Valider les ressources audio dans l’exécutable Windows.
 
-## Étape 21 — Options complémentaires
+## Étape 21 — Planches-contact par invité et par soirée *(validée)*
 
-À prioriser après les étapes précédentes selon tes besoins : page locale et QR code de téléchargement, livre d’or vidéo, autocollants tactiles, écran d’attente animé, album ou planche-contact. Les options seront estimées séparément avant leur développement.
+- Depuis l'administration, démarrer une nouvelle soirée ; son identifiant reste actif après minuit et après un redémarrage, jusqu'au démarrage explicite de la suivante.
+- Associer durablement chaque résultat photo validé à l'adresse mail de l'invité, à la soirée et au fichier enregistré ; ne pas dépendre du dossier daté ni de la file d'envoi des mails.
+- Depuis l'administration, choisir une soirée et générer à la demande, en fin de soirée ou plus tard, une planche-contact pour chaque invité identifié par son adresse mail.
+- Inclure les photos uniques, celles avec cadre, les bandes photomaton et les GIF. Sur une planche fixe, montrer une vignette du GIF ; représenter la bande photomaton comme une bande afin d'éviter de compter ses poses deux fois.
+- Enregistrer les planches dans un dossier d'export associé à la soirée ; les fichiers restent disponibles après la génération.
+
+## Étape 22 — Écran de veille *(validée)*
+
+- Afficher un écran d'attente attractif lorsque la borne n'est pas utilisée, avec le thème actif et une invitation claire à commencer.
+- Réagir au toucher pour revenir au parcours d'accueil ; conserver l'accès administrateur.
+- Afficher l'écran de veille à l'expiration du délai `inactivite_secondes` déjà configurable ; si l'invité est dans le parcours, revenir à l'accueil sous l'écran de veille sans attendre un second délai.
+- Utiliser les visuels et couleurs du thème actif ; afficher une invitation tactile pour commencer.
+- Garder le geste d'accès administrateur disponible depuis l'écran de veille.
+- Vérifier que l'écran d'attente ne perturbe ni la caméra, ni le diaporama du second écran, ni le retour automatique déjà en place.
+
+## Étapes suivantes — ordre de priorité proposé
+
+### Étape 23 — Autocollants tactiles *(à cadrer)*
+
+- Depuis l'aperçu du résultat, choisir des autocollants et les placer au doigt sur la photo.
+- Déplacer, redimensionner, tourner ou retirer chaque autocollant avant de valider ; appliquer le même montage au fichier final.
+- Fournir une petite sélection de départ et permettre à l'organisateur d'en ajouter dans un dossier dédié.
+- Garder cette étape facultative et distincte des masques de visage et des cadres plein format.
+
+### Étape 24 — QR code de partage *(à cadrer)*
+
+- Afficher après validation un QR code propre à la photo, qui ouvre son téléchargement sur le téléphone de l'invité.
+- Choisir un hébergement accessible aux invités et définir la durée de disponibilité des liens ainsi que les règles d'accès avant le développement.
+- Prévoir un message clair si le réseau ou le service d'hébergement est indisponible ; le téléchargement QR ne doit pas empêcher l'enregistrement ni l'envoi par mail.
+- La page locale et le serveur local ne font pas partie du projet retenu.
+
+### Étape 25 — Livre d'or vidéo *(à cadrer)*
+
+- Proposer aux invités volontaires d'enregistrer un court message vidéo après leur parcours photo.
+- Permettre de passer cette étape, limiter la durée et vérifier clairement l'espace disque disponible.
+- Ranger les vidéos par soirée et prévoir leur consultation/export depuis l'administration.
+- Définir avant développement le consentement à l'enregistrement, l'information affichée et la suppression des vidéos.
 
 ## Points de vigilance transverses
 

@@ -21,7 +21,7 @@ class ChallengeScreen(BaseScreen):
         self._current: challenges.Challenge | None = None
         self._previous_id = ""
 
-        heading = QLabel("Défi surprise")
+        heading = QLabel("Casting/Audition")
         heading.setObjectName("heading")
         heading.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._kind = QLabel("")

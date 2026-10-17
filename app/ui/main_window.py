@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 import time
 
-from PyQt6.QtCore import QEvent, QObject, QRect, QSize, Qt, QTimer
+from PyQt6.QtCore import QEvent, QObject, QPoint, QRect, QSize, Qt, QTimer
 from PyQt6.QtGui import QKeySequence, QMouseEvent, QPixmap, QShortcut
 from PyQt6.QtWidgets import (
     QApplication, QFrame, QLabel, QMainWindow, QScrollArea, QScroller, QStackedLayout, QStackedWidget, QWidget,
@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
 from ..config import Config
 from ..core.backup import BackupService
 from ..core.camera import CameraWorker
+from ..core.events import EventStore
 from ..core.mail_service import MailService
 from ..core.status import build_badge
 from ..core.segmentation import Segmenter, SegmentationError, create_segmenter, segmenter_key
@@ -21,6 +22,7 @@ from ..session import Session
 from . import scale
 from .admin_dialog import open_admin_dialog
 from .slideshow import SlideshowController
+from .screensaver import ScreensaverOverlay
 from .screens import SCREENS
 from .screens.base import BaseScreen
 
@@ -43,6 +45,7 @@ class MainWindow(QMainWindow):
         self.config = config
         self.theme = getattr(config, "active_theme", None)
         self.sounds = SoundManager(config, self)
+        self.events = EventStore(config)
         self.session = Session()
         self.current_name = ""
         self._admin_taps: list[float] = []
@@ -90,6 +93,9 @@ class MainWindow(QMainWindow):
         self._frame_overlay.raise_()
         self._frame_pixmap: QPixmap | None = None
         self._load_screen_frame()
+        self._screensaver = ScreensaverOverlay(self.theme, self._start_from_screensaver)
+        self._screensaver.setGeometry(self._booth_frame.rect())
+        self._screensaver.hide()
         self._badge_timer = QTimer(self)
         self._badge_timer.setInterval(3000)
         self._badge_timer.timeout.connect(self._refresh_badge)
@@ -98,6 +104,9 @@ class MainWindow(QMainWindow):
         self._inactivity_timer = QTimer(self)
         self._inactivity_timer.setSingleShot(True)
         self._inactivity_timer.timeout.connect(self._on_inactivity)
+        self._screensaver_timer = QTimer(self)
+        self._screensaver_timer.setSingleShot(True)
+        self._screensaver_timer.timeout.connect(self._show_screensaver)
 
         QApplication.instance().installEventFilter(self)
         QApplication.instance().aboutToQuit.connect(self.camera.stop_camera)
@@ -147,6 +156,10 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(self.theme.app_title)
         QApplication.instance().setApplicationName(self.theme.app_title)
         QApplication.instance().setStyleSheet(build_stylesheet(theme=self.theme))
+        self._screensaver.deleteLater()
+        self._screensaver = ScreensaverOverlay(self.theme, self._start_from_screensaver)
+        self._screensaver.setGeometry(self._booth_frame.rect())
+        self._screensaver.hide()
         self._load_screen_frame()
         home = self._screens.get("home")
         if home is not None and hasattr(home, "apply_theme"):
@@ -210,21 +223,57 @@ class MainWindow(QMainWindow):
     def _restart_inactivity(self) -> None:
         screen = self._screens.get(self.current_name)
         delay = self.config.inactivite_secondes
-        if delay <= 0 or screen is None or self.current_name == "home" or not screen.allow_inactivity_reset:
+        if delay <= 0 or screen is None:
+            self._inactivity_timer.stop()
+            self._screensaver_timer.stop()
+            return
+        if self.current_name == "home":
+            self._inactivity_timer.stop()
+            if self._screensaver.isVisible():
+                self._screensaver_timer.stop()
+            else:
+                self._screensaver_timer.start(delay * 1000)
+            return
+        self._screensaver_timer.stop()
+        if not screen.allow_inactivity_reset:
             self._inactivity_timer.stop()
             return
         self._inactivity_timer.start(delay * 1000)
+
+    def _show_screensaver(self) -> None:
+        if self.current_name != "home" or self.config.inactivite_secondes <= 0:
+            return
+        self._screensaver_timer.stop()
+        log.info("Inactivité sur l'accueil : affichage de l'écran de veille")
+        self._frame_overlay.hide()
+        self._screensaver.setGeometry(self._booth_frame.rect())
+        self._screensaver.show()
+        self._screensaver.raise_()
+
+    def _start_from_screensaver(self, position: QPoint) -> None:
+        if not self._screensaver.isVisible():
+            return
+        if ADMIN_CORNER.contains(position):
+            return  # garde le geste d'ouverture du mode administrateur disponible
+        self._screensaver.hide()
+        self._apply_screen_frame_mode()
+        self._restart_inactivity()
+        log.info("Écran de veille masqué : retour à l'accueil")
 
     def _on_inactivity(self) -> None:
         screen = self._screens.get(self.current_name)
         if screen is None or not screen.allow_inactivity_reset:
             return
-        log.info("Inactivité : retour à l'accueil")
+        log.info("Inactivité : retour à l'accueil et affichage de l'écran de veille")
         self.go_to("home")
+        self._show_screensaver()
 
     # ---------- accès admin ----------
 
     def open_admin(self) -> None:
+        if self._screensaver.isVisible():
+            self._screensaver.hide()
+            self._apply_screen_frame_mode()
         open_admin_dialog(self)
         self._restart_inactivity()
 
@@ -276,6 +325,8 @@ class MainWindow(QMainWindow):
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
+        if hasattr(self, "_screensaver"):
+            self._screensaver.setGeometry(self._booth_frame.rect())
         self._place_badge()
         self._apply_screen_frame_mode()
 

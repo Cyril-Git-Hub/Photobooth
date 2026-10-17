@@ -138,7 +138,7 @@ apercu_largeur = 960
 ia_modele = paysage
 # Mettre true si le détourage IA est inversé (la personne disparaît, le fond reste)
 ia_inverser_masque = false
-# Retour automatique à l'accueil après N secondes sans toucher l'écran (0 = désactivé)
+# Écran de veille après N secondes d'inactivité ; dans le parcours, revient aussi à l'accueil (0 = désactivé)
 inactivite_secondes = 60
 # Code du mode administrateur (à changer !)
 code_admin = 1234
