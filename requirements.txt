@@ -7,5 +7,9 @@ Pillow
 openpyxl
 xlrd
 odfpy
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+qrcode[pil]
 
 # PyInstaller reste réservé à la construction de l'exécutable (construire.bat s'en charge).

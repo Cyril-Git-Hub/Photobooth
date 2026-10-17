@@ -17,6 +17,11 @@ FACE_CASCADE = os.path.join(ROOT, "assets", "haarcascade_frontalface_default.xml
 
 # MediaPipe embarque des bibliothèques et des fichiers de données que l'analyse automatique ne voit pas toujours
 datas, binaries, hiddenimports = collect_all("mediapipe")
+for package in ("googleapiclient", "google_auth_oauthlib", "google_auth_httplib2", "qrcode"):
+    package_datas, package_binaries, package_imports = collect_all(package)
+    datas += package_datas
+    binaries += package_binaries
+    hiddenimports += package_imports
 hiddenimports += collect_submodules("xlrd")
 hiddenimports += collect_submodules("odf")
 hiddenimports += collect_submodules("PIL")

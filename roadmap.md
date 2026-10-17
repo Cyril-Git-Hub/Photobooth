@@ -103,18 +103,23 @@ Les fonctions optionnelles devront pouvoir être activées ou désactivées dans
 
 ## Étapes suivantes — ordre de priorité proposé
 
-### Étape 23 — Autocollants tactiles *(développée, à tester)*
+### Étape 23 — Autocollants tactiles *(validée)*
 
 - Depuis l'aperçu du résultat, choisir des autocollants et les placer au doigt sur la photo.
 - Déplacer, redimensionner, tourner ou retirer chaque autocollant avant de valider ; appliquer le même montage au fichier final.
 - Fournir une petite sélection de départ et permettre à l'organisateur d'en ajouter dans un dossier dédié.
 - Garder cette étape facultative et distincte des masques de visage et des cadres plein format.
 
-### Étape 24 — QR code de partage *(à cadrer)*
+### Étape 24 — QR code de partage *(développée, désactivée par défaut)*
 
-- Afficher après validation un QR code propre à la photo, qui ouvre son téléchargement sur le téléphone de l'invité.
-- Choisir un hébergement accessible aux invités et définir la durée de disponibilité des liens ainsi que les règles d'accès avant le développement.
-- Prévoir un message clair si le réseau ou le service d'hébergement est indisponible ; le téléchargement QR ne doit pas empêcher l'enregistrement ni l'envoi par mail.
+- L'option est conservée et peut être activée dans `[qr_drive]` avec `actif = true` ; par défaut, aucun bouton QR ni téléversement Drive n'est lancé.
+- Héberger les médias sur Google Drive et autoriser leur lecture à toute personne disposant du lien.
+- Sur l’écran de résultat, garder la photo ou le GIF affiché et proposer un bouton/lien dédié pour ouvrir le QR code de téléchargement ; depuis l’écran du QR code, permettre de revenir à la photo ou au GIF.
+- Couvrir les photos uniques, photos avec cadre, bandes photomaton et GIF.
+- Garder les liens accessibles pendant un mois, puis retirer le partage public tout en conservant la copie dans Drive. Elle continuera d'occuper de l'espace.
+- Comme l'API Drive ne permet pas de définir une expiration directement sur un partage `anyone`, enregistrer l'échéance et programmer le retrait de cette permission publique après 30 jours ; conserver le fichier Drive.
+- Lancer le retrait des liens échus via une tâche Windows horaire et au démarrage de l'application.
+- Prévoir un message clair si le réseau ou Drive est indisponible ; le QR ne doit pas empêcher l'enregistrement local ni l'envoi par mail.
 - La page locale et le serveur local ne font pas partie du projet retenu.
 
 ### Étape 25 — Livre d'or vidéo *(à cadrer)*
