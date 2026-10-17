@@ -36,6 +36,10 @@ def build_parser() -> argparse.ArgumentParser:
                         help="vérifie caméra, modèle, décors, invités, mail, écrans... et écrit logs/diagnostic.txt")
     parser.add_argument("--test-mail", nargs="?", const="", default=None, metavar="ADRESSE",
                         help="envoie un mail de test (à adresse_organisateur, ou à ADRESSE)")
+    parser.add_argument("--configurer-drive", action="store_true",
+                        help="connecte Google Drive et programme le retrait automatique des liens expirés")
+    parser.add_argument("--cleanup-drive-links", action="store_true",
+                        help=argparse.SUPPRESS)
     parser.add_argument("--telecharger-modeles", nargs="*", default=None, metavar="MODELE",
                         help=f"télécharge les modèles de détourage ({', '.join(MODEL_NAMES)} ; par défaut {' + '.join(DEFAULT_DOWNLOADS)})")
     parser.add_argument("--tous", action="store_true", help="avec --telecharger-modeles : les télécharge tous")
@@ -53,6 +57,31 @@ def run_tools(args: argparse.Namespace) -> int | None:
         return download_models(list(args.telecharger_modeles) + extra)
     if args.test_mail is not None:
         return test_mail([args.test_mail] if args.test_mail else [])
+    if args.configurer_drive:
+        from .core.drive_sharing import authorize_google_drive, register_cleanup_task
+        config = Config.load(args.config)
+        config.ensure_directories()
+        try:
+            authorize_google_drive(config.base_dir)
+        except Exception as exc:
+            print(f"Connexion Google Drive impossible : {exc}")
+            return 1
+        print("Google Drive est connecté. Le jeton OAuth est conservé dans le dossier local data/.")
+        if register_cleanup_task(config.base_dir, config.config_path):
+            print("Le nettoyage automatique des liens expirés est programmé toutes les heures.")
+        else:
+            print("La tâche Windows n'a pas pu être créée ; le nettoyage sera tenté au prochain démarrage.")
+        return 0
+    if args.cleanup_drive_links:
+        from .core.drive_sharing import DriveShareService
+        config = Config.load(args.config)
+        try:
+            revoked, failed = DriveShareService(config.base_dir).revoke_expired()
+        except Exception as exc:
+            print(f"Nettoyage Google Drive impossible : {exc}")
+            return 1
+        print(f"Nettoyage terminé : {revoked} lien(s) révoqué(s), {failed} à réessayer.")
+        return 1 if failed else 0
     return None
 
 

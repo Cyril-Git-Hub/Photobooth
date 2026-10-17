@@ -11,6 +11,8 @@ if not exist ".venv\Scripts\python.exe" (
 )
 ".venv\Scripts\python.exe" -m pip install -r requirements-build.txt
 if errorlevel 1 goto erreur
+".venv\Scripts\python.exe" -m pip install -r requirements.txt
+if errorlevel 1 goto erreur
 ".venv\Scripts\python.exe" -m PyInstaller --noconfirm --clean photobooth.spec
 if errorlevel 1 goto erreur
 

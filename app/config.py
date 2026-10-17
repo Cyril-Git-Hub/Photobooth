@@ -78,6 +78,9 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "duree_image_ms": "350",
         "pause_derniere_image_ms": "1200",
     },
+    "qr_drive": {
+        "actif": "false",
+    },
     "defis": {
         "actif": "true",
     },
@@ -197,6 +200,10 @@ duree_image_ms = 350
 # Durée de la dernière image si l'option est activée
 pause_derniere_image_ms = 1200
 
+[qr_drive]
+# Partage des photos/GIF par QR code (demande une configuration OAuth Google Drive)
+actif = false
+
 [defis]
 # Proposer le bouton « Défi surprise » dans le parcours
 actif = true
@@ -282,6 +289,7 @@ class Config:
     gif_intervalle_rafale_ms: int = 180
     gif_duree_image_ms: int = 350
     gif_pause_derniere_image_ms: int = 1200
+    qr_drive_actif: bool = False
     defis_actifs: bool = True
     # [sauvegarde]
     dossier_sauvegarde: Path | None = None
@@ -479,6 +487,7 @@ class Config:
             gif_intervalle_rafale_ms=get_int("gif", "intervalle_rafale_ms", 80, 1000),
             gif_duree_image_ms=get_int("gif", "duree_image_ms", 80, 2000),
             gif_pause_derniere_image_ms=get_int("gif", "pause_derniere_image_ms", 300, 5000),
+            qr_drive_actif=get_bool("qr_drive", "actif"),
             defis_actifs=get_bool("defis", "actif"),
             dossier_sauvegarde=(paths.resolve(get_str("sauvegarde", "dossier"), base) if get_str("sauvegarde", "dossier") else None),
             dp_duree=get_int("diaporama", "duree", 2, 60),

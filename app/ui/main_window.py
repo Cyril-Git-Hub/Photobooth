@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 from PyQt6.QtCore import QEvent, QObject, QPoint, QRect, QSize, Qt, QTimer
 from PyQt6.QtGui import QKeySequence, QMouseEvent, QPixmap, QShortcut
@@ -12,6 +13,7 @@ from PyQt6.QtWidgets import (
 
 from ..config import Config
 from ..core.backup import BackupService
+from ..core.drive_sharing import DriveShareService
 from ..core.camera import CameraWorker
 from ..core.events import EventStore
 from ..core.mail_service import MailService
@@ -55,6 +57,18 @@ class MainWindow(QMainWindow):
         self.camera = CameraWorker(config, self)
         self.mail = MailService(config)     # envoi des photos par mail, en arrière-plan
         self.backup = BackupService(config)  # copie des photos validées vers un second dossier (facultatif)
+        self.drive_share = None
+        self.drive_executor = None
+        if config.qr_drive_actif:
+            self.drive_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="drive-share")
+            try:
+                self.drive_share = DriveShareService(config.base_dir)
+                if self.drive_share.is_configured():
+                    cleanup = self.drive_executor.submit(self.drive_share.revoke_expired)
+                    cleanup.add_done_callback(self._log_drive_cleanup_error)
+            except Exception:
+                log.exception("Service QR Google Drive indisponible ; le photobooth continue sans partage QR")
+                self.drive_share = None
         self.slideshow = SlideshowController(config, self, windowed_preview=slideshow_windowed)
         self._segmenter: Segmenter | None = None
         self._segmenter_key: tuple | None = None
@@ -382,4 +396,13 @@ class MainWindow(QMainWindow):
         self.backup.stop()
         self.slideshow.close()
         self.sounds.stop_all()
+        if self.drive_executor is not None:
+            self.drive_executor.shutdown(wait=False, cancel_futures=True)
         super().closeEvent(event)
+
+    @staticmethod
+    def _log_drive_cleanup_error(future) -> None:
+        try:
+            future.result()
+        except Exception:
+            log.exception("Nettoyage automatique des liens Google Drive impossible")

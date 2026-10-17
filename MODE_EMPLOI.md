@@ -124,3 +124,22 @@ Après le délai `inactivite_secondes` de `[general]`, l'écran de veille du th�
 Sur l'écran de résultat, touche une icône pour ajouter l'autocollant au centre de la photo, puis fais-le glisser au doigt pour le placer. Les commandes `−` et `+` changent sa taille, `↶` et `↻` le tournent, et `×` retire l'autocollant sélectionné. Tu peux en ajouter plusieurs. Ils sont intégrés à la photo enregistrée quand tu la valides ; **Recommencer** les abandonne avec la photo.
 
 Les autocollants de départ sont fournis. Pour en ajouter, dépose des images PNG ou WebP transparentes, ou des SVG, dans `autocollants\` à côté de `config.ini`. Le nom du fichier sert d'infobulle.
+
+## QR code de téléchargement
+
+Cette option est **désactivée par défaut** (`[qr_drive] actif = false`). Dans cet état, aucun bouton QR n'apparaît, aucune connexion Google Drive ni aucun téléversement n'est lancé, et l'écran de remerciement garde son fonctionnement habituel.
+
+Pour l'activer ultérieurement, règle `actif = true` dans la section `[qr_drive]` de `config.ini`, puis suis les étapes ci-dessous. Une fois le partage Drive configuré, le bouton **Afficher le QR code** ouvre un QR que l'invité peut scanner ; **Retour à la photo** revient à son résultat. Le QR donne accès au téléchargement de la photo, de la bande photomaton ou du GIF. Les poses individuelles conservées dans `photos\...\poses\` ne sont pas téléversées séparément.
+
+Pour connecter Google Drive une seule fois :
+
+1. Dans Google Cloud Console, crée un projet et active **Google Drive API**.
+2. Configure l'écran de consentement OAuth et ajoute le champ d'application `https://www.googleapis.com/auth/drive.file`. Pour que le jeton reste renouvelable au-delà de 7 jours, mets l'application en statut **En production**. Pour un usage personnel limité à moins de 100 utilisateurs, Google n'exige pas la vérification de l'application ; un avertissement de consentement peut toutefois apparaître. Si tu la laisses en statut **Test**, le jeton de renouvellement expire après 7 jours et le nettoyage automatique mensuel ne pourra plus se connecter sans une nouvelle autorisation.
+3. Crée un identifiant OAuth de type **Application de bureau**, télécharge le fichier JSON et place-le sous `data\google_drive_client.json` à côté de `main.py` (ou de l'exécutable). Ne le committe pas.
+4. Avec la version de développement, ferme la borne puis exécute dans PowerShell : `.venv\Scripts\python.exe main.py --configurer-drive`. Avec la version distribuée, exécute `photobooth-outils.exe --configurer-drive` dans une console.
+5. Dans le navigateur, connecte le compte Google propriétaire du Drive et autorise l'accès. Le jeton de renouvellement est conservé localement dans `data\google_drive_token.json`. Ce dossier est ignoré par Git.
+6. Vérifie que la tâche est enregistrée avec `schtasks /Query /TN PhotoBoothDriveCleanup`.
+
+La commande programme une tâche Windows qui vérifie les liens toutes les heures ; la borne fait aussi une vérification au démarrage. Google Drive ne sait pas appliquer une date d'expiration aux liens publics « toute personne disposant du lien », donc un lien peut rester accessible jusqu'au prochain passage de la tâche après son échéance. Si la tâche n'a pas pu être créée, le nettoyage se fera au prochain démarrage de la borne.
+
+Les fichiers sont déposés dans le dossier Drive `Photo Booth`. Après 30 jours, l'accès public est révoqué, mais le fichier reste dans Drive et continue d'occuper de l'espace. Si le réseau, le quota, Drive ou OAuth est indisponible, le QR est désactivé pour ce résultat ; l'enregistrement local et la mise en file du mail continuent normalement. Toute personne possédant le QR ou le lien peut télécharger le média pendant la période de partage.
