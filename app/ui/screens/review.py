@@ -5,18 +5,19 @@ import logging
 import time
 
 import cv2
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QImage, QMovie, QPixmap
+from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtGui import QIcon, QImage, QMovie, QPixmap
 from PyQt6.QtWidgets import (
-    QApplication, QCheckBox, QGridLayout, QHBoxLayout, QLabel, QMessageBox,
-    QPushButton, QVBoxLayout, QWidget,
+    QApplication, QCheckBox, QFrame, QGridLayout, QHBoxLayout, QLabel, QMessageBox,
+    QPushButton, QScrollArea, QScroller, QToolButton, QVBoxLayout, QWidget,
 )
 
-from ...core import photo_styles, storage
+from ...core import photo_styles, stickers, storage
 from ...core.qt_image import bgr_to_qimage
+from ...core.stickers import StickerAsset
 from ..scale import px
 from ..widgets.big_button import BigButton
-from ..widgets.preview_widget import PreviewWidget
+from ..widgets.sticker_preview import StickerPreview
 from .base import BaseScreen
 
 log = logging.getLogger(__name__)
@@ -26,12 +27,13 @@ class ReviewScreen(BaseScreen):
     def __init__(self, nav) -> None:
         super().__init__(nav)
         self.setObjectName("reviewScreen")
-        self._preview = PreviewWidget()
+        self._preview = StickerPreview()
         self._source = None
         self._subject_mask_cache = None
         self._rendered_cache: dict[str, object] = {}
         self._movie: QMovie | None = None
         self._selected_style = "original"
+        self._sticker_assets: list[StickerAsset] = []
 
         self._title = QLabel("Choisis ton style")
         self._title.setObjectName("heading")
@@ -49,6 +51,48 @@ class ReviewScreen(BaseScreen):
         self._person_only.setEnabled(False)
         self._person_only.toggled.connect(self._show_selection)
         preview_column.addWidget(self._person_only, 0, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        self._sticker_panel = QWidget()
+        sticker_layout = QVBoxLayout(self._sticker_panel)
+        sticker_layout.setContentsMargins(0, 0, 0, 0)
+        sticker_layout.setSpacing(px(4))
+        sticker_title = QLabel("AUTOCOLLANTS · TOUCHE POUR AJOUTER")
+        sticker_title.setObjectName("styleGalleryTitle")
+        sticker_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        sticker_layout.addWidget(sticker_title)
+        self._sticker_host = QWidget()
+        self._sticker_row = QHBoxLayout(self._sticker_host)
+        self._sticker_row.setContentsMargins(px(4), px(2), px(4), px(2))
+        self._sticker_row.setSpacing(px(8))
+        self._sticker_scroll = QScrollArea()
+        self._sticker_scroll.setWidgetResizable(True)
+        self._sticker_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self._sticker_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self._sticker_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._sticker_scroll.setFixedHeight(px(80))
+        self._sticker_scroll.setWidget(self._sticker_host)
+        QScroller.grabGesture(self._sticker_scroll.viewport(), QScroller.ScrollerGestureType.LeftMouseButtonGesture)
+        sticker_layout.addWidget(self._sticker_scroll)
+        sticker_controls = QHBoxLayout()
+        sticker_controls.setSpacing(px(8))
+        for text, accessible, action in (
+            ("−", "Réduire", lambda: self._preview.adjust_selected(scale=0.85)),
+            ("+", "Agrandir", lambda: self._preview.adjust_selected(scale=1.18)),
+            ("↶", "Tourner à gauche", lambda: self._preview.adjust_selected(rotation=-15)),
+            ("↻", "Tourner à droite", lambda: self._preview.adjust_selected(rotation=15)),
+            ("×", "Supprimer l’autocollant", self._preview.remove_selected),
+        ):
+            button = QToolButton()
+            button.setObjectName("photoStickerControl")
+            button.setText(text)
+            button.setAccessibleName(accessible)
+            button.setToolTip(accessible)
+            button.setMinimumSize(px(54), px(46))
+            button.clicked.connect(lambda _checked=False, callback=action: callback())
+            sticker_controls.addWidget(button)
+        sticker_controls.addStretch(1)
+        sticker_layout.addLayout(sticker_controls)
+        preview_column.addWidget(self._sticker_panel)
         preview_host = QWidget()
         preview_host.setLayout(preview_column)
 
@@ -129,6 +173,9 @@ class ReviewScreen(BaseScreen):
 
     def on_enter(self) -> None:
         self._stop_movie()
+        self._preview.clear_stickers()
+        self._sticker_assets = stickers.list_stickers(self.config)
+        self._populate_sticker_row()
         self._source = None
         self._subject_mask_cache = None
         self._rendered_cache.clear()
@@ -147,6 +194,7 @@ class ReviewScreen(BaseScreen):
         if is_gif:
             self._title.setText("Ton GIF animé")
             self._note.setText("Vérifie l'animation, puis valide ou recommence.")
+            self._sticker_panel.hide()
             movie = QMovie(str(path))
             if movie.isValid():
                 self._movie = movie
@@ -157,7 +205,8 @@ class ReviewScreen(BaseScreen):
             return
 
         self._title.setText("Choisis ton style")
-        self._note.setText("Touche un aperçu pour le voir en grand. L'original reste intact jusqu'à validation.")
+        self._note.setText("Touche un aperçu pour le voir en grand. Fais glisser les autocollants pour les placer.")
+        self._sticker_panel.setVisible(bool(self._sticker_assets))
         image = QImage(str(path))
         if image.isNull():
             log.error("Photo illisible : %s", path)
@@ -175,6 +224,27 @@ class ReviewScreen(BaseScreen):
         self._prepare_thumbnails()
         suggested = self.session.challenge_style if self.session.challenge_id else "original"
         self._select_style(suggested if suggested in self._cards else "original")
+
+    def _populate_sticker_row(self) -> None:
+        while self._sticker_row.count():
+            item = self._sticker_row.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+        for asset in self._sticker_assets:
+            image = stickers.load_sticker(asset.path, 160)
+            if image.isNull():
+                continue
+            button = QToolButton()
+            button.setObjectName("photoStickerButton")
+            button.setIcon(QIcon(QPixmap.fromImage(image)))
+            button.setIconSize(QSize(px(58), px(58)))
+            button.setMinimumSize(px(72), px(72))
+            button.setAccessibleName(asset.name)
+            button.setToolTip(asset.name)
+            button.clicked.connect(lambda _checked=False, sticker=asset: self._preview.add_sticker(sticker))
+            self._sticker_row.addWidget(button)
+        self._sticker_row.addStretch(1)
 
     def _prepare_thumbnails(self) -> None:
         if self._source is None:
@@ -289,21 +359,27 @@ class ReviewScreen(BaseScreen):
         style = self._selected_style
         self.session.photo_style = style
         self.session.photo_style_person_only = self._person_only.isChecked() and style != "original"
-        if style != "original":
+        if style != "original" or self._preview.placements:
             try:
-                self._note.setText("Calcul du rendu final en haute résolution…")
+                self._note.setText("Préparation de la photo finale…")
                 QApplication.processEvents()
                 original = storage.load_photo(path)
                 started = time.perf_counter()
-                styled = photo_styles.apply_style(original, style)
-                if self._person_only.isChecked():
-                    mask = self._subject_mask(original)
-                    if mask is None:
-                        return
-                    styled = photo_styles.apply_to_subject(original, styled, mask)
-                storage.replace_photo(path, styled)
-                log.info("Rendu final %s : %.0f ms à %dx%d", style,
-                         (time.perf_counter() - started) * 1000, original.shape[1], original.shape[0])
+                result = original
+                if style != "original":
+                    styled = photo_styles.apply_style(original, style)
+                    if self._person_only.isChecked():
+                        mask = self._subject_mask(original)
+                        if mask is None:
+                            return
+                        styled = photo_styles.apply_to_subject(original, styled, mask)
+                    result = styled
+                if self._preview.placements:
+                    result = stickers.apply_stickers(result, self._preview.placements)
+                storage.replace_photo(path, result)
+                log.info("Rendu photo %s et %d autocollant(s) : %.0f ms à %dx%d", style,
+                         len(self._preview.placements), (time.perf_counter() - started) * 1000,
+                         original.shape[1], original.shape[0])
             except Exception as exc:
                 log.exception("Rendu final du style impossible")
                 QMessageBox.warning(self, "Style photo", f"Le style n'a pas pu être appliqué :\n{exc}")

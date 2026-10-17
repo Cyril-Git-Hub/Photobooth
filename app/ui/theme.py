@@ -59,6 +59,8 @@ QToolButton#virtualMaskButton { border-radius: 10px; padding: 2px; }
 QToolButton#virtualMaskButton:checked { border: 3px solid #ffd166; background: #3b3680; }
 QToolButton#captureChoiceButton { border-radius: 10px; padding: 2px; }
 QToolButton#captureChoiceButton:checked { border: 3px solid #ffd166; background: #3b3680; }
+QToolButton#photoStickerButton { border-radius: 12px; padding: 2px; }
+QToolButton#photoStickerControl { min-width: 54px; min-height: 46px; padding: 2px; font-size: 27px; font-weight: 700; }
 QPushButton#styleCard {
     background: #201d40;
     border: 2px solid rgba(255, 255, 255, 0.18);
