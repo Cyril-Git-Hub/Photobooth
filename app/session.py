@@ -27,6 +27,7 @@ class Session:
     challenge_background_required: bool = False
     challenge_mask: str = ""
     challenge_style: str = ""
+    event_id: str = ""
     photo_source_frame: np.ndarray | None = None  # image caméra sans décor, gardée pour segmenter le sujet au résultat
     photo_style: str = "original"
     photo_style_person_only: bool = False

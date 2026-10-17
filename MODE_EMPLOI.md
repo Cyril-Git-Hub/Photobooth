@@ -106,3 +106,15 @@ En dernier recours, un écran de la borne plus haut que l'écran du PC reste uti
 
 - Les photos sont dans `photos\AAAA-MM-JJ\` (la bande, ou la photo unique) et `photos\AAAA-MM-JJ\poses\` (chaque pose du photomaton).
 - Pour une nouvelle soirée, vide le diaporama (mode admin) ; garde ou supprime les anciennes photos comme tu veux.
+
+## Soirées et planches-contact
+
+Au début de chaque soirée, ouvre le mode administrateur (3 appuis rapides dans le coin supérieur gauche) et choisis **Démarrer une nouvelle soirée**. Cette soirée reste active après minuit et après un redémarrage, jusqu'au démarrage explicite de la suivante. Si une soirée est déjà active, l'application demande confirmation avant de la clôturer.
+
+En fin de soirée ou plus tard, retourne dans le mode administrateur, sélectionne la soirée dans la liste puis choisis **Créer les planches-contact**. Une planche PNG est créée pour chaque invité identifié par son adresse mail, dans `exports\planches-contact\`. Elle inclut les photos uniques, les photos avec cadre, les bandes photomaton (une seule vignette de la bande, sans recompter les poses) et une vignette de la première image de chaque GIF. Le dossier créé s'ouvre automatiquement.
+
+Seules les photos validées pendant une soirée active et associées à une adresse mail sont indexées. Les prises plus anciennes ne sont pas ajoutées rétroactivement. Les médias manquants ou illisibles sont ignorés et signalés après la génération. La base `data\soirees.sqlite3` conserve les associations entre soirée, invité et fichier photo.
+
+## Écran de veille
+
+Après le délai `inactivite_secondes` de `[general]`, l'écran de veille du thème s'affiche. Si l'invité était dans le parcours, la borne revient à l'accueil sous cet écran, sans attendre un second délai. Si elle était déjà à l'accueil, la veille s'affiche directement. Touche l'écran de veille pour révéler l'accueil, puis **Commencer** pour lancer le parcours. Le geste administrateur reste disponible dans le coin supérieur gauche. Mets le délai à `0` pour désactiver le retour automatique et l'écran de veille.

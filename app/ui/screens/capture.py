@@ -482,6 +482,8 @@ class CaptureScreen(BaseScreen):
     def _start_sequence(self) -> None:
         self._total = self._planned_poses()
         self._poses = []
+        active_event = self.nav.events.active_event()
+        self.session.event_id = active_event.id if active_event is not None else ""
         self._start_countdown(self.config.duree_decompte)
 
     def _start_countdown(self, seconds: int) -> None:

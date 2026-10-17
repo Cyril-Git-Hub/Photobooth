@@ -32,7 +32,7 @@ class FormatSelectScreen(BaseScreen):
         self._gif.setObjectName("formatOptionButton")
         self._gif.setMinimumSize(px(255), px(90))
         self._gif.clicked.connect(self._choose_gif)
-        self._challenge = BigButton("Défi surprise")
+        self._challenge = BigButton("Casting/Audition")
         self._challenge.setObjectName("formatOptionButton")
         self._challenge.setMinimumSize(px(255), px(90))
         self._challenge.clicked.connect(lambda: self.nav.go_to("challenge"))
