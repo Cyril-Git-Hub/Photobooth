@@ -36,6 +36,10 @@ class FormatSelectScreen(BaseScreen):
         self._challenge.setObjectName("formatOptionButton")
         self._challenge.setMinimumSize(px(255), px(90))
         self._challenge.clicked.connect(lambda: self.nav.go_to("challenge"))
+        self._guestbook = BigButton("Livre d'or vidéo", "guestbook")
+        self._guestbook.setObjectName("formatOptionButton")
+        self._guestbook.setMinimumSize(px(255), px(90))
+        self._guestbook.clicked.connect(self._choose_guestbook)
 
         back = BigButton("Retour", "secondary")
         back.clicked.connect(lambda: self.nav.go_back())
@@ -55,6 +59,8 @@ class FormatSelectScreen(BaseScreen):
         challenge_row = QHBoxLayout()
         challenge_row.addStretch(1)
         challenge_row.addWidget(self._challenge)
+        challenge_row.addSpacing(px(20))
+        challenge_row.addWidget(self._guestbook)
         challenge_row.addStretch(1)
         footer = QHBoxLayout()
         footer.addStretch(1)
@@ -79,6 +85,9 @@ class FormatSelectScreen(BaseScreen):
         self._strip.setVisible(has_strip)
         self._gif.setVisible(self.config.gif_actif)
         self._challenge.setVisible(self.config.defis_actifs)
+        self._guestbook.setVisible(
+            self.config.livre_or_actif and self.nav.events.active_event() is not None
+        )
 
     def _choose(self, photo_format: str) -> None:
         self.session.photo_format = photo_format
@@ -103,6 +112,17 @@ class FormatSelectScreen(BaseScreen):
         self.session.frame_path = None
         self._clear_challenge()
         self.nav.go_to("gif_options")
+
+    def _choose_guestbook(self) -> None:
+        if not self.config.livre_or_actif:
+            return
+        event = self.nav.events.active_event()
+        if event is None:
+            self._guestbook.hide()
+            return
+        self.session.event_id = event.id
+        self._clear_challenge()
+        self.nav.go_to("guestbook")
 
     def _clear_challenge(self) -> None:
         self.session.challenge_id = ""

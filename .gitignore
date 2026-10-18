@@ -11,6 +11,7 @@ config.ini.bak
 invites.xlsx
 photos/
 data/
+livre-or/
 # OAuth Drive et jetons de connexion (données locales, jamais versionnées)
 google_drive_client.json
 google_drive_token.json

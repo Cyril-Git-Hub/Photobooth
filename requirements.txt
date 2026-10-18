@@ -11,5 +11,7 @@ google-api-python-client
 google-auth-httplib2
 google-auth-oauthlib
 qrcode[pil]
+sounddevice
+av
 
 # PyInstaller reste réservé à la construction de l'exécutable (construire.bat s'en charge).
