@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 PENDING, SENT, FAILED = "pending", "sent", "failed"
 GUEST, ORGANIZER = "guest", "organizer"
 RETRY_DELAYS = (20, 40, 80, 120)    # secondes entre deux essais ; le dernier délai se répète
-MAX_ATTEMPTS = 60                   # au-delà, l'envoi est abandonné (journalisé comme échec)
+_LEGACY_MAX_ATTEMPTS = 60           # seuil utilisé par les anciennes versions avant abandon automatique
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS jobs (
@@ -78,6 +78,14 @@ class MailQueue:
         path.parent.mkdir(parents=True, exist_ok=True)
         with closing(self._connect()) as conn, conn:
             conn.executescript(_SCHEMA)
+            # Les anciennes versions abandonnaient les erreurs temporaires après 60 essais.
+            # Les remettre une fois en file permet à la nouvelle politique sans limite de les reprendre.
+            cursor = conn.execute(
+                "UPDATE jobs SET status = ?, next_attempt_at = ? WHERE status = ? AND attempts >= ?",
+                (PENDING, self._clock(), FAILED, _LEGACY_MAX_ATTEMPTS),
+            )
+            if cursor.rowcount:
+                log.warning("%d envoi(s) précédemment abandonné(s) remis en file d'attente", cursor.rowcount)
 
     def _connect(self) -> sqlite3.Connection:
         # une connexion par opération : sûr entre le thread d'envoi et l'interface
@@ -110,24 +118,20 @@ class MailQueue:
     def mark_failed(self, job_id: int, error: str) -> None:
         """Échec définitif (adresse refusée, identifiants incorrects...) : plus d'essai automatique."""
         with closing(self._connect()) as conn, conn:
-            conn.execute("UPDATE jobs SET status = ?, attempts = attempts + 1, last_error = ? WHERE id = ?",
+            conn.execute("UPDATE jobs SET status = ?, attempts = 0, last_error = ? WHERE id = ?",
                          (FAILED, error, job_id))
 
     def mark_retry(self, job_id: int, error: str, network: bool = False) -> str:
         """Échec temporaire : nouvel essai plus tard. Renvoie l'état résultant.
 
-        Un refus provisoire du serveur compte dans les essais : après MAX_ATTEMPTS, l'envoi est abandonné.
-        Une panne réseau, elle, n'use jamais les essais (`network=True`) : le réseau finira par revenir, et
-        l'envoi attend aussi longtemps qu'il le faut, avec le délai maximal entre deux essais.
+        Les erreurs temporaires sont toujours réessayées ; le délai augmente jusqu'au maximum configuré.
+        `network` est conservé pour les appelants existants et la classification des erreurs.
         """
         with closing(self._connect()) as conn, conn:
             row = conn.execute("SELECT attempts FROM jobs WHERE id = ?", (job_id,)).fetchone()
             previous = row["attempts"] if row else 0
-            if network:
-                attempts = max(previous, min(previous + 1, len(RETRY_DELAYS)))
-            else:
-                attempts = previous + 1
-            status = FAILED if (not network and attempts >= MAX_ATTEMPTS) else PENDING
+            attempts = previous + 1
+            status = PENDING
             conn.execute("UPDATE jobs SET status = ?, attempts = ?, next_attempt_at = ?, last_error = ? WHERE id = ?",
                          (status, attempts, self._clock() + retry_delay(attempts), error, job_id))
         return status

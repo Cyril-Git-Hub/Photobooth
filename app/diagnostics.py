@@ -35,6 +35,8 @@ _LIBRARIES = (   # (module, nom, attribut de version)
     ("numpy", "NumPy", "__version__"),
     ("PIL", "Pillow", "__version__"),
     ("openpyxl", "openpyxl", "__version__"),
+    ("xlrd", "xlrd (.xls)", "__version__"),
+    ("odf", "odfpy (.ods)", "__version__"),
     ("mediapipe", "MediaPipe", "__version__"),
 )
 
@@ -173,11 +175,29 @@ def _check_model(config: Config, probes: Probes) -> Check:
 
 
 def _check_backgrounds(config: Config) -> Check:
-    themes = backgrounds.scan_backgrounds(config.dossier_fonds)
+    from .core.themes import load_theme
+    active = load_theme(config)
+    folder = active.backgrounds if active.backgrounds.exists() else config.dossier_fonds
+    themes = backgrounds.scan_backgrounds(folder)
+    if not themes and folder != config.dossier_fonds:
+        folder = config.dossier_fonds
+        themes = backgrounds.scan_backgrounds(folder)
     count = sum(len(theme.images) for theme in themes)
     if not count:
-        return Check("Décors", WARN, f"aucune image dans {config.dossier_fonds} : seul « Sans décor » fonctionnera")
+        return Check("Décors", WARN, f"aucune image dans {folder} : seul « Sans décor » fonctionnera")
     return Check("Décors", OK, f"{count} image(s) dans {len(themes)} thème(s)")
+
+
+def _check_theme(config: Config) -> Check:
+    manifest = config.dossier_theme / "theme.ini"
+    if not manifest.is_file():
+        return Check("Thème", WARN, f"{config.theme} : manifeste absent ({manifest}); couleurs et textes classiques utilisés")
+    from .core.themes import load_theme
+    active = load_theme(config)
+    detail = f"{active.name} ({manifest}) ; fonds, cadres, visuels et sons dans {active.folder}"
+    if active.screen_frame is not None:
+        detail += f" ; cadre d'interface : {active.screen_frame.name}"
+    return Check("Thème", OK, detail)
 
 
 def _check_guests(config: Config) -> Check:
@@ -251,7 +271,8 @@ def run_checks(config: Config, screen_count: int | None = None, probes: Probes |
     checks += _check_libraries(config, probes)
     checks += _check_folders(config)
     checks += [_check_disk(config, probes), _check_camera(config, probes), _check_model(config, probes),
-               _check_backgrounds(config), _check_guests(config), _check_mail(config, probes), _check_backup(config)]
+               _check_theme(config), _check_backgrounds(config), _check_guests(config), _check_mail(config, probes),
+               _check_backup(config)]
     screens = _check_screens(config, screen_count)
     if screens is not None:
         checks.append(screens)

@@ -17,16 +17,30 @@ class FormatSelectScreen(BaseScreen):
         heading.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self._single = BigButton("Une seule photo")
-        self._single.setMinimumSize(px(420), px(220))
+        self._single.setObjectName("formatOptionButton")
+        self._single.setMinimumSize(px(255), px(90))
         self._single.clicked.connect(lambda: self._choose("single"))
         self._strip = BigButton("Photomaton")
-        self._strip.setMinimumSize(px(420), px(220))
+        self._strip.setObjectName("formatOptionButton")
+        self._strip.setMinimumSize(px(255), px(90))
         self._strip.clicked.connect(lambda: self._choose("strip"))
+        self._framed = BigButton("Photo avec cadre")
+        self._framed.setObjectName("formatOptionButton")
+        self._framed.setMinimumSize(px(255), px(90))
+        self._framed.clicked.connect(self._choose_framed)
+        self._gif = BigButton("GIF animé")
+        self._gif.setObjectName("formatOptionButton")
+        self._gif.setMinimumSize(px(255), px(90))
+        self._gif.clicked.connect(self._choose_gif)
+        self._challenge = BigButton("Casting/Audition")
+        self._challenge.setObjectName("formatOptionButton")
+        self._challenge.setMinimumSize(px(255), px(90))
+        self._challenge.clicked.connect(lambda: self.nav.go_to("challenge"))
+        self._guestbook = BigButton("Livre d'or vidéo", "guestbook")
+        self._guestbook.setObjectName("formatOptionButton")
+        self._guestbook.setMinimumSize(px(255), px(90))
+        self._guestbook.clicked.connect(self._choose_guestbook)
 
-        self._hint = QLabel("")
-        self._hint.setObjectName("note")
-        self._hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._hint.setWordWrap(True)
         back = BigButton("Retour", "secondary")
         back.clicked.connect(lambda: self.nav.go_back())
 
@@ -36,6 +50,18 @@ class FormatSelectScreen(BaseScreen):
         choices.addWidget(self._single)
         choices.addWidget(self._strip)
         choices.addStretch(1)
+        framed_row = QHBoxLayout()
+        framed_row.addStretch(1)
+        framed_row.addWidget(self._framed)
+        framed_row.addSpacing(px(20))
+        framed_row.addWidget(self._gif)
+        framed_row.addStretch(1)
+        challenge_row = QHBoxLayout()
+        challenge_row.addStretch(1)
+        challenge_row.addWidget(self._challenge)
+        challenge_row.addSpacing(px(20))
+        challenge_row.addWidget(self._guestbook)
+        challenge_row.addStretch(1)
         footer = QHBoxLayout()
         footer.addStretch(1)
         footer.addWidget(back)
@@ -47,18 +73,61 @@ class FormatSelectScreen(BaseScreen):
         layout.addWidget(heading)
         layout.addStretch(1)
         layout.addLayout(choices)
-        layout.addWidget(self._hint)
+        layout.addLayout(framed_row)
+        layout.addLayout(challenge_row)
         layout.addStretch(1)
         layout.addLayout(footer)
 
     def on_enter(self) -> None:
         poses = self.config.nb_poses
         has_strip = poses >= 2             # un « photomaton » d'une seule pose n'aurait pas de sens
-        self._strip.setText(f"Photomaton\n{poses} photos en bande")
+        self._strip.setText("Photomaton")
         self._strip.setVisible(has_strip)
-        self._hint.setText(f"Le photomaton prend {poses} photos à la suite : change de position à chaque fois !"
-                           if has_strip else "")
+        self._gif.setVisible(self.config.gif_actif)
+        self._challenge.setVisible(self.config.defis_actifs)
+        self._guestbook.setVisible(
+            self.config.livre_or_actif and self.nav.events.active_event() is not None
+        )
 
     def _choose(self, photo_format: str) -> None:
         self.session.photo_format = photo_format
+        self.session.background_path = None
+        self.session.frame_mode = False
+        self.session.frame_path = None
+        self._clear_challenge()
         self.nav.go_next()
+
+    def _choose_framed(self) -> None:
+        self.session.photo_format = "single"
+        self.session.background_path = None
+        self.session.frame_mode = True
+        self.session.frame_path = None
+        self._clear_challenge()
+        self.nav.go_to("capture")
+
+    def _choose_gif(self) -> None:
+        self.session.photo_format = "gif"
+        self.session.background_path = None
+        self.session.frame_mode = False
+        self.session.frame_path = None
+        self._clear_challenge()
+        self.nav.go_to("gif_options")
+
+    def _choose_guestbook(self) -> None:
+        if not self.config.livre_or_actif:
+            return
+        event = self.nav.events.active_event()
+        if event is None:
+            self._guestbook.hide()
+            return
+        self.session.event_id = event.id
+        self._clear_challenge()
+        self.nav.go_to("guestbook")
+
+    def _clear_challenge(self) -> None:
+        self.session.challenge_id = ""
+        self.session.challenge_title = ""
+        self.session.challenge_instruction = ""
+        self.session.challenge_background_required = False
+        self.session.challenge_mask = ""
+        self.session.challenge_style = ""

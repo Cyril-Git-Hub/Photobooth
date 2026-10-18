@@ -1,10 +1,17 @@
-# Étapes 2 à 6
+# Dépendances de l'application
 PyQt6
 opencv-contrib-python
 numpy
 mediapipe
 Pillow
 openpyxl
+xlrd
+odfpy
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+qrcode[pil]
+sounddevice
+av
 
-# À activer aux étapes suivantes (ne pas installer avant) :
-# pyinstaller             # étape 9 : exécutable
+# PyInstaller reste réservé à la construction de l'exécutable (construire.bat s'en charge).

@@ -1,4 +1,4 @@
-"""« Qui es-tu ? » : liste d'invités (invites.xlsx) avec recherche au clavier tactile."""
+"""« Qui es-tu ? » : liste d'invités avec recherche au clavier tactile."""
 from __future__ import annotations
 
 import logging
@@ -19,7 +19,7 @@ from ..scale import px
 log = logging.getLogger(__name__)
 
 COLUMNS = 3
-EMPTY_LIST = ("La liste d'invités est vide.\nAjoute des lignes dans le fichier invites.xlsx "
+EMPTY_LIST = ("La liste d'invités est vide.\nAjoute des lignes dans le fichier {name} "
               "(colonnes : nom, prénom, mail), puis reviens sur cet écran.")
 
 
@@ -85,7 +85,7 @@ class GuestSelectScreen(BaseScreen):
         self._refresh()
 
     def _load_if_needed(self) -> None:
-        """Relit invites.xlsx s'il a changé depuis le dernier passage (ou si la lecture avait échoué)."""
+        """Relit le fichier configuré s'il a changé depuis le dernier passage (ou si la lecture avait échoué)."""
         path = self.config.fichier_invites
         try:
             stamp = (str(path), path.stat().st_mtime)
@@ -117,7 +117,7 @@ class GuestSelectScreen(BaseScreen):
                 widget.deleteLater()
         matches = search_guests(self._guests, self._query.value)
         if self._error or not matches:
-            text = (self._error or (EMPTY_LIST if not self._guests
+            text = (self._error or (EMPTY_LIST.format(name=self.config.fichier_invites.name) if not self._guests
                                     else f"Aucun invité ne correspond à « {self._query.value} »."))
             message = QLabel(text)
             message.setObjectName("note")

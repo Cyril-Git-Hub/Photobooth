@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import configparser
 import logging
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -34,6 +35,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "resolution_largeur": "1920",
         "resolution_hauteur": "1080",
         "son_active": "true",
+        "son_volume": "70",
         "second_ecran_active": "true",
         "plein_ecran": "true",
         "miroir": "true",
@@ -45,14 +47,17 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "code_admin": "1234",
         "indicateur_organisateur": "true",
         "echelle_interface": "auto",
+        "theme": "classique",
     },
     "chemins": {
         "dossier_photos": "photos",
         "fichier_invites": "invites.xlsx",
         "dossier_fonds": "fonds",
+        "dossier_cadres": "cadres",
         "dossier_modeles": "models",
     },
     "sauvegarde": {
+        "actif": "true",
         "dossier": "",
     },
     "diaporama": {
@@ -65,6 +70,24 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "couleur_fond": "#ffffff",
         "couleur_texte": "#1c1c1c",
     },
+    "gif": {
+        "actif": "true",
+        "limite_mo": "8",
+        "poses_espacees": "5",
+        "poses_rafale": "8",
+        "intervalle_rafale_ms": "180",
+        "duree_image_ms": "350",
+        "pause_derniere_image_ms": "1200",
+    },
+    "qr_drive": {
+        "actif": "false",
+    },
+    "livre_or": {
+        "actif": "false",
+    },
+    "defis": {
+        "actif": "true",
+    },
     "fond_vert": {
         "teinte_min": "35",
         "teinte_max": "85",
@@ -74,6 +97,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "despill": "true",
     },
     "mail": {
+        "actif": "true",
         "smtp_hote": "smtp.gmail.com",
         "smtp_port": "587",
         "expediteur": "",
@@ -106,6 +130,8 @@ camera_index = 0
 resolution_largeur = 1920
 resolution_hauteur = 1080
 son_active = true
+# Volume des effets sonores (0 à 100)
+son_volume = 70
 second_ecran_active = true
 plein_ecran = true
 # Image en miroir (comme devant une glace). S'applique à l'aperçu ET à la photo finale :
@@ -120,7 +146,7 @@ apercu_largeur = 960
 ia_modele = paysage
 # Mettre true si le détourage IA est inversé (la personne disparaît, le fond reste)
 ia_inverser_masque = false
-# Retour automatique à l'accueil après N secondes sans toucher l'écran (0 = désactivé)
+# Écran de veille après N secondes d'inactivité ; dans le parcours, revient aussi à l'accueil (0 = désactivé)
 inactivite_secondes = 60
 # Code du mode administrateur (à changer !)
 code_admin = 1234
@@ -129,15 +155,22 @@ indicateur_organisateur = true
 # Taille de l'interface : auto (adaptée à l'écran) ou un nombre entre 0.4 et 2.0 (1.0 = écran 1920x1080, 0.7 = plus petit).
 # Si des boutons du bas sont coupés, essaie 0.7. Ne prend effet qu'au prochain lancement de la borne.
 echelle_interface = auto
+# Thème visuel chargé depuis themes/<nom>/theme.ini
+theme = classique
 
 [chemins]
 dossier_photos = photos
+# Liste d'invités au format .xlsx, .xls ou .ods
 fichier_invites = invites.xlsx
 dossier_fonds = fonds
+# Dossier des cadres PNG/WebP transparents pour les photos uniques sans décor
+dossier_cadres = cadres
 # Dossier des modèles de détourage IA (téléchargés par tools/telecharger_modele.py)
 dossier_modeles = models
 
 [sauvegarde]
+# Activer la copie automatique (nécessite un dossier configuré ci-dessous)
+actif = true
 # Dossier où recopier automatiquement chaque photo validée : clé USB, disque externe, dossier synchronisé...
 # Laisser vide pour désactiver. Exemple : E:/sauvegarde-photos
 dossier =
@@ -159,6 +192,33 @@ titre =
 couleur_fond = #ffffff
 couleur_texte = #1c1c1c
 
+[gif]
+# Proposer le format GIF animé dans le parcours
+actif = true
+# Taille maximale du fichier final (en Mo)
+limite_mo = 8
+# Nombre d'images en mode poses espacées / rafale courte
+poses_espacees = 5
+poses_rafale = 8
+# Intervalle entre les images d'une rafale (en millisecondes)
+intervalle_rafale_ms = 180
+# Durée d'affichage normale de chaque image (en millisecondes)
+duree_image_ms = 350
+# Durée de la dernière image si l'option est activée
+pause_derniere_image_ms = 1200
+
+[qr_drive]
+# Partage des photos/GIF par QR code (demande une configuration OAuth Google Drive)
+actif = false
+
+[livre_or]
+# Proposer un message vidéo avec son après une photo, pour la soirée active
+actif = false
+
+[defis]
+# Proposer le bouton « Défi surprise » dans le parcours
+actif = true
+
 [fond_vert]
 # Réglages du mode fond_vert (teinte de 0 à 179 : le vert est autour de 60)
 teinte_min = 35
@@ -171,6 +231,7 @@ adoucissement = 2
 despill = true
 
 [mail]
+actif = true
 smtp_hote = smtp.gmail.com
 smtp_port = 587
 expediteur =
@@ -207,6 +268,7 @@ class Config:
     resolution_largeur: int = 1920
     resolution_hauteur: int = 1080
     son_active: bool = True
+    son_volume: int = 70
     second_ecran_active: bool = True
     plein_ecran: bool = True
     miroir: bool = True
@@ -218,17 +280,32 @@ class Config:
     code_admin: str = "1234"
     indicateur_organisateur: bool = True
     echelle_interface: float | None = None      # None : automatique
+    theme: str = "classique"
+    active_theme: object | None = None
     # [chemins]
     dossier_photos: Path = Path("photos")
     fichier_invites: Path = Path("invites.xlsx")
     dossier_fonds: Path = Path("fonds")
+    dossier_cadres: Path = Path("cadres")
     dossier_modeles: Path = Path("models")
     # [photomaton]
     pm_decompte_entre_poses: int = 2
     pm_titre: str = ""
     pm_couleur_fond: str = "#ffffff"
     pm_couleur_texte: str = "#1c1c1c"
+    # [gif]
+    gif_actif: bool = True
+    gif_limite_mo: int = 8
+    gif_poses_espacees: int = 5
+    gif_poses_rafale: int = 8
+    gif_intervalle_rafale_ms: int = 180
+    gif_duree_image_ms: int = 350
+    gif_pause_derniere_image_ms: int = 1200
+    qr_drive_actif: bool = False
+    livre_or_actif: bool = False
+    defis_actifs: bool = True
     # [sauvegarde]
+    sauvegarde_active: bool = True
     dossier_sauvegarde: Path | None = None
     # [diaporama]
     dp_duree: int = 6
@@ -241,6 +318,7 @@ class Config:
     fv_adoucissement: int = 2
     fv_despill: bool = True
     # [mail]
+    mail_actif: bool = True
     smtp_hote: str = "smtp.gmail.com"
     smtp_port: int = 587
     expediteur: str = ""
@@ -258,6 +336,19 @@ class Config:
         return self.base_dir / "logs"
 
     @property
+    def dossier_themes(self) -> Path:
+        return self.base_dir / "themes"
+
+    @property
+    def dossier_theme(self) -> Path:
+        name = self.theme if re.fullmatch(r"[A-Za-z0-9_-]+", self.theme) else "classique"
+        return self.dossier_themes / name
+
+    @property
+    def dossier_masques(self) -> Path:
+        return self.base_dir / "masques"
+
+    @property
     def dossier_donnees(self) -> Path:
         return self.base_dir / "data"
 
@@ -270,6 +361,11 @@ class Config:
     def dossier_exports(self) -> Path:
         """Exports de secours des envois non partis."""
         return self.base_dir / "exports"
+
+    @property
+    def dossier_livre_or(self) -> Path:
+        """Messages vidéo conservés localement par soirée."""
+        return self.base_dir / "livre-or"
 
     @property
     def fichier_diaporama(self) -> Path:
@@ -350,6 +446,10 @@ class Config:
             if echelle is None or not (MIN_MANUAL <= echelle <= MAX_MANUAL):
                 log.warning("[general] echelle_interface invalide (%r) : automatique", raw_scale)
                 echelle = None
+        theme_name = get_str("general", "theme")
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", theme_name):
+            log.warning("[general] theme invalide (%r) : thème classique utilisé", theme_name)
+            theme_name = "classique"
         ia_modele = get_str("general", "ia_modele").lower()
         if ia_modele not in MODEL_NAMES:
             log.warning("[general] ia_modele invalide (%r) : valeur par défaut %s", ia_modele, DEFAULTS["general"]["ia_modele"])
@@ -378,6 +478,7 @@ class Config:
             resolution_largeur=get_int("general", "resolution_largeur", 320, 7680),
             resolution_hauteur=get_int("general", "resolution_hauteur", 240, 4320),
             son_active=get_bool("general", "son_active"),
+            son_volume=get_int("general", "son_volume", 0, 100),
             second_ecran_active=get_bool("general", "second_ecran_active"),
             plein_ecran=get_bool("general", "plein_ecran"),
             miroir=get_bool("general", "miroir"),
@@ -389,14 +490,27 @@ class Config:
             code_admin=get_str("general", "code_admin") or DEFAULTS["general"]["code_admin"],
             indicateur_organisateur=get_bool("general", "indicateur_organisateur"),
             echelle_interface=echelle,
+            theme=theme_name or "classique",
             dossier_photos=get_path("chemins", "dossier_photos"),
             fichier_invites=get_path("chemins", "fichier_invites"),
             dossier_fonds=get_path("chemins", "dossier_fonds"),
+            dossier_cadres=get_path("chemins", "dossier_cadres"),
             dossier_modeles=get_path("chemins", "dossier_modeles"),
             pm_decompte_entre_poses=get_int("photomaton", "decompte_entre_poses", 1, 10),
             pm_titre=get_str("photomaton", "titre"),
             pm_couleur_fond=get_color("photomaton", "couleur_fond"),
             pm_couleur_texte=get_color("photomaton", "couleur_texte"),
+            gif_actif=get_bool("gif", "actif"),
+            gif_limite_mo=get_int("gif", "limite_mo", 1, 50),
+            gif_poses_espacees=get_int("gif", "poses_espacees", 2, 12),
+            gif_poses_rafale=get_int("gif", "poses_rafale", 2, 20),
+            gif_intervalle_rafale_ms=get_int("gif", "intervalle_rafale_ms", 80, 1000),
+            gif_duree_image_ms=get_int("gif", "duree_image_ms", 80, 2000),
+            gif_pause_derniere_image_ms=get_int("gif", "pause_derniere_image_ms", 300, 5000),
+            qr_drive_actif=get_bool("qr_drive", "actif"),
+            livre_or_actif=get_bool("livre_or", "actif"),
+            defis_actifs=get_bool("defis", "actif"),
+            sauvegarde_active=get_bool("sauvegarde", "actif"),
             dossier_sauvegarde=(paths.resolve(get_str("sauvegarde", "dossier"), base) if get_str("sauvegarde", "dossier") else None),
             dp_duree=get_int("diaporama", "duree", 2, 60),
             dp_ordre=ordre,
@@ -406,6 +520,7 @@ class Config:
             fv_valeur_min=get_int("fond_vert", "valeur_min", 0, 255),
             fv_adoucissement=get_int("fond_vert", "adoucissement", 0, 10),
             fv_despill=get_bool("fond_vert", "despill"),
+            mail_actif=get_bool("mail", "actif"),
             smtp_hote=get_str("mail", "smtp_hote"),
             smtp_port=get_int("mail", "smtp_port", 1, 65535),
             expediteur=get_str("mail", "expediteur"),
@@ -431,12 +546,88 @@ class Config:
         fresh = Config.load(self.config_path, self.base_dir)
         self.__dict__.update(fresh.__dict__)
 
+    def save_sound_settings(self, active: bool, volume: int) -> None:
+        """Enregistre les réglages sonores en préservant le reste du fichier de configuration."""
+        volume = max(0, min(100, int(volume)))
+        lines = self.config_path.read_text(encoding="utf-8-sig").splitlines()
+        section_start = next((index for index, line in enumerate(lines)
+                              if re.match(r"^\s*\[general\]\s*(?:[;#].*)?$", line, re.IGNORECASE)), None)
+        if section_start is None:
+            lines.extend(["", "[general]"])
+            section_start = len(lines) - 1
+        section_end = next((index for index in range(section_start + 1, len(lines))
+                            if re.match(r"^\s*\[[^\]]+\]", lines[index])), len(lines))
+        updates = {"son_active": "true" if active else "false", "son_volume": str(volume)}
+        found: set[str] = set()
+        for index in range(section_start + 1, section_end):
+            match = re.match(r"^(\s*)(son_active|son_volume)(\s*=).*$", lines[index], re.IGNORECASE)
+            if match:
+                key = match.group(2).lower()
+                lines[index] = f"{match.group(1)}{key}{match.group(3)} {updates[key]}"
+                found.add(key)
+        insertion = section_end
+        for key, value in updates.items():
+            if key not in found:
+                lines.insert(insertion, f"{key} = {value}")
+                insertion += 1
+        content = "\n".join(lines) + "\n"
+        backup = self.config_path.with_suffix(".ini.bak")
+        temporary = self.config_path.with_suffix(self.config_path.suffix + ".tmp")
+        original = self.config_path.read_bytes()
+        backup.write_bytes(original)
+        temporary.write_text(content, encoding="utf-8")
+        os.replace(temporary, self.config_path)
+        self.son_active = bool(active)
+        self.son_volume = volume
+
+    def save_activation_settings(self, settings: dict[tuple[str, str], bool]) -> None:
+        """Met à jour les interrupteurs de fonctionnalités sans réécrire les autres réglages."""
+        lines = self.config_path.read_text(encoding="utf-8-sig").splitlines()
+        sections: dict[str, dict[str, str]] = {}
+        for (section, key), value in settings.items():
+            sections.setdefault(section, {})[key] = "true" if value else "false"
+
+        for section, updates in sections.items():
+            section_start = next((index for index, line in enumerate(lines)
+                                  if re.match(rf"^\s*\[{re.escape(section)}\]\s*(?:[;#].*)?$", line, re.IGNORECASE)), None)
+            if section_start is None:
+                lines.extend(["", f"[{section}]"])
+                section_start = len(lines) - 1
+            section_end = next((index for index in range(section_start + 1, len(lines))
+                                if re.match(r"^\s*\[[^\]]+\]", lines[index])), len(lines))
+            found: set[str] = set()
+            for index in range(section_start + 1, section_end):
+                match = re.match(r"^(\s*)([^=:#\s]+)(\s*=).*$", lines[index])
+                if match and match.group(2).lower() in updates:
+                    key = match.group(2).lower()
+                    lines[index] = f"{match.group(1)}{key}{match.group(3)} {updates[key]}"
+                    found.add(key)
+            insertion = section_end
+            for key, value in updates.items():
+                if key not in found:
+                    lines.insert(insertion, f"{key} = {value}")
+                    insertion += 1
+
+        content = "\n".join(lines) + "\n"
+        backup = self.config_path.with_suffix(".ini.bak")
+        temporary = self.config_path.with_suffix(self.config_path.suffix + ".tmp")
+        backup.write_bytes(self.config_path.read_bytes())
+        temporary.write_text(content, encoding="utf-8")
+        os.replace(temporary, self.config_path)
+        self.reload()
+
     def ensure_directories(self) -> None:
-        """Crée les dossiers de travail ; au premier lancement, crée aussi les dossiers de thèmes."""
+        """Crée les dossiers de travail, cadres, masques et thèmes par défaut."""
         self.dossier_logs.mkdir(parents=True, exist_ok=True)
         self.dossier_photos.mkdir(parents=True, exist_ok=True)
         self.dossier_modeles.mkdir(parents=True, exist_ok=True)
         self.dossier_donnees.mkdir(parents=True, exist_ok=True)
+        if self.livre_or_actif:
+            self.dossier_livre_or.mkdir(parents=True, exist_ok=True)
+        self.dossier_cadres.mkdir(parents=True, exist_ok=True)
+        self.dossier_masques.mkdir(parents=True, exist_ok=True)
+        for folder in ("fonds", "cadres", "visuels", "sons"):
+            (self.dossier_themes / "classique" / folder).mkdir(parents=True, exist_ok=True)
         if not self.dossier_fonds.exists():
             for theme in THEMES_PAR_DEFAUT:
                 (self.dossier_fonds / theme).mkdir(parents=True, exist_ok=True)

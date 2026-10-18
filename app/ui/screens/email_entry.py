@@ -31,7 +31,7 @@ class EmailEntryScreen(BaseScreen):
         self._error.setObjectName("error")
         self._error.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self._keyboard = VirtualKeyboard(EMAIL_ROWS)
+        self._keyboard = VirtualKeyboard(EMAIL_ROWS, compact=True)
         self._keyboard.text_typed.connect(self._on_text)
         self._keyboard.backspace_pressed.connect(self._on_backspace)
         self._keyboard.clear_pressed.connect(self._on_clear)
@@ -42,16 +42,19 @@ class EmailEntryScreen(BaseScreen):
         self._skip.clicked.connect(lambda: self._on_skip())
         validate = BigButton("Valider")
         validate.clicked.connect(lambda: self._on_validate())
+        for button in (back, self._skip, validate):
+            button.setObjectName("emailNavButton")
+            button.setMinimumSize(px(180), px(60))
         buttons = QHBoxLayout()
-        buttons.setSpacing(px(24))
+        buttons.setSpacing(px(12))
         buttons.addStretch(1)
         for button in (back, self._skip, validate):
             buttons.addWidget(button)
         buttons.addStretch(1)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(px(40), px(24), px(40), px(24))
-        layout.setSpacing(px(10))
+        layout.setContentsMargins(px(24), px(12), px(24), px(12))
+        layout.setSpacing(px(5))
         layout.addWidget(self._heading)
         layout.addWidget(self._note)
         layout.addWidget(self._field)

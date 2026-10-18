@@ -11,11 +11,34 @@ config.ini.bak
 invites.xlsx
 photos/
 data/
+livre-or/
+# OAuth Drive et jetons de connexion (données locales, jamais versionnées)
+google_drive_client.json
+google_drive_token.json
+google_drive_state.json
+google_drive_shares.sqlite3*
 logs/
 exports/
 debug/
 fonds/*
 !fonds/.gitkeep
+cadres/*
+!cadres/.gitkeep
+masques/*
+!masques/.gitkeep
+
+# Médias de thèmes personnalisés ; les manifestes et dossiers classiques restent versionnés
+themes/*/fonds/*
+!themes/*/fonds/.gitkeep
+themes/*/cadres/*
+!themes/*/cadres/.gitkeep
+themes/*/visuels/*
+!themes/*/visuels/.gitkeep
+themes/*/sons/*
+!themes/*/sons/.gitkeep
+!themes/classique/sons/compte_a_rebours.wav
+!themes/classique/sons/declencheur.wav
+!themes/classique/sons/reussite.wav
 
 # Modèles IA (téléchargés par photobooth-outils --telecharger-modeles)
 models/*.tflite

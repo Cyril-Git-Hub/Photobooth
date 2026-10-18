@@ -42,10 +42,27 @@ le masque et le temps de calcul.
 
 ## Liste d'invités
 
-`invites.xlsx` (à côté de `main.py`, créé vide au premier lancement) : la première ligne contient les titres `nom`, `prénom`, `mail`,
+Le fichier de la liste d'invités, configuré par `[chemins] fichier_invites`, peut être `.xlsx`, `.xls` ou `.ods` (par défaut `invites.xlsx`). La première ligne contient les titres `nom`, `prénom`, `mail`,
 puis une ligne par invité (le mail peut rester vide : l'invité le saisira). Le fichier est relu à chaque passage sur l'écran « Qui es-tu ? »
-s'il a changé ; ferme-le dans Excel avant de lancer le logiciel. L'invité peut chercher son nom au clavier tactile, ou choisir
+s'il a changé ; ferme-le dans ton tableur avant de lancer le logiciel. L'invité peut chercher son nom au clavier tactile, ou choisir
 « Je ne suis pas dans la liste ». Réglage `obligatoire` de `[mail]` : `true` supprime le bouton « Passer » de l'écran du mail.
+
+## Thèmes
+
+Le thème actif se choisit avec `theme = classique` dans `[general]` de `config.ini`. Chaque thème est un dossier sous `themes/` contenant
+un `theme.ini` et, au besoin, les sous-dossiers `fonds/`, `cadres/`, `visuels/` et `sons/`. Le dossier `sons/` accepte les WAV `compte_a_rebours.wav`, `declencheur.wav` et `reussite.wav`. Le manifeste permet de régler les couleurs,
+le titre et le texte d'accueil, le nom de l'application et le modèle de mail. Les images d'accueil, le logo et un cadre d'interface PNG/WebP
+transparent (avec le centre évidé, idéalement au format 16:9) sont facultatifs et se déclarent dans `[ressources]` avec un chemin relatif au thème,
+par exemple `cadre_interface = visuels/cadre-film.png`. Le cadre complet reste au premier plan sur les écrans du parcours, dont le contenu apparaît par son ouverture transparente ; il est masqué pendant la prise de vue.
+Le thème classique reprend les couleurs actuelles. Les anciennes ressources `fonds/`
+et `cadres/` à la racine restent utilisées si les dossiers du thème ne contiennent aucune image.
+
+Pour créer un thème, copie `themes/classique/`, renomme le dossier, modifie son `theme.ini`, puis sélectionne son nom dans `config.ini`.
+Les modifications sont prises en compte au démarrage ou avec **Recharger la configuration** dans le mode administrateur.
+
+## Cadres photo
+
+Dépose des images PNG ou WebP avec transparence dans `cadres/`. Le bouton « Photo avec cadre » ouvre la caméra sans décor ; l'invité peut choisir un cadre et voir le rendu en direct avant la prise. Une image au même format que la photo (16:9 par défaut) remplit le mieux l'aperçu.
 
 ## config.ini se complète tout seul
 
@@ -80,13 +97,20 @@ python tools\tester_mail.py
 ```
 
 Chaque photo donne un envoi à l'invité et un envoi à l'organisateur, mis en file d'attente (`data/envois.sqlite3`) et partis en arrière-plan : l'invité n'attend jamais le réseau.
-Sans connexion, les envois restent en attente et repartent seuls dès que le réseau revient, même après un redémarrage du logiciel. Les photos sont toujours enregistrées dans `photos/`.
+Sans connexion ou lors d'un refus temporaire du serveur, les envois restent en attente et repartent seuls dès que possible, même après un redémarrage du logiciel. Le délai entre essais est plafonné à deux minutes, sans limite du nombre d'essais. Les erreurs définitives restent signalées pour intervention dans le mode administrateur. Les photos sont toujours enregistrées dans `photos/`.
 `objet` et `message` (avec `{prenom}`, `{nom}`, `{salutation}`, `{titre}`, `{date}` et `\n` pour un retour à la ligne) personnalisent le mail de l'invité.
 Le mode administrateur affiche l'état des envois et permet de renvoyer ceux en échec. Gmail limite à environ 500 mails par jour.
 
 ## Mode photomaton
 
 L'invité choisit « Une seule photo » ou « Photomaton » : `nb_poses` photos (4 par défaut) prises à la suite, avec un décompte avant chacune (`duree_decompte` pour la première, `decompte_entre_poses` ensuite), puis assemblées en une bande verticale avec un titre et la date (section `[photomaton]` de `config.ini` : titre, couleurs). La bande est enregistrée dans `photos/AAAA-MM-JJ/` et les poses individuelles dans `photos/AAAA-MM-JJ/poses/`.
+
+## Styles photo
+
+Sur l'écran de résultat, l'invité peut comparer l'original à cinq rendus OpenCV : bande dessinée, croquis, aquarelle, pop-art et manga noir et blanc. Il peut appliquer le style à toute l'image, ou au sujet seul si le détourage est disponible. Les aperçus réduits sont chronométrés dans le journal ; le rendu final est calculé à pleine résolution après validation.
+## GIF animé
+
+Le format « GIF animé » propose des poses espacées ou une rafale courte, puis une boucle, un boomerang, un rendu accéléré ou ralenti, avec une pause finale facultative. Le GIF est aperçu avant validation, affiché en animation dans le diaporama et joint aux mails. Les réglages de `[gif]` dans `config.ini` activent le format, définissent le nombre d'images, le rythme et la taille maximale (8 Mo par défaut) ; l'application réduit la résolution et la palette pour respecter cette limite.
 
 ## Fluidité de l'aperçu
 

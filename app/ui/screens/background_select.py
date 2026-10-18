@@ -34,6 +34,8 @@ class BackgroundSelectScreen(BaseScreen):
         self._themes: list[backgrounds.Theme] = []
         self._current = 0
         self._icons: dict[tuple[str, float], QIcon] = {}   # miniatures déjà calculées
+        self._challenge_requires_background = False
+        self._empty_text = EMPTY_TEXT
 
         heading = QLabel("Choisis ton décor")
         heading.setObjectName("heading")
@@ -52,16 +54,16 @@ class BackgroundSelectScreen(BaseScreen):
         # défilement au doigt (glisser) sur l'écran tactile
         QScroller.grabGesture(self._scroll.viewport(), QScroller.ScrollerGestureType.LeftMouseButtonGesture)
 
-        back = BigButton("Retour", "secondary")
-        back.clicked.connect(lambda: self.nav.go_back())
-        none = BigButton("Sans décor", "secondary")
-        none.clicked.connect(lambda: self._no_background())
+        self._back = BigButton("Retour", "secondary")
+        self._back.clicked.connect(self._go_back)
+        self._none = BigButton("Sans décor", "secondary")
+        self._none.clicked.connect(lambda: self._no_background())
         surprise = BigButton("Surprends-moi !")
         surprise.clicked.connect(lambda: self._surprise())
         buttons = QHBoxLayout()
         buttons.setSpacing(px(30))
         buttons.addStretch(1)
-        for button in (back, none, surprise):
+        for button in (self._back, self._none, surprise):
             buttons.addWidget(button)
         buttons.addStretch(1)
 
@@ -76,7 +78,16 @@ class BackgroundSelectScreen(BaseScreen):
     # ---------- affichage ----------
 
     def on_enter(self) -> None:
-        self._themes = backgrounds.scan_backgrounds(self.config.dossier_fonds)   # relu à chaque passage
+        self._challenge_requires_background = bool(
+            self.session.challenge_id and self.session.challenge_background_required)
+        self._none.setVisible(not self._challenge_requires_background)
+        folder = self.nav.theme.backgrounds if self.nav.theme and self.nav.theme.backgrounds.exists() else self.config.dossier_fonds
+        self._themes = backgrounds.scan_backgrounds(folder)   # relu à chaque passage
+        if not self._themes and folder != self.config.dossier_fonds:
+            self._themes = backgrounds.scan_backgrounds(self.config.dossier_fonds)
+        self._empty_text = (
+            "Ce défi nécessite un décor. Ajoute une image dans le dossier « fonds », puis reviens sur cet écran."
+            if self._challenge_requires_background else EMPTY_TEXT)
         if self._current >= len(self._themes):
             self._current = 0
         self._build_tabs()
@@ -107,7 +118,7 @@ class BackgroundSelectScreen(BaseScreen):
     def _build_grid(self) -> None:
         self._clear(self._grid)
         if not self._themes:
-            empty = QLabel(EMPTY_TEXT)
+            empty = QLabel(self._empty_text)
             empty.setObjectName("note")
             empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
             empty.setWordWrap(True)
@@ -155,7 +166,10 @@ class BackgroundSelectScreen(BaseScreen):
 
     def _choose(self, path: Path) -> None:
         self.session.background_path = path
-        self.nav.go_next()
+        if self.session.challenge_id:
+            self.nav.go_to("gif_options" if self.session.photo_format == "gif" else "capture")
+        else:
+            self.nav.go_next()
 
     def _surprise(self) -> None:
         path = backgrounds.random_background(self._themes)
@@ -163,5 +177,13 @@ class BackgroundSelectScreen(BaseScreen):
             self._choose(path)
 
     def _no_background(self) -> None:
+        if self._challenge_requires_background:
+            return
         self.session.background_path = None
         self.nav.go_next()
+
+    def _go_back(self) -> None:
+        if self.session.challenge_id:
+            self.nav.go_to("challenge")
+        else:
+            self.nav.go_back()

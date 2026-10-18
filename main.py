@@ -17,6 +17,7 @@ from app.logger import setup_logging
 from app.ui.main_window import MainWindow
 from app.ui import scale
 from app.ui.theme import build_stylesheet
+from app.core.themes import load_theme
 
 log = logging.getLogger("photobooth")
 EXIT_OK, EXIT_ERROR = 0, 1
@@ -36,12 +37,14 @@ def _run_app(args) -> int:
     complete_missing(config_path)      # ajoute les réglages apparus dans les nouvelles versions
     config = Config.load(args.config)
     config.ensure_directories()
+    config.active_theme = load_theme(config)
     guests.ensure_template(config.fichier_invites)
 
     app = QApplication.instance() or QApplication(sys.argv)
     icon = paths.resource_path("assets/photobooth.ico")
     if icon.is_file():
         app.setWindowIcon(QIcon(str(icon)))
+    app.setApplicationName(config.active_theme.app_title)
 
     if args.autotest:
         report, code = diagnostics.run(config, len(app.screens()))
@@ -65,7 +68,7 @@ def _run_app(args) -> int:
     log.info("Démarrage de Photo Booth %s (détourage=%s, poses=%d)", __version__, config.mode_detourage, config.nb_poses)
     power.prevent_sleep(True)          # ni veille ni écran éteint pendant la soirée
     try:
-        app.setStyleSheet(build_stylesheet())
+        app.setStyleSheet(build_stylesheet(theme=config.active_theme))
         window = MainWindow(config, fullscreen=config.plein_ecran and not args.windowed,
                             slideshow_windowed=args.diaporama_fenetre)
         window.show()
