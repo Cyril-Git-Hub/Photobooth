@@ -55,12 +55,13 @@
 
 ## Mode administrateur
 
-Touche **3 fois, vite, le coin en haut à gauche** de l'écran, puis tape le code. Tu peux :
+Touche **5 fois rapidement le coin en haut à gauche** de l'écran, puis tape le code. Tu peux :
 - voir l'état des mails (en attente, envoyés, en échec) et de la sauvegarde ;
+- ouvrir **Gérer les activations** pour couper/rétablir les mails, la sauvegarde (si un dossier est configuré), le GIF, Casting/Audition, le QR code, le livre d'or, le diaporama secondaire et les effets sonores. Les messages mail déjà en attente sont suspendus pendant la désactivation et reprendront si tu réactives l'envoi ;
 - **réessayer maintenant** les mails et la sauvegarde, ou **exporter** les envois non partis (voir ci-dessus) ;
 - voir l'état du diaporama et le **vider** pour une nouvelle soirée (les photos restent dans `photos\`) ;
 - **recharger la configuration** après avoir modifié `config.ini` ;
-- couper les effets sonores et régler leur volume ;
+- régler le volume des effets sonores ;
 - **quitter** la borne.
 
 Avec un clavier : `Ctrl + Maj + Q`.
@@ -124,6 +125,14 @@ Après le délai `inactivite_secondes` de `[general]`, l'écran de veille du th�
 Sur l'écran de résultat, touche une icône pour ajouter l'autocollant au centre de la photo, puis fais-le glisser au doigt pour le placer. Les commandes `−` et `+` changent sa taille, `↶` et `↻` le tournent, et `×` retire l'autocollant sélectionné. Tu peux en ajouter plusieurs. Ils sont intégrés à la photo enregistrée quand tu la valides ; **Recommencer** les abandonne avec la photo.
 
 Les autocollants de départ sont fournis. Pour en ajouter, dépose des images PNG ou WebP transparentes, ou des SVG, dans `autocollants\` à côté de `config.ini`. Le nom du fichier sert d'infobulle.
+
+## Livre d'or vidéo
+
+L'option est désactivée par défaut. Pour la proposer, règle la section [livre_or] sur actif = true dans config.ini et démarre une soirée depuis le mode administrateur. Le bouton **Livre d'or vidéo**, d'une couleur distincte, apparaît dans le menu de choix du format uniquement pendant une soirée active.
+
+Avant chaque enregistrement, l'écran explique que la vidéo et la voix seront gardées sur cet ordinateur, consultables et exportables par l'organisateur. L'invité doit accepter puis toucher **Enregistrer mon message** ; l'enregistrement s'arrête au bout de 15 secondes maximum ou au toucher de **Terminer l'enregistrement**. Un microphone par défaut doit être disponible dans Windows. Si la caméra, le micro ou l'espace disque manque (moins de 200 Mo libres), le message n'est pas enregistré et le parcours photo reste intact.
+
+Les vidéos MP4 sont conservées dans le dossier livre-or\<identifiant-de-soirée>\, sans association à l'adresse mail. Depuis le mode administrateur, sélectionne la soirée et utilise **Ouvrir les vidéos du livre d'or** pour les consulter ou les copier vers un autre emplacement. **Supprimer les vidéos de la soirée** les efface définitivement après confirmation. Elles ne sont pas supprimées automatiquement.
 
 ## QR code de téléchargement
 

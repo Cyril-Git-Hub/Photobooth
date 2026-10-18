@@ -40,6 +40,12 @@ QPushButton[variant="danger"] {
     color: white; border-color: rgba(255, 255, 255, 0.2);
 }
 QPushButton[variant="danger"]:pressed { background: #8c1d18; }
+QPushButton[variant="guestbook"] {
+    background: #ffd166;
+    color: #0b0a1a;
+    border-color: rgba(255, 209, 102, 0.7);
+}
+QPushButton[variant="guestbook"]:pressed { background: #ffb347; }
 
 QPushButton[variant="key"]         { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3b3680, stop:1 #2b2757); color: #f4f1ff; border-radius: 14px; padding: 6px 4px; font-size: 30px; font-weight: 600; }
 QPushButton[variant="key"]:pressed { background: #ff4d8d; }

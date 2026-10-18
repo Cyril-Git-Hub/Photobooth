@@ -57,6 +57,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "dossier_modeles": "models",
     },
     "sauvegarde": {
+        "actif": "true",
         "dossier": "",
     },
     "diaporama": {
@@ -81,6 +82,9 @@ DEFAULTS: dict[str, dict[str, str]] = {
     "qr_drive": {
         "actif": "false",
     },
+    "livre_or": {
+        "actif": "false",
+    },
     "defis": {
         "actif": "true",
     },
@@ -93,6 +97,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "despill": "true",
     },
     "mail": {
+        "actif": "true",
         "smtp_hote": "smtp.gmail.com",
         "smtp_port": "587",
         "expediteur": "",
@@ -164,6 +169,8 @@ dossier_cadres = cadres
 dossier_modeles = models
 
 [sauvegarde]
+# Activer la copie automatique (nécessite un dossier configuré ci-dessous)
+actif = true
 # Dossier où recopier automatiquement chaque photo validée : clé USB, disque externe, dossier synchronisé...
 # Laisser vide pour désactiver. Exemple : E:/sauvegarde-photos
 dossier =
@@ -204,6 +211,10 @@ pause_derniere_image_ms = 1200
 # Partage des photos/GIF par QR code (demande une configuration OAuth Google Drive)
 actif = false
 
+[livre_or]
+# Proposer un message vidéo avec son après une photo, pour la soirée active
+actif = false
+
 [defis]
 # Proposer le bouton « Défi surprise » dans le parcours
 actif = true
@@ -220,6 +231,7 @@ adoucissement = 2
 despill = true
 
 [mail]
+actif = true
 smtp_hote = smtp.gmail.com
 smtp_port = 587
 expediteur =
@@ -290,8 +302,10 @@ class Config:
     gif_duree_image_ms: int = 350
     gif_pause_derniere_image_ms: int = 1200
     qr_drive_actif: bool = False
+    livre_or_actif: bool = False
     defis_actifs: bool = True
     # [sauvegarde]
+    sauvegarde_active: bool = True
     dossier_sauvegarde: Path | None = None
     # [diaporama]
     dp_duree: int = 6
@@ -304,6 +318,7 @@ class Config:
     fv_adoucissement: int = 2
     fv_despill: bool = True
     # [mail]
+    mail_actif: bool = True
     smtp_hote: str = "smtp.gmail.com"
     smtp_port: int = 587
     expediteur: str = ""
@@ -346,6 +361,11 @@ class Config:
     def dossier_exports(self) -> Path:
         """Exports de secours des envois non partis."""
         return self.base_dir / "exports"
+
+    @property
+    def dossier_livre_or(self) -> Path:
+        """Messages vidéo conservés localement par soirée."""
+        return self.base_dir / "livre-or"
 
     @property
     def fichier_diaporama(self) -> Path:
@@ -488,7 +508,9 @@ class Config:
             gif_duree_image_ms=get_int("gif", "duree_image_ms", 80, 2000),
             gif_pause_derniere_image_ms=get_int("gif", "pause_derniere_image_ms", 300, 5000),
             qr_drive_actif=get_bool("qr_drive", "actif"),
+            livre_or_actif=get_bool("livre_or", "actif"),
             defis_actifs=get_bool("defis", "actif"),
+            sauvegarde_active=get_bool("sauvegarde", "actif"),
             dossier_sauvegarde=(paths.resolve(get_str("sauvegarde", "dossier"), base) if get_str("sauvegarde", "dossier") else None),
             dp_duree=get_int("diaporama", "duree", 2, 60),
             dp_ordre=ordre,
@@ -498,6 +520,7 @@ class Config:
             fv_valeur_min=get_int("fond_vert", "valeur_min", 0, 255),
             fv_adoucissement=get_int("fond_vert", "adoucissement", 0, 10),
             fv_despill=get_bool("fond_vert", "despill"),
+            mail_actif=get_bool("mail", "actif"),
             smtp_hote=get_str("mail", "smtp_hote"),
             smtp_port=get_int("mail", "smtp_port", 1, 65535),
             expediteur=get_str("mail", "expediteur"),
@@ -557,12 +580,50 @@ class Config:
         self.son_active = bool(active)
         self.son_volume = volume
 
+    def save_activation_settings(self, settings: dict[tuple[str, str], bool]) -> None:
+        """Met à jour les interrupteurs de fonctionnalités sans réécrire les autres réglages."""
+        lines = self.config_path.read_text(encoding="utf-8-sig").splitlines()
+        sections: dict[str, dict[str, str]] = {}
+        for (section, key), value in settings.items():
+            sections.setdefault(section, {})[key] = "true" if value else "false"
+
+        for section, updates in sections.items():
+            section_start = next((index for index, line in enumerate(lines)
+                                  if re.match(rf"^\s*\[{re.escape(section)}\]\s*(?:[;#].*)?$", line, re.IGNORECASE)), None)
+            if section_start is None:
+                lines.extend(["", f"[{section}]"])
+                section_start = len(lines) - 1
+            section_end = next((index for index in range(section_start + 1, len(lines))
+                                if re.match(r"^\s*\[[^\]]+\]", lines[index])), len(lines))
+            found: set[str] = set()
+            for index in range(section_start + 1, section_end):
+                match = re.match(r"^(\s*)([^=:#\s]+)(\s*=).*$", lines[index])
+                if match and match.group(2).lower() in updates:
+                    key = match.group(2).lower()
+                    lines[index] = f"{match.group(1)}{key}{match.group(3)} {updates[key]}"
+                    found.add(key)
+            insertion = section_end
+            for key, value in updates.items():
+                if key not in found:
+                    lines.insert(insertion, f"{key} = {value}")
+                    insertion += 1
+
+        content = "\n".join(lines) + "\n"
+        backup = self.config_path.with_suffix(".ini.bak")
+        temporary = self.config_path.with_suffix(self.config_path.suffix + ".tmp")
+        backup.write_bytes(self.config_path.read_bytes())
+        temporary.write_text(content, encoding="utf-8")
+        os.replace(temporary, self.config_path)
+        self.reload()
+
     def ensure_directories(self) -> None:
         """Crée les dossiers de travail, cadres, masques et thèmes par défaut."""
         self.dossier_logs.mkdir(parents=True, exist_ok=True)
         self.dossier_photos.mkdir(parents=True, exist_ok=True)
         self.dossier_modeles.mkdir(parents=True, exist_ok=True)
         self.dossier_donnees.mkdir(parents=True, exist_ok=True)
+        if self.livre_or_actif:
+            self.dossier_livre_or.mkdir(parents=True, exist_ok=True)
         self.dossier_cadres.mkdir(parents=True, exist_ok=True)
         self.dossier_masques.mkdir(parents=True, exist_ok=True)
         for folder in ("fonds", "cadres", "visuels", "sons"):

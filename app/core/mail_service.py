@@ -94,6 +94,8 @@ class MailService:
     def enqueue_photo(self, photo_path: Path, first_name: str = "", last_name: str = "",
                       guest_email: str = "") -> EnqueueResult:
         """Met la photo en file pour l'invité (s'il a une adresse valide) et pour l'organisateur."""
+        if not self._config.mail_actif:
+            return EnqueueResult(False, False, self._sender.configured)
         guest = normalize_email(guest_email)
         organizer = normalize_email(self._config.adresse_organisateur)
         guest_ok = bool(guest) and is_valid_email(guest)
@@ -147,7 +149,7 @@ class MailService:
     # ---------- vérification du réseau ----------
 
     def _probe_if_due(self) -> None:
-        if not self._sender.configured:
+        if not self._config.mail_actif or not self._sender.configured:
             return
         now = self._clock()
         if self._last_probe is not None and now - self._last_probe < self._probe_interval:
@@ -161,6 +163,8 @@ class MailService:
 
         Un envoi réel reste l'arbitre : si le réseau est revenu alors que des envois attendent, on les relance tout de suite
         et c'est leur résultat qui décide ; sans envoi en attente, on passe directement à « en ligne »."""
+        if not self._config.mail_actif:
+            return
         settings = MailSettings.from_config(self._config)
         if not self._probe_fn(settings.host, settings.port):
             if self._online is not False:
@@ -179,7 +183,7 @@ class MailService:
     def process_due(self) -> int:
         """Tente les envois dont l'heure est venue. Renvoie le nombre de mails partis."""
         sender = self._sender
-        if not sender.configured:
+        if not self._config.mail_actif or not sender.configured:
             return 0
         sent = 0
         while not self._stop.is_set():

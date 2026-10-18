@@ -6,7 +6,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 from PyQt6.QtCore import QEvent, QObject, QPoint, QRect, QSize, Qt, QTimer
-from PyQt6.QtGui import QKeySequence, QMouseEvent, QPixmap, QShortcut
+from PyQt6.QtGui import QKeySequence, QMouseEvent, QPixmap, QShortcut, QTouchEvent
 from PyQt6.QtWidgets import (
     QApplication, QFrame, QLabel, QMainWindow, QScrollArea, QScroller, QStackedLayout, QStackedWidget, QWidget,
 )
@@ -30,10 +30,10 @@ from .screens.base import BaseScreen
 
 log = logging.getLogger(__name__)
 
-FLOW = [name for name in SCREENS if name not in {"gif_options", "challenge"}]  # écrans hors parcours linéaire
-ADMIN_CORNER = QRect(0, 0, 120, 120)       # coin haut gauche
-ADMIN_TAPS = 3                             # 3 appuis dans le coin...
-ADMIN_WINDOW_S = 3.0                       # ...en moins de 3 secondes
+FLOW = [name for name in SCREENS if name not in {"gif_options", "challenge", "guestbook"}]  # écrans hors parcours linéaire
+ADMIN_TAPS = 5                             # 5 appuis distincts dans le coin...
+ADMIN_WINDOW_S = 5.0                       # ...en moins de 5 secondes
+ADMIN_TAP_DEBOUNCE_S = 0.15                # ignore l'événement souris synthétisé après un toucher
 _ACTIVITY_EVENTS = {
     QEvent.Type.MouseButtonPress,
     QEvent.Type.TouchBegin,
@@ -51,6 +51,7 @@ class MainWindow(QMainWindow):
         self.session = Session()
         self.current_name = ""
         self._admin_taps: list[float] = []
+        self._last_admin_tap = 0.0
         # La caméra vit aussi longtemps qu'un invité est dans le parcours : elle démarre à l'écran
         # de prise de vue et s'arrête au retour à l'accueil (voir go_to). Créée avant les écrans
         # car ils s'abonnent à ses signaux.
@@ -59,16 +60,7 @@ class MainWindow(QMainWindow):
         self.backup = BackupService(config)  # copie des photos validées vers un second dossier (facultatif)
         self.drive_share = None
         self.drive_executor = None
-        if config.qr_drive_actif:
-            self.drive_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="drive-share")
-            try:
-                self.drive_share = DriveShareService(config.base_dir)
-                if self.drive_share.is_configured():
-                    cleanup = self.drive_executor.submit(self.drive_share.revoke_expired)
-                    cleanup.add_done_callback(self._log_drive_cleanup_error)
-            except Exception:
-                log.exception("Service QR Google Drive indisponible ; le photobooth continue sans partage QR")
-                self.drive_share = None
+        self.ensure_drive_service()
         self.slideshow = SlideshowController(config, self, windowed_preview=slideshow_windowed)
         self._segmenter: Segmenter | None = None
         self._segmenter_key: tuple | None = None
@@ -179,6 +171,35 @@ class MainWindow(QMainWindow):
         if home is not None and hasattr(home, "apply_theme"):
             home.apply_theme(self.theme)
 
+    def ensure_drive_service(self) -> bool:
+        """Prépare le service QR lorsqu'il vient d'être activé dans l'administration."""
+        if not self.config.qr_drive_actif or self.drive_share is not None:
+            return self.drive_share is not None
+        if self.drive_executor is None:
+            self.drive_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="drive-share")
+        try:
+            self.drive_share = DriveShareService(self.config.base_dir)
+            if self.drive_share.is_configured():
+                cleanup = self.drive_executor.submit(self.drive_share.revoke_expired)
+                cleanup.add_done_callback(self._log_drive_cleanup_error)
+            return True
+        except Exception:
+            log.exception("Service QR Google Drive indisponible ; le photobooth continue sans partage QR")
+            self.drive_share = None
+            return False
+
+    def apply_activation_settings(self) -> bool:
+        """Applique immédiatement les options modifiées depuis le menu admin."""
+        self.mail.reload_settings()
+        self.sounds.reload()
+        self.backup.retry_now()
+        self.slideshow.reload()
+        drive_ready = self.ensure_drive_service() if self.config.qr_drive_actif else True
+        if self.current_name == "format_select":
+            self._screens[self.current_name].on_enter()
+        self._refresh_badge()
+        return drive_ready
+
     def _warm_up(self) -> None:
         try:
             self.get_segmenter()
@@ -267,7 +288,7 @@ class MainWindow(QMainWindow):
     def _start_from_screensaver(self, position: QPoint) -> None:
         if not self._screensaver.isVisible():
             return
-        if ADMIN_CORNER.contains(position):
+        if self._admin_corner_rect().contains(position):
             return  # garde le geste d'ouverture du mode administrateur disponible
         self._screensaver.hide()
         self._apply_screen_frame_mode()
@@ -295,17 +316,29 @@ class MainWindow(QMainWindow):
         etype = event.type()
         if etype in _ACTIVITY_EVENTS:
             self._restart_inactivity()
-        if (etype == QEvent.Type.MouseButtonPress and isinstance(event, QMouseEvent)
-                and isinstance(obj, QWidget) and obj.window() is self):
-            self._check_admin_gesture(event)
+        if isinstance(obj, QWidget) and obj.window() is self:
+            if (etype == QEvent.Type.MouseButtonPress and isinstance(event, QMouseEvent)
+                    and event.button() == Qt.MouseButton.LeftButton):
+                self._check_admin_gesture(event.globalPosition().toPoint())
+            elif etype == QEvent.Type.TouchBegin and isinstance(event, QTouchEvent) and event.points():
+                self._check_admin_gesture(event.points()[0].globalPosition().toPoint())
         return False  # on n'intercepte jamais les événements
 
-    def _check_admin_gesture(self, event: QMouseEvent) -> None:
-        pos = self.mapFromGlobal(event.globalPosition().toPoint())
-        if not ADMIN_CORNER.contains(pos):
+    def _admin_corner_rect(self) -> QRect:
+        """Zone confortable au toucher, proportionnelle à l'écran sans couvrir tout le parcours."""
+        width = min(320, max(240, round(self.width() * 0.20)))
+        height = min(220, max(160, round(self.height() * 0.22)))
+        return QRect(0, 0, min(width, self.width()), min(height, self.height()))
+
+    def _check_admin_gesture(self, global_position: QPoint) -> None:
+        pos = self.mapFromGlobal(global_position)
+        if not self._admin_corner_rect().contains(pos):
             self._admin_taps.clear()
             return
         now = time.monotonic()
+        if now - self._last_admin_tap < ADMIN_TAP_DEBOUNCE_S:
+            return
+        self._last_admin_tap = now
         self._admin_taps = [t for t in self._admin_taps if now - t <= ADMIN_WINDOW_S] + [now]
         if len(self._admin_taps) >= ADMIN_TAPS:
             self._admin_taps.clear()
@@ -390,6 +423,9 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event) -> None:
         log.info("Fermeture du logiciel")
+        guestbook = self._screens.get("guestbook")
+        if guestbook is not None:
+            guestbook.stop_and_wait()
         self.camera.stop_camera()
         self.close_segmenter()
         self.mail.stop()

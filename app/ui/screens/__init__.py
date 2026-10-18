@@ -6,6 +6,7 @@ from .challenge import ChallengeScreen
 from .email_entry import EmailEntryScreen
 from .format_select import FormatSelectScreen
 from .gif_options import GifOptionsScreen
+from .guestbook import GuestbookScreen
 from .guest_select import GuestSelectScreen
 from .placeholders import HomeScreen
 from .review import ReviewScreen
@@ -21,5 +22,6 @@ SCREENS: dict[str, type[BaseScreen]] = {
     "capture": CaptureScreen,
     "review": ReviewScreen,
     "sending": SendingScreen,
+    "guestbook": GuestbookScreen,
     "gif_options": GifOptionsScreen,
 }

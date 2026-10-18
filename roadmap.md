@@ -122,12 +122,18 @@ Les fonctions optionnelles devront pouvoir être activées ou désactivées dans
 - Prévoir un message clair si le réseau ou Drive est indisponible ; le QR ne doit pas empêcher l'enregistrement local ni l'envoi par mail.
 - La page locale et le serveur local ne font pas partie du projet retenu.
 
-### Étape 25 — Livre d'or vidéo *(à cadrer)*
+### Étape 25 — Livre d'or vidéo *(validée)*
 
-- Proposer aux invités volontaires d'enregistrer un court message vidéo après leur parcours photo.
-- Permettre de passer cette étape, limiter la durée et vérifier clairement l'espace disque disponible.
-- Ranger les vidéos par soirée et prévoir leur consultation/export depuis l'administration.
-- Définir avant développement le consentement à l'enregistrement, l'information affichée et la suppression des vidéos.
+- Option facultative, désactivée par défaut via [livre_or] actif = false ; proposer un bouton distinct dans le menu des formats, seulement lorsqu'une soirée est active.
+- Demander une confirmation avant chaque vidéo et expliquer le stockage local, l'accès organisateur et la suppression ; permettre de passer sans enregistrer.
+- Enregistrer l'image de la webcam et la voix du microphone par défaut, pendant 15 secondes maximum ; permettre d'arrêter avant la limite.
+- Encoder la vidéo MP4 à 6 Mbit/s pour conserver une bonne qualité d'image en 1080p.
+- Vérifier la caméra, le microphone et la présence d'au moins 200 Mo libres ; un échec ne doit pas gêner la photo ni son envoi.
+- Conserver les vidéos MP4 dans livre-or/<identifiant-de-soirée>/, sans les rattacher au mail de l'invité.
+- Depuis l'administration, ouvrir le dossier de la soirée pour consulter/copier les vidéos et proposer leur suppression manuelle avec confirmation.
+- Ne pas supprimer automatiquement les vidéos ; elles ne sont pas ajoutées aux planches-contact ni envoyées par mail.
+- Le menu **Gérer les activations** regroupe l'envoi mail, la sauvegarde configurée, le GIF, Casting/Audition, le QR code, le livre d'or, le diaporama secondaire et les effets sonores ; les changements sont persistés et appliqués immédiatement. Les mails déjà en file restent suspendus tant que l'envoi est désactivé.
+- Ouvrir le mode administrateur avec cinq appuis rapides dans le coin supérieur gauche, puis saisir le code.
 
 ## Points de vigilance transverses
 

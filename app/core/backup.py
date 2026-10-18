@@ -66,10 +66,12 @@ class BackupService:
 
     @property
     def enabled(self) -> bool:
-        return self._config.dossier_sauvegarde is not None
+        return self._config.sauvegarde_active and self._config.dossier_sauvegarde is not None
 
     def add(self, paths: Iterable[Path]) -> None:
         """Photos validées à sauvegarder (la bande et ses poses, ou la photo unique)."""
+        if not self.enabled:
+            return
         for path in paths:
             path = Path(path)
             try:
@@ -108,7 +110,7 @@ class BackupService:
     def process(self) -> int:
         """Copie ce qui n'est pas encore sauvegardé. Renvoie le nombre de photos copiées pendant ce passage."""
         destination = self._config.dossier_sauvegarde
-        if destination is None:
+        if destination is None or not self._config.sauvegarde_active:
             return 0
         copied = 0
         with self._lock:
