@@ -68,6 +68,7 @@ class GuestbookScreen(BaseScreen):
         layout.addLayout(self._actions)
 
     def on_enter(self) -> None:
+        self.nav.capture_display.set_live_preview(False)
         self._event_id = self.session.event_id
         self._preview.clear()
         self._preview.hide()
@@ -80,6 +81,7 @@ class GuestbookScreen(BaseScreen):
         )
 
     def on_leave(self) -> None:
+        self.nav.capture_display.set_live_preview(False)
         self._timer.stop()
         self.nav.camera.set_preview_enabled(False)
         if self._recorder is not None and self._recorder.isRunning():
@@ -104,6 +106,7 @@ class GuestbookScreen(BaseScreen):
         camera.failed.connect(self._on_camera_failed)
         camera.set_preview_processor(None)
         camera.set_preview_enabled(True)
+        self.nav.capture_display.set_live_preview(True)
         if not camera.is_active():
             camera.start_camera()
         self._message.setText("Place-toi devant la caméra, puis touche « Enregistrer mon message ».")
@@ -125,6 +128,7 @@ class GuestbookScreen(BaseScreen):
         if self.nav.current_name != "guestbook":
             return
         log.error("Caméra indisponible pour le livre d'or : %s", message)
+        self.nav.capture_display.set_live_preview(False)
         self._message.setText(message)
         self._show_actions(self._skip)
 
@@ -164,6 +168,7 @@ class GuestbookScreen(BaseScreen):
     def _recording_completed(self, path: str) -> None:
         self._timer.stop()
         log.info("Message du livre d'or enregistré : %s", path)
+        self.nav.capture_display.set_live_preview(False)
         self._preview.hide()
         self._timer_label.clear()
         self._message.setText("Merci ! Ton message vidéo est enregistré pour cette soirée.")
@@ -172,6 +177,7 @@ class GuestbookScreen(BaseScreen):
     def _recording_failed(self, message: str) -> None:
         self._timer.stop()
         log.error("Échec du livre d'or vidéo : %s", message)
+        self.nav.capture_display.set_live_preview(False)
         self._message.setText(f"Le message n'a pas pu être enregistré. {message}")
         self._timer_label.clear()
         self._show_actions(self._skip)

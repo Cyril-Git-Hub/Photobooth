@@ -157,6 +157,7 @@ class CaptureScreen(BaseScreen):
 
     def on_leave(self) -> None:
         self._active = False
+        self.nav.capture_display.clear_countdown()
         self._timer.stop()
         self._poses = []
         self._frame_overlay = None
@@ -447,6 +448,7 @@ class CaptureScreen(BaseScreen):
 
     def _fail(self, text: str) -> None:
         self._timer.stop()
+        self.nav.capture_display.clear_countdown()
         self._poses = []
         self._preview.overlay.clear()
         self._error_text = text
@@ -493,6 +495,7 @@ class CaptureScreen(BaseScreen):
         if self._total > 1:
             self._status.setText(f"Pose {len(self._poses) + 1}/{self._total}")
         self._preview.overlay.show_number(str(self._remaining))
+        self.nav.capture_display.set_countdown(str(self._remaining))
         self._timer.start()
 
     def _tick(self) -> None:
@@ -500,8 +503,10 @@ class CaptureScreen(BaseScreen):
         if self._remaining > 0:
             self.nav.sounds.play("countdown")
             self._preview.overlay.show_number(str(self._remaining))
+            self.nav.capture_display.set_countdown(str(self._remaining))
         else:
             self._timer.stop()
+            self.nav.capture_display.clear_countdown()
             self._capture_pose()
 
     def _grab_final_frame(self) -> np.ndarray | None:
@@ -534,6 +539,7 @@ class CaptureScreen(BaseScreen):
 
     def _capture_pose(self) -> None:
         self._set_state(State.SAVING)
+        self.nav.capture_display.clear_countdown()
         self.nav.sounds.play("shutter")
         self._preview.overlay.clear()
         self._preview.overlay.flash()
