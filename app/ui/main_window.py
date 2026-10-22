@@ -24,6 +24,7 @@ from ..session import Session
 from . import scale
 from .admin_dialog import open_admin_dialog
 from .slideshow import SlideshowController
+from .capture_display import CaptureDisplayController
 from .screensaver import ScreensaverOverlay
 from .screens import SCREENS
 from .screens.base import BaseScreen
@@ -62,6 +63,8 @@ class MainWindow(QMainWindow):
         self.drive_executor = None
         self.ensure_drive_service()
         self.slideshow = SlideshowController(config, self, windowed_preview=slideshow_windowed)
+        self.capture_display = CaptureDisplayController(self)
+        self.camera.preview_ready.connect(self.capture_display.set_image)
         self._segmenter: Segmenter | None = None
         self._segmenter_key: tuple | None = None
 
@@ -120,6 +123,7 @@ class MainWindow(QMainWindow):
         QApplication.instance().aboutToQuit.connect(self.mail.stop)
         QApplication.instance().aboutToQuit.connect(self.backup.stop)
         QApplication.instance().aboutToQuit.connect(self.slideshow.close)
+        QApplication.instance().aboutToQuit.connect(self.capture_display.close)
         # Raccourci de développement (les invités n'ont pas de clavier)
         QShortcut(QKeySequence("Ctrl+Shift+Q"), self).activated.connect(self.open_admin)
 
@@ -158,6 +162,7 @@ class MainWindow(QMainWindow):
         from .theme import build_stylesheet
         self.theme = load_theme(self.config)
         self.config.active_theme = self.theme
+        self.capture_display.reload_theme(self.theme)
         self.sounds.reload()
         self.setWindowTitle(self.theme.app_title)
         QApplication.instance().setApplicationName(self.theme.app_title)
@@ -232,6 +237,7 @@ class MainWindow(QMainWindow):
             self.session.reset()  # un nouvel invité repart toujours de zéro
             self.camera.stop_camera()
         self.current_name = name
+        self.capture_display.refresh()
         screen = self._screens[name]
         self._stack.setCurrentWidget(self._wrappers[name])
         screen.on_enter()

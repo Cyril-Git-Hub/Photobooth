@@ -39,7 +39,7 @@
 ## Le jour J
 
 1. Branche le PC **sur secteur** (la veille et l'écran éteint sont désactivés pendant la soirée).
-2. **Second écran** (diaporama) : branche-le, puis Windows + P > **Étendre**. Il se met en route tout seul, même branché après le lancement.
+2. **Écrans supplémentaires** : branche-les, puis Windows + P > **Étendre**. Le deuxième écran affiche le diaporama ; si un troisième écran est détecté, il affiche l'aperçu caméra pendant la prise de vue. La détection est automatique, y compris si tu branches les écrans après le lancement.
 3. Lance **`lancer.bat`**.
 4. Place la caméra à hauteur de visage, avec la lumière **devant** les invités et un mur uni derrière eux : c'est ce qui améliore le plus le détourage.
 5. Vérifie internet (Wi-Fi) : sans réseau, les photos sont quand même prises, et les mails partent dès son retour.
