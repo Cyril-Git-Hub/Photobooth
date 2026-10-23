@@ -1,0 +1,12 @@
+{
+  "_commentaire": [
+    "Modele vide pour creer des defis propres au theme classique.",
+    "Ajoute une categorie pour partager le titre, la consigne et les reglages entre plusieurs images.",
+    "Chaque chemin de images cree un defi. Les identifiants sont generes depuis le prefixe de categorie.",
+    "Les chemins de images, image et fond sont relatifs a ce fichier.",
+    "Utilise defis pour les defis individuels avec des reglages specifiques.",
+    "fond impose un decor fixe et remplace decor. Styles : original, cartoon, sketch, watercolor, pop_art, manga."
+  ],
+  "categories": [],
+  "defis": []
+}

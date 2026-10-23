@@ -45,3 +45,6 @@ models/*.tflite
 
 # Cache local de PowerShell (créé automatiquement par Windows)
 /Microsoft/Windows/PowerShell/ModuleAnalysisCache
+
+# Theme prive, conserve localement
+themes/Lola18/
