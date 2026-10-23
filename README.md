@@ -42,7 +42,7 @@ le masque et le temps de calcul.
 
 ## Liste d'invités
 
-Le fichier de la liste d'invités, configuré par `[chemins] fichier_invites`, peut être `.xlsx`, `.xls` ou `.ods` (par défaut `invites.xlsx`). La première ligne contient les titres `nom`, `prénom`, `pseudo` (facultatif), `mail`,
+Le fichier de la liste d'invités, configuré par `[chemins] fichier_invites`, peut être `.xlsx`, `.xls` ou `.ods` (par défaut `invites.xlsx`). La première ligne contient les titres `nom`, `prénom`, `pseudo` (obligatoire et unique), `mail`,
 puis une ligne par invité (le mail peut rester vide : l'invité le saisira). Le fichier est relu à chaque passage sur l'écran « Qui es-tu ? »
 s'il a changé ; ferme-le dans ton tableur avant de lancer le logiciel. L'invité peut chercher son nom au clavier tactile, ou choisir
 « Je ne suis pas dans la liste ». Réglage `obligatoire` de `[mail]` : `true` supprime le bouton « Passer » de l'écran du mail.
@@ -60,7 +60,30 @@ et `cadres/` à la racine restent utilisées si les dossiers du thème ne contie
 Pour créer un thème, copie `themes/classique/`, renomme le dossier, modifie son `theme.ini`, puis sélectionne son nom dans `config.ini`.
 Les modifications sont prises en compte au démarrage ou avec **Recharger la configuration** dans le mode administrateur.
 
-`theme.ini` à la racine contient les couleurs et textes par défaut. Le fichier `themes/<nom>/theme.ini` surcharge ces valeurs pour le thème actif ; les options absentes héritent du fichier racine. Les textes éditoriaux réglables sont regroupés dans `[textes]` : titre de l'application et de l'accueil, phrases d'accueil, livre d'or, veille et diaporama. Les libellés de navigation restent fixes. Les défis sont définis dans `themes/<nom>/defis.json` ; sans défi valide dans le thème, les défis intégrés sont utilisés. Les couleurs de l'interface sont regroupées dans `[couleurs]` ; une couleur se note au format `#RRGGBB`.
+`theme.ini` à la racine contient les couleurs et textes par défaut. Le fichier `themes/<nom>/theme.ini` surcharge ces valeurs pour le thème actif ; les options absentes héritent du fichier racine. Les textes éditoriaux réglables sont regroupés dans `[textes]` : titre de l’application et de l’accueil, phrases d’accueil, livre d’or, veille et diaporama. Les libellés de navigation restent fixes. Les couleurs de l’interface sont regroupées dans `[couleurs]` ; une couleur se note au format `#RRGGBB`. Les défis sont définis dans `themes/<nom>/defis.json` ; sans défi valide dans le thème, les défis intégrés sont utilisés.
+
+## Défis personnalisés
+
+Le thème classique fournit un modèle vide dans `themes/classique/defis.json`. Un fichier peut combiner des catégories et des défis individuels. Les chemins d’images sont relatifs au fichier `defis.json`.
+
+Une catégorie définit une fois les réglages communs, puis fournit une liste `images`. L’application crée un défi par image et génère son identifiant à partir du préfixe `id` (`imite-01`, `imite-02`, etc.). Pour un défi aux réglages particuliers, ajoute un objet dans `defis`. Chaque défi a besoin d’un identifiant unique, d’un titre et d’une consigne. `format` accepte `single`, `strip` ou `gif`. `decor` accepte `none`, `choose` ou `random`. Le champ facultatif `fond` impose un décor précis et remplace `decor`. Les images modèles sont fournies par `image` pour un défi individuel, ou par chaque entrée de `images` dans une catégorie. `masque` et `style` sont facultatifs ; les styles disponibles sont `original`, `cartoon`, `sketch`, `watercolor`, `pop_art` et `manga`. Les champs `_commentaire` sont ignorés par l’application. Si aucun défi valide n’est défini pour le thème, les défis intégrés restent disponibles.
+
+```json
+{
+  "categories": [{
+    "id": "imite",
+    "titre": "Copie cette pose",
+    "consigne": "Imite la pose de l’image modèle.",
+    "format": "single",
+    "decor": "none",
+    "fond": "",
+    "masque": "",
+    "style": "",
+    "images": ["defis/pose1.jpg", "defis/pose2.jpg"]
+  }],
+  "defis": []
+}
+```
 
 ## Cadres photo
 
