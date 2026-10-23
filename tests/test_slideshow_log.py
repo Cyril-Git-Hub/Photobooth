@@ -9,7 +9,7 @@ from app.core.slideshow_log import SlideshowLog
 
 class SlideshowLogTests(unittest.TestCase):
     def setUp(self):
-        self._tmp = tempfile.TemporaryDirectory(prefix="Photo Booth é ")
+        self._tmp = tempfile.TemporaryDirectory(prefix="Photobooth é ")
         self.addCleanup(self._tmp.cleanup)
         self.base = Path(self._tmp.name).resolve()
         self.log = SlideshowLog(self.base / "data" / "diaporama.jsonl", self.base)

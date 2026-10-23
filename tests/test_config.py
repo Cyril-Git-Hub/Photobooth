@@ -131,7 +131,7 @@ class ConfigTests(unittest.TestCase):
     def test_reglages_du_mail_par_defaut(self):
         with tempfile.TemporaryDirectory() as tmp:
             cfg = Config.load(base_dir=Path(tmp))
-            self.assertEqual((cfg.mail_securite, cfg.mail_utilisateur, cfg.mail_nom_expediteur), ("auto", "", "Photo Booth"))
+            self.assertEqual((cfg.mail_securite, cfg.mail_utilisateur, cfg.mail_nom_expediteur), ("auto", "", "Photobooth"))
             self.assertEqual(cfg.mail_objet, "Ta photo du photobooth est prête !")
             self.assertTrue(cfg.mail_message.startswith("{salutation}\n\nTa photo"))     # vrais retours à la ligne
             self.assertEqual(cfg.fichier_envois, Path(tmp).resolve() / "data" / "envois.sqlite3")
@@ -155,7 +155,7 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(cfg.mail_securite, "auto")
             self.assertEqual(cfg.mail_objet, "Ta photo du photobooth est prête !")      # valeurs par défaut conservées
             self.assertIn("{salutation}", cfg.mail_message)
-            self.assertEqual(cfg.mail_nom_expediteur, "Photo Booth")
+            self.assertEqual(cfg.mail_nom_expediteur, "Photobooth")
 
     def test_le_fichier_genere_contient_le_message_sur_une_ligne(self):
         with tempfile.TemporaryDirectory() as tmp:

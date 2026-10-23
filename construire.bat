@@ -1,8 +1,8 @@
 @echo off
-rem Construit l'executable Photo Booth dans dist\photobooth\ (a lancer depuis le dossier du projet).
+rem Construit l'executable Photobooth dans dist\photobooth\ (a lancer depuis le dossier du projet).
 setlocal
 cd /d "%~dp0"
-echo === Construction de l'executable Photo Booth ===
+echo === Construction de l'executable Photobooth ===
 if not exist ".venv\Scripts\python.exe" (
   echo Environnement .venv introuvable. Cree-le d'abord :
   echo   py -3.12 -m venv .venv

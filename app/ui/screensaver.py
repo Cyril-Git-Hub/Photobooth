@@ -22,7 +22,7 @@ class ScreensaverOverlay(QWidget):
         layout.setSpacing(px(20))
         layout.addStretch(1)
 
-        self._title = QLabel(self._text("welcome_title", "Photo Booth"))
+        self._title = QLabel(self._text("welcome_title", "Photobooth"))
         self._title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._title.setWordWrap(True)
         self._title.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
@@ -42,14 +42,14 @@ class ScreensaverOverlay(QWidget):
         else:
             self._visual.hide()
 
-        self._message = QLabel("Touchez pour commencer")
+        self._message = QLabel(self._text("screensaver_message", "Touchez pour commencer"))
         self._message.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._message.setWordWrap(False)
         self._message.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._message.setMinimumHeight(px(56))
         self._message.setMaximumWidth(px(700))
         self._message.setStyleSheet(
-            f"color: #ffffff; font-size: {px(20)}px; font-weight: 700; "
+            f"color: {self._color('white', '#ffffff')}; font-size: {px(20)}px; font-weight: 700; "
             f"background-color: {self._color('primary', '#ff4d8d')}; border: 2px solid "
             f"{self._color('accent', '#ffd166')}; border-radius: {px(18)}px; padding: {px(8)}px {px(18)}px;"
         )

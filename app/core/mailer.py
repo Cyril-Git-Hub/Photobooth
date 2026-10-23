@@ -56,7 +56,7 @@ class MailSettings:
     user: str = ""
     sender: str = ""
     password: str = ""
-    display_name: str = "Photo Booth"
+    display_name: str = "Photobooth"
     organizer: str = ""
     subject_template: str = ""
     body_template: str = ""
@@ -125,7 +125,7 @@ def _organizer_texts(job: MailJob) -> tuple[str, str]:
         detail = f"Cette photo a aussi été envoyée à {job.guest_email}."
     else:
         detail = "Cet invité n'a pas donné d'adresse mail : tu es seul(e) à recevoir cette photo."
-    return f"[Photo booth] {name}", f"Copie de la photo de {name}.\n\n{detail}"
+    return f"[Photobooth] {name}", f"Copie de la photo de {name}.\n\n{detail}"
 
 
 def build_message(settings: MailSettings, job: MailJob, now: datetime | None = None) -> EmailMessage:

@@ -1,4 +1,4 @@
-"""Point d'entrée du Photo Booth.
+"""Point d'entrée du Photobooth.
 
 Codes de sortie : 0 = arrêt normal (ou déjà lancé) ; 1 = erreur. lancer.bat ne relance la borne qu'après une erreur.
 """
@@ -27,7 +27,7 @@ def _message(kind: str, text: str) -> None:
     """Message à l'écran : un exécutable sans console ne peut rien afficher autrement."""
     try:
         app = QApplication.instance() or QApplication(sys.argv[:1])
-        getattr(QMessageBox, kind)(None, "Photo Booth", text)
+        getattr(QMessageBox, kind)(None, "Photobooth", text)
     except Exception:
         log.exception("Impossible d'afficher le message : %s", text)
 
@@ -56,16 +56,26 @@ def _run_app(args) -> int:
 
     lock = single_instance.acquire(config.dossier_donnees / "photobooth.lock")
     if lock is None:
-        log.warning("Photo Booth est déjà lancé : cette copie se ferme")
-        _message("warning", "Photo Booth est déjà lancé sur cet ordinateur.")
+        log.warning("Photobooth est déjà lancé : cette copie se ferme")
+        _message("warning", "Photobooth est déjà lancé sur cet ordinateur.")
         return EXIT_OK                 # pas une erreur : lancer.bat ne doit pas relancer
+
+    try:
+        people = guests.load_guests(config.fichier_invites)
+        guests.validate_pseudos(config.fichier_invites, people)
+    except guests.GuestListError as exc:
+        message = str(exc.args[0])
+        log.critical("Liste d'invites invalide au demarrage : %s", message.replace("\n", " "))
+        QMessageBox.critical(None, "Liste d'invites invalide", message)
+        lock.unlock()
+        return EXIT_ERROR
 
     geometry = app.primaryScreen().geometry()
     factor = scale.resolve(config.echelle_interface, geometry.width(), geometry.height())
     scale.set_scale(factor)
     log.info("Écran principal %dx%d : échelle de l'interface %.2f (%s)", geometry.width(), geometry.height(), factor,
              "réglée dans config.ini" if config.echelle_interface is not None else "automatique")
-    log.info("Démarrage de Photo Booth %s (détourage=%s, poses=%d)", __version__, config.mode_detourage, config.nb_poses)
+    log.info("Démarrage de Photobooth %s (détourage=%s, poses=%d)", __version__, config.mode_detourage, config.nb_poses)
     power.prevent_sleep(True)          # ni veille ni écran éteint pendant la soirée
     try:
         app.setStyleSheet(build_stylesheet(theme=config.active_theme))
@@ -87,8 +97,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return _run_app(args)
     except Exception as exc:
-        log.critical("Photo Booth n'a pas pu démarrer", exc_info=True)
-        _message("critical", f"Photo Booth n'a pas pu démarrer.\n\n{exc}\n\n"
+        log.critical("Photobooth n'a pas pu démarrer", exc_info=True)
+        _message("critical", f"Photobooth n'a pas pu démarrer.\n\n{exc}\n\n"
                              f"Détails dans : {paths.app_dir() / 'logs' / 'photobooth.log'}")
         return EXIT_ERROR
 

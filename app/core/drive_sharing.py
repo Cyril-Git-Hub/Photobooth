@@ -18,7 +18,7 @@ OAUTH_CLIENT_FILE = "google_drive_client.json"
 OAUTH_TOKEN_FILE = "google_drive_token.json"
 DRIVE_STATE_FILE = "google_drive_state.json"
 SHARES_DB_FILE = "google_drive_shares.sqlite3"
-DRIVE_FOLDER_NAME = "Photo Booth"
+DRIVE_FOLDER_NAME = "Photobooth"
 LINK_LIFETIME = timedelta(days=30)
 TASK_NAME = "PhotoBoothDriveCleanup"
 

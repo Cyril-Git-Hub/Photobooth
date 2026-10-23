@@ -1,17 +1,48 @@
 """Défi surprise : consigne et éventuelle image avant le parcours de prise de vue."""
 from __future__ import annotations
 
+import logging
 import random
 
-from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtCore import QBuffer, QIODevice, Qt
 from PyQt6.QtGui import QImage, QPainter, QPixmap
 from PyQt6.QtSvg import QSvgRenderer
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout
 
 from ...core import backgrounds, challenges
 from ..scale import px
 from ..widgets.big_button import BigButton
 from .base import BaseScreen
+
+log = logging.getLogger(__name__)
+
+
+class _FitImageLabel(QLabel):
+    """Affiche l'image entière en s'adaptant à la place réellement disponible."""
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        self._source = QPixmap()
+
+    def set_source(self, image: QPixmap) -> None:
+        self._source = image
+        self._fit_image()
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._fit_image()
+
+    def _fit_image(self) -> None:
+        if self._source.isNull():
+            self.clear()
+            return
+        available = self.contentsRect().size()
+        if available.width() <= 0 or available.height() <= 0:
+            return
+        self.setPixmap(self._source.scaled(
+            available, Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        ))
 
 
 class ChallengeScreen(BaseScreen):
@@ -27,12 +58,11 @@ class ChallengeScreen(BaseScreen):
         self._kind = QLabel("")
         self._kind.setObjectName("badge")
         self._kind.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._image = QLabel()
+        self._image = _FitImageLabel()
         self._image.setObjectName("challengeReference")
         self._image.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._image.setMinimumSize(px(300), px(300))
         self._image.setMaximumSize(px(600), px(600))
-        self._image.setScaledContents(False)
         self._title = QLabel("")
         self._title.setObjectName("heading")
         self._title.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -49,7 +79,7 @@ class ChallengeScreen(BaseScreen):
         self._back.clicked.connect(self._go_back)
         self._another = BigButton("Autre défi", "secondary")
         self._another.clicked.connect(self._choose_another)
-        self._start = BigButton("Je relève le défi !")
+        self._start = BigButton("Je relève le défi !", "notListed")
         self._start.clicked.connect(self._start_challenge)
 
         content = QHBoxLayout()
@@ -82,13 +112,15 @@ class ChallengeScreen(BaseScreen):
 
     def on_enter(self) -> None:
         self._challenges = challenges.load_challenges(
-            self.config.base_dir / "defis.json", allow_gif=self.config.gif_actif)
+            self.config.dossier_theme / "defis.json", allow_gif=self.config.gif_actif)
         if not self._challenges:
             self._current = None
             self._title.setText("Aucun défi disponible")
-            self._instruction.setText("Vérifie le fichier defis.json ou active les défis dans config.ini.")
+            self._instruction.setText(
+                "Vérifie le fichier defis.json du thème ou active les défis dans config.ini.")
             self._kind.clear()
-            self._image.clear()
+            self._image.set_source(QPixmap())
+            self._image.hide()
             self._availability.clear()
             self._start.setEnabled(False)
             self._another.setEnabled(False)
@@ -107,7 +139,10 @@ class ChallengeScreen(BaseScreen):
         if not self._challenges:
             return
         choices = [challenge for challenge in self._challenges if challenge.id != self._previous_id]
-        self._show_challenge(random.choice(choices or self._challenges))
+        selected = random.choice(choices or self._challenges)
+        log.info("Défi choisi : id=%s | image=%s", selected.id,
+                 selected.image if selected.image else "aucune")
+        self._show_challenge(selected)
 
     def _show_challenge(self, challenge: challenges.Challenge) -> None:
         self._current = challenge
@@ -115,12 +150,15 @@ class ChallengeScreen(BaseScreen):
         self._title.setText(challenge.title)
         self._instruction.setText(challenge.instruction)
         kind = {"single": "PHOTO UNIQUE", "strip": "PHOTOMATON", "gif": "GIF ANIMÉ"}[challenge.photo_format]
-        if challenge.background == "choose":
+        if challenge.background_image is not None:
+            kind += " · DÉCOR IMPOSÉ"
+        elif challenge.background == "choose":
             kind += " · DÉCOR À CHOISIR"
         elif challenge.background == "random":
             kind += " · DÉCOR SURPRISE"
         self._kind.setText(kind)
-        if challenge.background != "none" and not self._available_backgrounds():
+        if (challenge.background_image is None and challenge.background != "none"
+                and not self._available_backgrounds()):
             self._availability.setText(
                 "Aucun décor n’est chargé : le défi reste jouable sans décor. "
                 "Ajoute des images dans le dossier fonds pour activer cette option.")
@@ -134,24 +172,27 @@ class ChallengeScreen(BaseScreen):
             extras.append(f"style proposé : {challenge.style.replace('_', ' ')}")
         if extras:
             self._availability.setText(self._availability.text() + "\n" + " · ".join(extras))
-        self._image.clear()
+        self._image.set_source(QPixmap())
+        self._image.hide()
         if challenge.image is not None:
             pixmap = self._load_reference(challenge.image)
             if not pixmap.isNull():
-                self._image.setPixmap(pixmap.scaled(
-                    QSize(px(560), px(560)), Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation))
+                self._image.set_source(pixmap)
+                self._image.show()
             else:
-                self._image.setText("Image de référence indisponible")
-        else:
-            self._image.setText("À toi de jouer !")
+                log.error("Image du défi illisible à l'affichage : id=%s | image=%s",
+                          challenge.id, challenge.image)
 
     @staticmethod
     def _load_reference(path) -> QPixmap:
         if path.suffix.casefold() != ".svg":
-            return QPixmap(str(path))
+            pixmap = QPixmap(str(path))
+            if pixmap.isNull():
+                log.error("Impossible de décoder l'image du défi : %s", path)
+            return pixmap
         renderer = QSvgRenderer(str(path))
         if not renderer.isValid():
+            log.error("Image SVG du défi invalide : %s", path)
             return QPixmap()
         image = QImage(560, 720, QImage.Format.Format_ARGB32_Premultiplied)
         image.fill(Qt.GlobalColor.transparent)
@@ -170,6 +211,15 @@ class ChallengeScreen(BaseScreen):
         self.session.challenge_background_required = False
         self.session.challenge_mask = challenge.mask
         self.session.challenge_style = challenge.style
+        self.session.challenge_reference_png = None
+        if challenge.image is not None:
+            pixmap = self._load_reference(challenge.image)
+            if not pixmap.isNull():
+                buffer = QBuffer()
+                buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+                if pixmap.save(buffer, "PNG"):
+                    self.session.challenge_reference_png = bytes(buffer.data())
+                buffer.close()
         self.session.photo_format = challenge.photo_format
         self.session.frame_mode = False
         self.session.frame_path = None
@@ -177,7 +227,9 @@ class ChallengeScreen(BaseScreen):
         self.session.virtual_mask_path = None
         self.session.virtual_mask_paths.clear()
 
-        if challenge.background == "random":
+        if challenge.background_image is not None:
+            self.session.background_path = challenge.background_image
+        elif challenge.background == "random":
             self.session.background_path = backgrounds.random_background(self._available_backgrounds())
         elif challenge.background == "choose" and self._available_backgrounds():
             self.session.challenge_background_required = True
@@ -207,4 +259,5 @@ class ChallengeScreen(BaseScreen):
         self.session.challenge_background_required = False
         self.session.challenge_mask = ""
         self.session.challenge_style = ""
+        self.session.challenge_reference_png = None
         self.nav.go_to("format_select")

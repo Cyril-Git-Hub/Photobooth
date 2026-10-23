@@ -9,13 +9,15 @@ from ..core.screens import pick_third_screen
 
 
 class CaptureDisplayWindow(QWidget):
-    def __init__(self, background: QImage) -> None:
+    def __init__(self, background: QImage, colors: dict[str, str] | None = None,
+                 app_title: str = "Photobooth") -> None:
         super().__init__()
-        self.setWindowTitle("Photo Booth : aperçu de prise de vue")
+        self.setWindowTitle(f"{app_title} : aperçu de prise de vue")
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setCursor(Qt.CursorShape.BlankCursor)
         self._background = background
+        self._colors = colors or {}
         self._image: QImage | None = None
         self._countdown = ""
 
@@ -34,13 +36,17 @@ class CaptureDisplayWindow(QWidget):
         self._countdown = ""
         self.update()
 
+    def set_colors(self, colors: dict[str, str] | None) -> None:
+        self._colors = colors or {}
+        self.update()
+
     def set_countdown(self, text: str) -> None:
         self._countdown = text
         self.update()
 
     def paintEvent(self, _event) -> None:
         painter = QPainter(self)
-        painter.fillRect(self.rect(), QColor("#0b0a1a"))
+        painter.fillRect(self.rect(), QColor(self._colors.get("mail_background", "#0b0a1a")))
         is_preview = self._image is not None and not self._image.isNull()
         image = self._image if is_preview else self._background
         if image is not None and not image.isNull():
@@ -59,7 +65,7 @@ class CaptureDisplayWindow(QWidget):
             painter.setPen(QColor(20, 18, 43, 180))
             painter.drawText(self.rect().translated(6, 6), Qt.AlignmentFlag.AlignCenter,
                              self._countdown)
-            painter.setPen(QColor("#ffd166"))
+            painter.setPen(QColor(self._colors.get("accent", "#ffd166")))
             painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, self._countdown)
         painter.end()
 
@@ -96,8 +102,11 @@ class CaptureDisplayController:
 
     def reload_theme(self, theme) -> None:
         self._theme = theme
-        if self._window is not None and not self._live_preview:
-            self._window.set_background(self._background_image())
+        if self._window is not None:
+            self._window.setWindowTitle(f"{theme.app_title} : aperçu de prise de vue")
+            self._window.set_colors(getattr(theme, "colors", None))
+            if not self._live_preview:
+                self._window.set_background(self._background_image())
 
     def _background_image(self) -> QImage:
         if self._theme is not None:
@@ -116,7 +125,9 @@ class CaptureDisplayController:
             self.close()
             return
         if self._window is None:
-            self._window = CaptureDisplayWindow(self._background_image())
+            self._window = CaptureDisplayWindow(self._background_image(),
+                                                getattr(self._theme, "colors", None),
+                                                getattr(self._theme, "app_title", "Photobooth"))
         elif not self._live_preview:
             self._window.set_background(self._background_image())
         self._window.show_on(screen)
