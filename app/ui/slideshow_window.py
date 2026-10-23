@@ -19,13 +19,17 @@ IDLE_NOTE = "Les photos de la soirée apparaîtront ici !"
 class SlideshowWindow(QWidget):
     def __init__(self, config) -> None:
         super().__init__()
-        self._title = config.pm_titre or "Photo Booth"
+        self._title = config.pm_titre or "Photobooth"
+        self._theme = getattr(config, "active_theme", None)
+        self._colors = getattr(self._theme, "colors", {})
+        self._idle_note = getattr(self._theme, "slideshow_message", IDLE_NOTE)
         self._current: QImage | None = None
         self._previous: QImage | None = None
         self._movie: QMovie | None = None
         self._fade = 1.0
         self._idle = True
-        self.setWindowTitle("Photo Booth : diaporama")
+        app_title = getattr(self._theme, "app_title", "Photobooth")
+        self.setWindowTitle(f"{app_title} : diaporama")
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)   # ne vole jamais le focus à la borne
         self.setCursor(Qt.CursorShape.BlankCursor)
@@ -34,6 +38,13 @@ class SlideshowWindow(QWidget):
         self._anim.setStartValue(0.0)
         self._anim.setEndValue(1.0)
         self._anim.valueChanged.connect(self._on_fade)
+
+    def reload_theme(self, theme) -> None:
+        self._theme = theme
+        self.setWindowTitle(f"{getattr(theme, 'app_title', 'Photobooth')} : diaporama")
+        self._colors = getattr(theme, "colors", {})
+        self._idle_note = getattr(theme, "slideshow_message", IDLE_NOTE)
+        self.update()
 
     # ---------- placement ----------
 
@@ -121,23 +132,23 @@ class SlideshowWindow(QWidget):
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
         gradient = QLinearGradient(0, 0, 0, self.height())
-        gradient.setColorAt(0.0, QColor("#1a1a2e"))
-        gradient.setColorAt(1.0, QColor("#0b0a1a"))
+        gradient.setColorAt(0.0, QColor(self._colors.get("slideshow_top", "#1a1a2e")))
+        gradient.setColorAt(1.0, QColor(self._colors.get("mail_background", "#0b0a1a")))
         painter.fillRect(self.rect(), gradient)
         if self._idle or self._current is None:
             title_font = QFont(self.font())
             title_font.setPixelSize(max(40, self.height() // 10))
             title_font.setBold(True)
             painter.setFont(title_font)
-            painter.setPen(QColor("#ffd166"))
+            painter.setPen(QColor(self._colors.get("accent", "#ffd166")))
             painter.drawText(self.rect().adjusted(40, 0, -40, -self.height() // 8),
                              Qt.AlignmentFlag.AlignCenter.value | Qt.TextFlag.TextWordWrap.value, self._title)
             note_font = QFont(self.font())
             note_font.setPixelSize(max(20, self.height() // 28))
             painter.setFont(note_font)
-            painter.setPen(QColor("#b8b2d9"))
+            painter.setPen(QColor(self._colors.get("muted", "#b8b2d9")))
             painter.drawText(self.rect().adjusted(40, self.height() // 2 + self.height() // 12, -40, 0),
-                             Qt.AlignmentFlag.AlignHCenter.value | Qt.AlignmentFlag.AlignTop.value, IDLE_NOTE)
+                             Qt.AlignmentFlag.AlignHCenter.value | Qt.AlignmentFlag.AlignTop.value, self._idle_note)
         elif self._movie is not None:
             image = self._movie.currentImage()
             if not image.isNull():

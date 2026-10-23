@@ -16,23 +16,19 @@ class FormatSelectScreen(BaseScreen):
         heading.setObjectName("heading")
         heading.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self._single = BigButton("Une seule photo")
+        self._single = BigButton("Photo unique", "notListed")
         self._single.setObjectName("formatOptionButton")
         self._single.setMinimumSize(px(255), px(90))
         self._single.clicked.connect(lambda: self._choose("single"))
-        self._strip = BigButton("Photomaton")
+        self._strip = BigButton("Photomaton", "notListed")
         self._strip.setObjectName("formatOptionButton")
         self._strip.setMinimumSize(px(255), px(90))
         self._strip.clicked.connect(lambda: self._choose("strip"))
-        self._framed = BigButton("Photo avec cadre")
-        self._framed.setObjectName("formatOptionButton")
-        self._framed.setMinimumSize(px(255), px(90))
-        self._framed.clicked.connect(self._choose_framed)
-        self._gif = BigButton("GIF animé")
+        self._gif = BigButton("GIF animé", "notListed")
         self._gif.setObjectName("formatOptionButton")
         self._gif.setMinimumSize(px(255), px(90))
         self._gif.clicked.connect(self._choose_gif)
-        self._challenge = BigButton("Casting/Audition")
+        self._challenge = BigButton("Casting/Audition", "notListed")
         self._challenge.setObjectName("formatOptionButton")
         self._challenge.setMinimumSize(px(255), px(90))
         self._challenge.clicked.connect(lambda: self.nav.go_to("challenge"))
@@ -41,8 +37,12 @@ class FormatSelectScreen(BaseScreen):
         self._guestbook.setMinimumSize(px(255), px(90))
         self._guestbook.clicked.connect(self._choose_guestbook)
 
+        self._email_note = QLabel("")
+        self._email_note.setObjectName("summary")
+        self._email_note.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
         back = BigButton("Retour", "secondary")
-        back.clicked.connect(lambda: self.nav.go_back())
+        back.clicked.connect(lambda: self.nav.go_to("guest_select"))
 
         choices = QHBoxLayout()
         choices.setSpacing(px(40))
@@ -52,8 +52,6 @@ class FormatSelectScreen(BaseScreen):
         choices.addStretch(1)
         framed_row = QHBoxLayout()
         framed_row.addStretch(1)
-        framed_row.addWidget(self._framed)
-        framed_row.addSpacing(px(20))
         framed_row.addWidget(self._gif)
         framed_row.addStretch(1)
         challenge_row = QHBoxLayout()
@@ -76,9 +74,13 @@ class FormatSelectScreen(BaseScreen):
         layout.addLayout(framed_row)
         layout.addLayout(challenge_row)
         layout.addStretch(1)
+        layout.addWidget(self._email_note)
         layout.addLayout(footer)
 
     def on_enter(self) -> None:
+        email = self.session.email.strip()
+        self._email_note.setText(f"La photo sera envoyée sur ton mail : {email}" if email else "")
+        self._email_note.setVisible(bool(email))
         poses = self.config.nb_poses
         has_strip = poses >= 2             # un « photomaton » d'une seule pose n'aurait pas de sens
         self._strip.setText("Photomaton")
@@ -95,15 +97,7 @@ class FormatSelectScreen(BaseScreen):
         self.session.frame_mode = False
         self.session.frame_path = None
         self._clear_challenge()
-        self.nav.go_next()
-
-    def _choose_framed(self) -> None:
-        self.session.photo_format = "single"
-        self.session.background_path = None
-        self.session.frame_mode = True
-        self.session.frame_path = None
-        self._clear_challenge()
-        self.nav.go_to("capture")
+        self.nav.go_to("background_select")
 
     def _choose_gif(self) -> None:
         self.session.photo_format = "gif"
@@ -131,3 +125,4 @@ class FormatSelectScreen(BaseScreen):
         self.session.challenge_background_required = False
         self.session.challenge_mask = ""
         self.session.challenge_style = ""
+        self.session.challenge_reference_png = None

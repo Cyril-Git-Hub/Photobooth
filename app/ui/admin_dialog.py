@@ -2,18 +2,25 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
-    QApplication, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QGridLayout, QHBoxLayout, QInputDialog,
-    QLabel, QLineEdit, QMessageBox, QScrollArea, QSlider, QVBoxLayout, QWidget,
+    QApplication, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QGridLayout, QHBoxLayout, QHeaderView,
+    QInputDialog, QLabel, QLineEdit, QMessageBox, QScrollArea, QSlider, QTableWidget,
+    QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
 from ..core.contact_sheets import create_contact_sheets
+from ..core.emails import is_valid_email, normalize_email
+from ..core.guests import Guest, GuestListError, load_guests, update_guest_emails
+from ..core.keyboards import EMAIL_ROWS
+from ..core.text_buffer import TextBuffer
 from ..core.video_guestbook import delete_recordings, event_folder, list_recordings
 from .files import open_folder
 from .widgets.big_button import BigButton
+from .widgets.virtual_keyboard import VirtualKeyboard
 from .scale import px
 
 if TYPE_CHECKING:
@@ -79,6 +86,11 @@ class AdminDialog(QDialog):
         activation_button.clicked.connect(self._manage_activations)
         layout.addWidget(activation_button)
 
+        guest_email_button = BigButton("Corriger les mails des invités", "secondary")
+        guest_email_button.setMinimumSize(px(300), px(BUTTON_HEIGHT))
+        guest_email_button.clicked.connect(self._edit_guest_emails)
+        layout.addWidget(guest_email_button)
+
         event_label = QLabel("Soirée et planches-contact")
         event_label.setStyleSheet("font-weight: bold")
         layout.addWidget(event_label)
@@ -93,8 +105,16 @@ class AdminDialog(QDialog):
         create_sheets = BigButton("Créer les planches-contact", "primary")
         create_sheets.setMinimumSize(px(280), px(BUTTON_HEIGHT))
         create_sheets.clicked.connect(self._generate_contact_sheets)
-        event_row.addWidget(create_sheets)
         layout.addLayout(event_row)
+        event_actions = QHBoxLayout()
+        self._end_event_button = BigButton("Terminer la soir\u00e9e", "danger")
+        self._end_event_button.setMinimumSize(px(280), px(BUTTON_HEIGHT))
+        self._end_event_button.clicked.connect(self._end_event)
+        event_actions.addStretch(1)
+        event_actions.addWidget(self._end_event_button)
+        event_actions.addWidget(create_sheets)
+        event_actions.addStretch(1)
+        layout.addLayout(event_actions)
         self._event_status = QLabel()
         self._event_status.setWordWrap(True)
         layout.addWidget(self._event_status)
@@ -143,14 +163,38 @@ class AdminDialog(QDialog):
             if index >= 0:
                 self._event_combo.setCurrentIndex(index)
         self._event_combo.blockSignals(False)
+        self._end_event_button.setEnabled(active is not None)
         if active:
+            folder_date = datetime.fromtimestamp(active.started_at).strftime("%Y-%m-%d")
             self._event_status.setText(
-                f"Soirée active : {active.name}. Les prochaines photos validées avec une adresse mail y seront associées."
+                f"Soir\u00e9e active : {active.name}. Les prochaines photos iront dans soiree_{folder_date}."
             )
         else:
             self._event_status.setText(
-                "Aucune soirée active. Démarre-en une avant la séance pour inclure les prochaines photos aux planches-contact."
+                "Aucune soir\u00e9e active. Les prochaines photos iront dans hors-soiree_YYYY-MM-DD. "
+                "D\u00e9marre une soir\u00e9e pour les associer aux planches-contact."
             )
+
+    def _end_event(self) -> None:
+        active = self._window.events.active_event()
+        if active is None:
+            self._refresh_events()
+            return
+        answer = QMessageBox.question(
+            self, "Terminer la soir\u00e9e",
+            f"Terminer la soir\u00e9e \u00ab {active.name} \u00bb ? Les prochaines photos iront hors soir\u00e9e.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            self._window.events.end_event()
+        except Exception as exc:
+            log.exception("Fin de soiree impossible")
+            QMessageBox.warning(self, "Soir\u00e9e", f"Impossible de terminer la soir\u00e9e :\n{exc}")
+            return
+        self._refresh_events()
 
     def _start_event(self) -> None:
         active = self._window.events.active_event()
@@ -347,11 +391,127 @@ class AdminDialog(QDialog):
                                 f"{result.exported} photo(s) exportée(s) dans :\n{result.folder}{extra}")
         open_folder(result.folder)
 
+    def _edit_guest_emails(self) -> None:
+        path = self._window.config.fichier_invites
+        try:
+            guests = load_guests(path)
+        except GuestListError as exc:
+            QMessageBox.warning(self, "Liste d'invités illisible", str(exc))
+            return
+        if not guests:
+            QMessageBox.information(self, "Liste vide", "Aucun invité à modifier.")
+            return
+        GuestEmailDialog(path, guests, self).exec()
+
     def _clear_slideshow(self) -> None:
         self._window.slideshow.clear()
         log.info("Diaporama vidé")
         self._refresh_info()
 
+
+
+class GuestEmailDialog(QDialog):
+    """Permet de corriger les adresses mail enregistrées dans la liste d'invités."""
+
+    def __init__(self, path, guests: list[Guest], parent=None) -> None:
+        super().__init__(parent)
+        self._path = path
+        self._guests = guests
+        self.setWindowTitle("Adresses mail des invités")
+        self.resize(px(900), px(680))
+
+        layout = QVBoxLayout(self)
+        note = QLabel("Sélectionne un invité, saisis son adresse avec le clavier tactile, puis valide. "
+                      "La touche Effacer vide l'adresse.")
+        note.setWordWrap(True)
+        layout.addWidget(note)
+
+        self._table = QTableWidget(len(guests), 3)
+        self._table.setHorizontalHeaderLabels(["Nom affiché", "Pseudo (identifiant)", "Adresse mail"])
+        self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._table.setSortingEnabled(False)
+        self._table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self._table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        self._table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        for row, guest in enumerate(guests):
+            name = QTableWidgetItem(guest.display_name)
+            pseudo = QTableWidgetItem(guest.pseudo)
+            name.setFlags(name.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            pseudo.setFlags(pseudo.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self._table.setItem(row, 0, name)
+            self._table.setItem(row, 1, pseudo)
+            self._table.setItem(row, 2, QTableWidgetItem(guest.email))
+        self._email_buffer = TextBuffer(max_length=80, allow_space=False)
+        self._selected_guest = QLabel("")
+        self._selected_guest.setObjectName("note")
+        self._email_field = QLabel("")
+        self._email_field.setObjectName("mailfield")
+        self._email_field.setMinimumHeight(px(58))
+        self._keyboard = VirtualKeyboard(EMAIL_ROWS, compact=True)
+        self._keyboard.text_typed.connect(self._email_text)
+        self._keyboard.backspace_pressed.connect(self._email_backspace)
+        self._keyboard.clear_pressed.connect(self._email_clear)
+        self._table.currentCellChanged.connect(self._select_guest)
+        layout.addWidget(self._table, 1)
+        layout.addWidget(self._selected_guest)
+        layout.addWidget(self._email_field)
+        layout.addWidget(self._keyboard)
+        if guests:
+            self._table.setCurrentCell(0, 2)
+            self._select_guest(0, 2, -1, -1)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save
+                                   | QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(self._save)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def _select_guest(self, row: int, _column: int, _previous_row: int, _previous_column: int) -> None:
+        if not 0 <= row < len(self._guests):
+            return
+        self._email_buffer.set(self._table.item(row, 2).text())
+        self._selected_guest.setText(f"Adresse mail de {self._guests[row].display_name} :")
+        self._refresh_email()
+
+    def _refresh_email(self) -> None:
+        row = self._table.currentRow()
+        if row >= 0:
+            self._table.item(row, 2).setText(self._email_buffer.value)
+        self._email_field.setText(self._email_buffer.value + "|")
+
+    def _email_text(self, text: str) -> None:
+        self._email_buffer.insert(text)
+        self._refresh_email()
+
+    def _email_backspace(self) -> None:
+        self._email_buffer.backspace()
+        self._refresh_email()
+
+    def _email_clear(self) -> None:
+        self._email_buffer.clear()
+        self._refresh_email()
+
+    def _save(self) -> None:
+        updates: dict[str, str] = {}
+        for row, guest in enumerate(self._guests):
+            item = self._table.item(row, 2)
+            email = normalize_email(item.text() if item is not None else "")
+            if email and not is_valid_email(email):
+                QMessageBox.warning(
+                    self, "Adresse invalide",
+                    f"L'adresse indiquée pour {guest.display_name} n'est pas valide.",
+                )
+                self._table.setCurrentCell(row, 2)
+                return
+            if email != guest.email:
+                updates[guest.pseudo] = email
+        try:
+            update_guest_emails(self._path, updates)
+        except GuestListError as exc:
+            QMessageBox.warning(self, "Enregistrement impossible", str(exc))
+            return
+        self.accept()
 
 
 class ActivationDialog(QDialog):

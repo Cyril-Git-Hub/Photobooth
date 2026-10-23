@@ -24,7 +24,7 @@ README = """Envois de photos qui ne sont pas partis
 envois.csv (à ouvrir avec Excel) indique, pour chaque photo de ce dossier, l'adresse mail du destinataire.
 Envoie chaque photo en pièce jointe à son destinataire avec ta messagerie habituelle.
 
-Attention : le Photo Booth continue d'essayer d'envoyer ces mêmes photos dès que la connexion revient. Si tu les envoies
+Attention : le Photobooth continue d'essayer d'envoyer ces mêmes photos dès que la connexion revient. Si tu les envoies
 toi-même, vide la file d'attente ou laisse-la partir : tes invités risquent sinon de recevoir leur photo deux fois.
 """
 

@@ -10,7 +10,7 @@ from app.core.backup import BackupService
 
 class BackupCase(unittest.TestCase):
     def setUp(self):
-        self._tmp = tempfile.TemporaryDirectory(prefix="Photo Booth é ")
+        self._tmp = tempfile.TemporaryDirectory(prefix="Photobooth é ")
         self.addCleanup(self._tmp.cleanup)
         self.base = Path(self._tmp.name).resolve()
         self.config = Config.load(base_dir=self.base)

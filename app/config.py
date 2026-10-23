@@ -114,7 +114,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
 
 # Fichier généré si config.ini est absent (avec des commentaires, contrairement à configparser).
 TEMPLATE = """\
-# Configuration du Photo Booth.
+# Configuration du Photobooth.
 # Les chemins relatifs sont interprétés par rapport au dossier du logiciel.
 # Après modification : relancer le logiciel (ou « Recharger la configuration » en mode admin).
 

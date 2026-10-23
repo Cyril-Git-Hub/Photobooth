@@ -22,7 +22,7 @@ BODY = "{salutation}\n\nVoici ta photo du {date}{titre}.\n\nÀ bientôt !"
 
 
 def settings(**kw):
-    base = dict(host="127.0.0.1", port=2525, security="aucune", sender="photo@fete.fr", display_name="Photo Booth de Léa",
+    base = dict(host="127.0.0.1", port=2525, security="aucune", sender="photo@fete.fr", display_name="Photobooth de Léa",
                 organizer="orga@fete.fr", subject_template=SUBJECT, body_template=BODY, event_title="")
     base.update(kw)
     return MailSettings(**base)
@@ -64,7 +64,7 @@ class BuildMessageTests(WithPhoto):
     def test_mail_invite(self):
         msg = self.parse(build_message(settings(event_title=""), self.job(), NOW))
         self.assertEqual(msg["Subject"], SUBJECT)
-        self.assertEqual(msg["From"], "Photo Booth de Léa <photo@fete.fr>")
+        self.assertEqual(msg["From"], "Photobooth de Léa <photo@fete.fr>")
         self.assertEqual(msg["To"], "Léa Martin <lea@gmail.com>")
         self.assertIn("@fete.fr>", msg["Message-ID"])
         plain = msg.get_body(preferencelist=("plain",)).get_content()
@@ -106,13 +106,13 @@ class BuildMessageTests(WithPhoto):
     def test_copie_organisateur_avec_adresse_invite(self):
         msg = self.parse(build_message(settings(), self.job(ORGANIZER, "orga@fete.fr"), NOW))
         self.assertEqual(msg["To"], "orga@fete.fr")
-        self.assertEqual(msg["Subject"], "[Photo booth] Léa Martin")
+        self.assertEqual(msg["Subject"], "[Photobooth] Léa Martin")
         self.assertIn("envoyée à lea@gmail.com", msg.get_body(preferencelist=("plain",)).get_content())
         self.assertEqual(len(list(msg.iter_attachments())), 1)
 
     def test_copie_organisateur_sans_adresse_invite(self):
         msg = self.parse(build_message(settings(), self.job(ORGANIZER, "orga@fete.fr", "", "", ""), NOW))
-        self.assertEqual(msg["Subject"], "[Photo booth] invité sans nom")
+        self.assertEqual(msg["Subject"], "[Photobooth] invité sans nom")
         self.assertIn("pas donné d'adresse mail", msg.get_body(preferencelist=("plain",)).get_content())
 
     def test_photo_introuvable_est_definitif(self):

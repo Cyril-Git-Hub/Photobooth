@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 
 COLUMNS = 3
 EMPTY_LIST = ("La liste d'invités est vide.\nAjoute des lignes dans le fichier {name} "
-              "(colonnes : nom, prénom, mail), puis reviens sur cet écran.")
+              "(colonnes : nom, prénom, pseudo, mail), puis reviens sur cet écran.")
 
 
 class GuestSelectScreen(BaseScreen):
@@ -58,7 +58,7 @@ class GuestSelectScreen(BaseScreen):
         back.clicked.connect(lambda: self.nav.go_back())
         self._search_button = BigButton("Rechercher", "secondary")
         self._search_button.clicked.connect(lambda: self._toggle_search())
-        not_listed = BigButton("Je ne suis pas dans la liste")
+        not_listed = BigButton("Je ne suis pas dans la liste", "notListed")
         not_listed.clicked.connect(lambda: self._not_listed())
         buttons = QHBoxLayout()
         buttons.setSpacing(px(24))
@@ -126,7 +126,8 @@ class GuestSelectScreen(BaseScreen):
             self._grid.addWidget(message, 0, 0)
             return
         for index, guest in enumerate(matches):
-            tile = BigButton(guest.display_name, "secondary")
+            variant = {"M": "man", "F": "woman"}.get(guest.sex, "secondary")
+            tile = BigButton(guest.display_name, variant)
             tile.setMinimumSize(px(300), px(84))
             tile.clicked.connect(lambda _checked=False, g=guest: self._choose(g))
             self._grid.addWidget(tile, index // COLUMNS, index % COLUMNS)
@@ -156,11 +157,17 @@ class GuestSelectScreen(BaseScreen):
     def _choose(self, guest: Guest) -> None:
         self.session.guest_last_name = guest.last_name
         self.session.guest_first_name = guest.first_name
+        self.session.guest_pseudo = guest.pseudo
+        self.session.guest_from_list = True
         self.session.email = guest.email
-        self.nav.go_next()
+        # L'adresse de la liste est déjà connue : inutile de la faire confirmer ou corriger.
+        # Les invités sans adresse gardent l'étape de saisie pour pouvoir en fournir une.
+        self.nav.go_to("email_entry" if not guest.email else "format_select")
 
     def _not_listed(self) -> None:
         self.session.guest_last_name = ""
         self.session.guest_first_name = ""
+        self.session.guest_pseudo = ""
+        self.session.guest_from_list = False
         self.session.email = ""
         self.nav.go_next()

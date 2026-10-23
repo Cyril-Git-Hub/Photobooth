@@ -27,7 +27,7 @@ def fake_modules(missing=(), no_contrib=False):
 
 class Case(unittest.TestCase):
     def setUp(self):
-        self._tmp = tempfile.TemporaryDirectory(prefix="Photo Booth é ")
+        self._tmp = tempfile.TemporaryDirectory(prefix="Photobooth é ")
         self.addCleanup(self._tmp.cleanup)
         self.base = Path(self._tmp.name)
         self.config = Config.load(base_dir=self.base)
@@ -76,7 +76,7 @@ class AllGoodTests(Case):
         self.assertIn("25 ms par image", checks["Détourage"].detail)
         self.assertIn("1 image(s) dans 1 thème(s)", checks["Décors"].detail)
         self.assertIn("50.0 Go libres", checks["Espace disque"].detail)
-        self.assertIn("Photo Booth 1.0.0", checks["Logiciel"].detail)
+        self.assertIn("Photobooth 1.0.0", checks["Logiciel"].detail)
 
 
 class LibrariesTests(Case):
@@ -246,7 +246,7 @@ class ReportTests(Case):
         blocker = self.base / "bloque"; blocker.write_text("x")
         self.config.base_dir = blocker                                   # logs = fichier/logs : impossible à créer
         report, code = dg.run(self.config, 2, self.probes)
-        self.assertIn("Diagnostic Photo Booth", report)
+        self.assertIn("Diagnostic Photobooth", report)
 
 
 class DefaultProbesTests(Case):

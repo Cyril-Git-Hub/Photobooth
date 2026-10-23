@@ -51,7 +51,7 @@ class RunToolsTests(unittest.TestCase):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
             self.assertEqual(self.run_tools("--version"), 0)
-        self.assertEqual(out.getvalue().strip(), f"Photo Booth {__version__}")
+        self.assertEqual(out.getvalue().strip(), f"Photobooth {__version__}")
 
     def test_envoi_de_test(self):
         with mock.patch.object(cli, "test_mail", return_value=4) as fake:
@@ -66,7 +66,7 @@ class RunToolsTests(unittest.TestCase):
 
 class DownloadTests(unittest.TestCase):
     def setUp(self):
-        self._tmp = tempfile.TemporaryDirectory(prefix="Photo Booth é ")
+        self._tmp = tempfile.TemporaryDirectory(prefix="Photobooth é ")
         self.addCleanup(self._tmp.cleanup)
         self.config = Config.load(base_dir=Path(self._tmp.name))
         self.requests = []

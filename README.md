@@ -1,4 +1,4 @@
-# Photo Booth (développement)
+# Photobooth (développement)
 
 ## Installation (Windows)
 
@@ -42,7 +42,7 @@ le masque et le temps de calcul.
 
 ## Liste d'invités
 
-Le fichier de la liste d'invités, configuré par `[chemins] fichier_invites`, peut être `.xlsx`, `.xls` ou `.ods` (par défaut `invites.xlsx`). La première ligne contient les titres `nom`, `prénom`, `mail`,
+Le fichier de la liste d'invités, configuré par `[chemins] fichier_invites`, peut être `.xlsx`, `.xls` ou `.ods` (par défaut `invites.xlsx`). La première ligne contient les titres `nom`, `prénom`, `pseudo` (facultatif), `mail`,
 puis une ligne par invité (le mail peut rester vide : l'invité le saisira). Le fichier est relu à chaque passage sur l'écran « Qui es-tu ? »
 s'il a changé ; ferme-le dans ton tableur avant de lancer le logiciel. L'invité peut chercher son nom au clavier tactile, ou choisir
 « Je ne suis pas dans la liste ». Réglage `obligatoire` de `[mail]` : `true` supprime le bouton « Passer » de l'écran du mail.
@@ -59,6 +59,8 @@ et `cadres/` à la racine restent utilisées si les dossiers du thème ne contie
 
 Pour créer un thème, copie `themes/classique/`, renomme le dossier, modifie son `theme.ini`, puis sélectionne son nom dans `config.ini`.
 Les modifications sont prises en compte au démarrage ou avec **Recharger la configuration** dans le mode administrateur.
+
+`theme.ini` à la racine contient les couleurs et textes par défaut. Le fichier `themes/<nom>/theme.ini` surcharge ces valeurs pour le thème actif ; les options absentes héritent du fichier racine. Les textes éditoriaux réglables sont regroupés dans `[textes]` : titre de l'application et de l'accueil, phrases d'accueil, livre d'or, veille et diaporama. Les libellés de navigation restent fixes. Les défis sont définis dans `themes/<nom>/defis.json` ; sans défi valide dans le thème, les défis intégrés sont utilisés. Les couleurs de l'interface sont regroupées dans `[couleurs]` ; une couleur se note au format `#RRGGBB`.
 
 ## Cadres photo
 
@@ -83,7 +85,7 @@ Sans second écran, rien ne s'affiche et il n'y a aucune erreur. Réglages dans 
   essais d'un envoi (ils attendent le retour du réseau, avec 2 minutes au plus entre deux essais).
 - Voyant en haut à droite (`indicateur_organisateur` dans `[general]`), caché pendant la prise de vue et quand tout va bien.
 - Mode admin : « Réessayer maintenant » et « Exporter les envois non partis » (dossier `exports/envois-AAAAMMJJ-HHMMSS/` : photos + `envois.csv` + `LISEZMOI.txt`).
-- Section `[sauvegarde]` : `dossier = ...` recopie chaque photo validée (et ses poses) en gardant l'arborescence `AAAA-MM-JJ/`.
+- Section `[sauvegarde]` : `dossier = ...` recopie chaque photo validée (et ses poses) en gardant l'arborescence `soiree_DATE/` ou `hors-soiree_DATE/`.
   Destination débranchée : les photos restent à copier, et partent dès qu'elle revient. Journal : `data/sauvegarde.jsonl`.
 
 ## Envoi des photos par mail
@@ -103,7 +105,7 @@ Le mode administrateur affiche l'état des envois et permet de renvoyer ceux en 
 
 ## Mode photomaton
 
-L'invité choisit « Une seule photo » ou « Photomaton » : `nb_poses` photos (4 par défaut) prises à la suite, avec un décompte avant chacune (`duree_decompte` pour la première, `decompte_entre_poses` ensuite), puis assemblées en une bande verticale avec un titre et la date (section `[photomaton]` de `config.ini` : titre, couleurs). La bande est enregistrée dans `photos/AAAA-MM-JJ/` et les poses individuelles dans `photos/AAAA-MM-JJ/poses/`.
+L'invité choisit « Une seule photo » ou « Photomaton » : `nb_poses` photos (4 par défaut) prises à la suite, avec un décompte avant chacune (`duree_decompte` pour la première, `decompte_entre_poses` ensuite), puis assemblées en une bande verticale avec un titre et la date (section `[photomaton]` de `config.ini` : titre, couleurs). La bande est enregistrée dans `photos/soiree_DATE/` ou `photos/hors-soiree_DATE/` selon qu'une soir&eacute;e est active ; les poses individuelles sont dans le sous-dossier `poses/`.
 
 ## Styles photo
 
@@ -126,7 +128,7 @@ Dépose tes images (jpg, png, webp) dans les sous-dossiers de `fonds/` : un sous
 
 ## Lancer
 
-En développement sous Windows, lance `lancer-dev.bat` depuis la racine du dépôt. Il utilise `.venv` et ouvre l'application dans une fenêtre. Dans VS Code, tu peux aussi choisir **Run and Debug > Photo Booth (interface)** (F5).
+En développement sous Windows, lance `lancer-dev.bat` depuis la racine du dépôt. Il utilise `.venv` et ouvre l'application dans une fenêtre. Dans VS Code, tu peux aussi choisir **Run and Debug > Photobooth (interface)** (F5).
 
 ```
 python main.py --windowed     (développement, fenêtre normale)
@@ -135,7 +137,7 @@ python main.py                (plein écran, mode soirée)
 
 Au premier lancement, `config.ini`, `photos/`, `fonds/` (avec les 4 thèmes) et `logs/` sont créés.
 
-Les photos sont enregistrées dans `photos/AAAA-MM-JJ/HHMMSS.jpg`.
+Les photos sont enregistrées dans `photos/soiree_YYYY-MM-DD/` ou `photos/hors-soiree_YYYY-MM-DD/`, avec les fichiers nomm&eacute;s `HHMMSS.jpg`.
 
 ## Tests (sans PyQt6)
 

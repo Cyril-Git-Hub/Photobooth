@@ -1,4 +1,4 @@
-"""Enregistrement des photos : photos/AAAA-MM-JJ/HHMMSS_prenom-nom.jpg"""
+"""Enregistrement dans photos/soiree_DATE ou photos/hors-soiree_DATE."""
 from __future__ import annotations
 
 import logging
@@ -15,7 +15,7 @@ from ..config import Config
 
 log = logging.getLogger(__name__)
 
-JPEG_QUALITY = 92
+JPEG_QUALITY = 98
 POSES_DIR = "poses"   # poses individuelles, dans le dossier du jour
 
 
@@ -26,9 +26,12 @@ def slugify(text: str, max_len: int = 40) -> str:
     return slug[:max_len].strip("-")
 
 
-def next_photo_path(config: Config, guest_name: str = "", now: datetime | None = None) -> Path:
+def next_photo_path(config: Config, guest_name: str = "", now: datetime | None = None,
+                    event_started_at: datetime | None = None) -> Path:
     now = now or datetime.now()
-    folder = config.dossier_photos / now.strftime("%Y-%m-%d")
+    category = "soiree" if event_started_at is not None else "hors-soiree"
+    date = event_started_at or now
+    folder = config.dossier_photos / f"{category}_{date:%Y-%m-%d}"
     stem = now.strftime("%H%M%S")
     slug = slugify(guest_name)
     if slug:
@@ -73,22 +76,24 @@ def replace_photo(path: Path, frame) -> None:
     log.info("Photo mise à jour : %s", path)
 
 
-def save_photo(config: Config, frame, guest_name: str = "", now: datetime | None = None) -> Path:
+def save_photo(config: Config, frame, guest_name: str = "", now: datetime | None = None,
+               event_started_at: datetime | None = None) -> Path:
     """Enregistre une image BGR en JPEG et renvoie son chemin."""
-    path = next_photo_path(config, guest_name, now)
+    path = next_photo_path(config, guest_name, now, event_started_at)
     _write_jpeg(frame, path)
     log.info("Photo enregistrée : %s", path)
     return path
 
 
 def save_strip(config: Config, strip, poses, guest_name: str = "",
-               now: datetime | None = None) -> tuple[Path, list[Path]]:
+               now: datetime | None = None,
+               event_started_at: datetime | None = None) -> tuple[Path, list[Path]]:
     """Enregistre la bande photomaton et ses poses individuelles (dans le sous-dossier poses/).
 
     La bande est ce qui sera envoyé et affiché ; les poses sont gardées au cas où. Si une écriture échoue,
     tout ce qui vient d'être créé est supprimé : jamais de bande sans ses poses, ni de poses orphelines.
     """
-    strip_path = next_photo_path(config, guest_name, now)
+    strip_path = next_photo_path(config, guest_name, now, event_started_at)
     created: list[Path] = []
     pose_paths: list[Path] = []
     try:

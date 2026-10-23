@@ -14,9 +14,12 @@ from ..config import Config
 from .storage import slugify
 
 
-def _destination(config: Config, guest_name: str, now: datetime | None = None) -> Path:
+def _destination(config: Config, guest_name: str, now: datetime | None = None,
+                 event_started_at: datetime | None = None) -> Path:
     now = now or datetime.now()
-    folder = config.dossier_photos / now.strftime("%Y-%m-%d")
+    category = "soiree" if event_started_at is not None else "hors-soiree"
+    date = event_started_at or now
+    folder = config.dossier_photos / f"{category}_{date:%Y-%m-%d}"
     stem = now.strftime("%H%M%S")
     slug = slugify(guest_name)
     if slug:
@@ -52,7 +55,8 @@ def _encode(frames: list[np.ndarray], width: int, colors: int, durations: list[i
 
 def save_gif(config: Config, frames: list[np.ndarray], guest_name: str = "", *,
              effect: str = "loop", hold_last: bool = False,
-             now: datetime | None = None) -> Path:
+             now: datetime | None = None,
+             event_started_at: datetime | None = None) -> Path:
     """Encode et enregistre le GIF, en réduisant résolution puis palette jusqu'à la limite configurée."""
     if not frames:
         raise ValueError("Aucune image à encoder en GIF")
@@ -71,7 +75,7 @@ def save_gif(config: Config, frames: list[np.ndarray], guest_name: str = "", *,
         while current_width >= min(320, width):
             data = _encode(sequence, current_width, colors, durations)
             if len(data) <= maximum:
-                destination = _destination(config, guest_name, now)
+                destination = _destination(config, guest_name, now, event_started_at)
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 temporary = destination.with_suffix(".gif.tmp")
                 temporary.write_bytes(data)
@@ -84,7 +88,7 @@ def save_gif(config: Config, frames: list[np.ndarray], guest_name: str = "", *,
             if current_width == min(320, width):
                 data = _encode(sequence, current_width, colors, durations)
                 if len(data) <= maximum:
-                    destination = _destination(config, guest_name, now)
+                    destination = _destination(config, guest_name, now, event_started_at)
                     destination.parent.mkdir(parents=True, exist_ok=True)
                     temporary = destination.with_suffix(".gif.tmp")
                     temporary.write_bytes(data)

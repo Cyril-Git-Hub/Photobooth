@@ -68,7 +68,7 @@ class MainWindow(QMainWindow):
         self._segmenter: Segmenter | None = None
         self._segmenter_key: tuple | None = None
 
-        self.setWindowTitle(self.theme.app_title if self.theme else "Photo Booth")
+        self.setWindowTitle(self.theme.app_title if self.theme else "Photobooth")
         self._stack = QStackedWidget()
         self._booth_frame = QFrame()
         self._booth_frame.setObjectName("boothFrame")
@@ -175,6 +175,9 @@ class MainWindow(QMainWindow):
         home = self._screens.get("home")
         if home is not None and hasattr(home, "apply_theme"):
             home.apply_theme(self.theme)
+        guestbook = self._screens.get("guestbook")
+        if guestbook is not None and hasattr(guestbook, "apply_theme"):
+            guestbook.apply_theme(self.theme)
 
     def ensure_drive_service(self) -> bool:
         """Prépare le service QR lorsqu'il vient d'être activé dans l'administration."""

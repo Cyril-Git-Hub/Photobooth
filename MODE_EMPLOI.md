@@ -1,4 +1,4 @@
-# Photo Booth : mode d'emploi
+# Photobooth : mode d'emploi
 
 ## Ce qu'il y a dans le dossier
 
@@ -7,11 +7,11 @@
 | `lancer.bat` | **Lance la borne** (la relance toute seule si elle plante) |
 | `photobooth-outils.exe` | Les mêmes outils avec une console : diagnostic, test des mails, téléchargement des modèles |
 | `config.ini` | Tous les réglages (créé au premier lancement, se complète tout seul) |
-| `invites.xlsx` | La liste des invités : `.xlsx`, `.xls` ou `.ods`, avec les colonnes `nom`, `prénom`, `mail` (le mail peut rester vide) |
+| `invites.xlsx` | La liste des invités : `.xlsx`, `.xls` ou `.ods`, avec les colonnes `nom`, `prénom`, `pseudo` (facultatif), `mail` (facultatif) |
 | `fonds\` | Les décors : une image 16/9 par fichier, un sous-dossier par thème |
 | `cadres\` | Les cadres pour les photos uniques : PNG ou WebP avec transparence |
 | `masques\` | Les masques PNG ajoutés par l'utilisateur (lunettes, moustache, etc.) |
-| `defis.json` | Liste facultative des défis personnalisés (le jeu de base est fourni dans `assets\defis.json`) |
+| `themes\<nom>\defis.json` | Défis propres à ce thème ; sans défi valide, les défis intégrés dans `assets\defis.json` sont utilisés |
 | `photos\` | Les photos de la soirée, un dossier par jour (les poses du photomaton sont dans `poses\`) |
 | `models\` | Les modèles de détourage IA |
 | `logs\` | Le journal de bord (`photobooth.log`) et le dernier diagnostic |
@@ -21,10 +21,10 @@
 
 1. **Modèles de détourage** (internet requis) : dans une console, `photobooth-outils.exe --telecharger-modeles`.
 2. **Décors** : dépose tes images (jpg, png) dans `fonds\films`, `fonds\series`, etc.
-3. **Invités** : remplis `invites.xlsx` (ou un fichier `.xls`/`.ods`) avec les colonnes `nom`, `prénom`, `mail`. Si le fichier a un autre nom ou emplacement, indique-le dans `[chemins]` avec `fichier_invites = ...`. Ferme-le dans ton tableur avant de lancer la borne.
+3. **Invités** : remplis `invites.xlsx` (ou un fichier `.xls`/`.ods`) avec les colonnes `nom`, `prénom`, `pseudo` (facultatif), `mail`. Le pseudo est affiché à la place du prénom et du nom lorsqu'il est renseigné. Si le fichier a un autre nom ou emplacement, indique-le dans `[chemins]` avec `fichier_invites = ...`. Ferme-le dans ton tableur avant de lancer la borne.
 4. **Cadres photo** (facultatif) : dépose des PNG ou WebP transparents dans `cadres\`. Ils seront proposés avec « Photo avec cadre ». Une image au format de la photo (par défaut 16:9) donnera le rendu le plus ajusté.
 5. **Masques virtuels** (facultatif) : des lunettes, une couronne, une moustache et des oreilles de lapin sont inclus. Sur l'écran caméra, touche plusieurs icônes pour cumuler les masques ; retouche une icône pour la désactiver, ou « Aucun masque » pour tout retirer. Ajoute tes PNG transparents dans `masques\` et commence leur nom par `yeux_`, `bouche_`, `nez_`, `oreille_` ou `cheveux_` pour choisir leur placement. Pour `oreille_`, dessine une seule oreille : elle sera affichée deux fois, en miroir, de chaque côté du visage. Les anciens noms comme `lunettes`, `moustache`, `couronne` et `oreilles_lapin` restent reconnus. Les masques sont appliqués à chaque photo, pose photomaton ou image du GIF.
-6. **Défis** (facultatif) : le bouton « Défi surprise » propose dix défis de départ : poses à imiter, photomaton, GIF et défis avec décor. Le nom du défi est inscrit en haut du résultat photo, du GIF ou de la bande photomaton. Pour modifier les défis, copie `assets\defis.json` sous le nom `defis.json` à côté de l'application et édite ses consignes/formats. Les champs `decor` acceptent `none`, `choose` ou `random`; `masque` (nom sans extension) et `style` (`cartoon`, `sketch`, `watercolor`, `pop_art`, `manga`) sont facultatifs et proposés au participant. Les images personnalisées sont référencées par chemin relatif. `actif = false` dans `[defis]` masque le bouton ; les défis GIF disparaissent si le GIF est désactivé.
+6. **Défis** (facultatif) : les défis sont propres au thème choisi. Crée ou modifie `themes\<nom-du-thème>\defis.json`. Le thème Lola18 contient un modèle d'un défi à compléter. Les propriétés `_commentaire` expliquent le format et sont ignorées par l'application ; le fichier reste donc un JSON valide. Renseigne un `id` unique, un `titre` et une `consigne`. `format` accepte `single`, `strip` ou `gif`; `decor` accepte `none`, `choose` ou `random`. L'image est facultative et son chemin est relatif au fichier `defis.json`. `masque` et `style` sont facultatifs. Si le thème ne contient aucun défi complet et valide, les défis intégrés dans `assets\defis.json` sont affichés. `actif = false` dans `[defis]` masque le bouton ; les défis GIF disparaissent si le GIF est désactivé.
 7. **Mails** : dans `config.ini`, section `[mail]`, renseigne `expediteur`, `mot_de_passe_application` et `adresse_organisateur` (tu reçois une copie de chaque photo).
    Avec Gmail : active la validation en 2 étapes, puis crée un « mot de passe d'application » (Compte Google > Sécurité). Gmail limite à environ 500 mails par jour.
    Ne partage jamais `config.ini` : le mot de passe y est en clair.
@@ -105,7 +105,7 @@ En dernier recours, un écran de la borne plus haut que l'écran du PC reste uti
 
 ## Après la fête
 
-- Les photos sont dans `photos\AAAA-MM-JJ\` (la bande, ou la photo unique) et `photos\AAAA-MM-JJ\poses\` (chaque pose du photomaton).
+- Les photos sont dans `photos\soiree_YYYY-MM-DD\` pendant une soir&eacute;e ou `photos\hors-soiree_YYYY-MM-DD\` hors soir&eacute;e ; les poses du photomaton sont rang&eacute;es dans `poses\`.
 - Pour une nouvelle soirée, vide le diaporama (mode admin) ; garde ou supprime les anciennes photos comme tu veux.
 
 ## Soirées et planches-contact
@@ -151,4 +151,4 @@ Pour connecter Google Drive une seule fois :
 
 La commande programme une tâche Windows qui vérifie les liens toutes les heures ; la borne fait aussi une vérification au démarrage. Google Drive ne sait pas appliquer une date d'expiration aux liens publics « toute personne disposant du lien », donc un lien peut rester accessible jusqu'au prochain passage de la tâche après son échéance. Si la tâche n'a pas pu être créée, le nettoyage se fera au prochain démarrage de la borne.
 
-Les fichiers sont déposés dans le dossier Drive `Photo Booth`. Après 30 jours, l'accès public est révoqué, mais le fichier reste dans Drive et continue d'occuper de l'espace. Si le réseau, le quota, Drive ou OAuth est indisponible, le QR est désactivé pour ce résultat ; l'enregistrement local et la mise en file du mail continuent normalement. Toute personne possédant le QR ou le lien peut télécharger le média pendant la période de partage.
+Les fichiers sont déposés dans le dossier Drive `Photobooth`. Après 30 jours, l'accès public est révoqué, mais le fichier reste dans Drive et continue d'occuper de l'espace. Si le réseau, le quota, Drive ou OAuth est indisponible, le QR est désactivé pour ce résultat ; l'enregistrement local et la mise en file du mail continuent normalement. Toute personne possédant le QR ou le lien peut télécharger le média pendant la période de partage.

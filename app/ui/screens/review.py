@@ -172,6 +172,7 @@ class ReviewScreen(BaseScreen):
         return card
 
     def on_enter(self) -> None:
+        self._preview.set_colors(self.nav.theme.colors if self.nav.theme else None)
         self._stop_movie()
         self._preview.clear_stickers()
         self._sticker_assets = stickers.list_stickers(self.config)

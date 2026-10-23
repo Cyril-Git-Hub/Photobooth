@@ -62,6 +62,8 @@ class SlideshowController:
     def reload(self) -> None:
         """Après « Recharger la configuration »."""
         self.playlist.set_order(self.config.dp_ordre)
+        if self._window is not None and hasattr(self._window, "reload_theme"):
+            self._window.reload_theme(getattr(self.config, "active_theme", None))
         self.refresh()
 
     def _on_screens_changed(self, *_args) -> None:

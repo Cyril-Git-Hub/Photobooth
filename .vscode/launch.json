@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Photo Booth (interface)",
+      "name": "Photobooth (interface)",
       "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/main.py",

@@ -3,9 +3,11 @@ from __future__ import annotations
 
 import logging
 import shutil
+import sqlite3
 import threading
 import time
 import uuid
+from datetime import datetime
 from fractions import Fraction
 from pathlib import Path
 
@@ -20,16 +22,39 @@ log = logging.getLogger(__name__)
 MAX_DURATION_SECONDS = 15
 MIN_FREE_SPACE_BYTES = 200 * 1024 * 1024
 VIDEO_FPS = 20
-VIDEO_BITRATE = 6_000_000  # le défaut PyAV (200 kbit/s) pixelise fortement une image 1080p
+VIDEO_FALLBACK_BITRATE = 16_000_000
 AUDIO_RATE = 48_000
 AUDIO_CHANNELS = 1
 
 
 def event_folder(config: Config, event_id: str) -> Path:
-    """Dossier non nominatif des vidéos d'une soirée."""
+    """Dossier daté par soirée, avec migration transparente de l'ancien dossier UUID."""
     if not event_id or any(char not in "0123456789abcdef" for char in event_id.casefold()):
         raise ValueError("Identifiant de soirée invalide")
-    return config.base_dir / "livre-or" / event_id
+    root = config.base_dir / "livre-or"
+    legacy = root / event_id
+    database = config.dossier_donnees / "soirees.sqlite3"
+    try:
+        if not database.is_file():
+            return legacy
+        with sqlite3.connect(str(database), timeout=3) as connection:
+            row = connection.execute("SELECT started_at FROM events WHERE id = ?", (event_id,)).fetchone()
+        if row is None:
+            return legacy
+        started = datetime.fromtimestamp(float(row[0]))
+    except (OSError, sqlite3.Error, TypeError, ValueError):
+        log.exception("Impossible de déterminer la date de la soirée %s", event_id)
+        return legacy
+
+    folder = root / f"soiree_{started:%Y-%m-%d}_{event_id[:8]}"
+    if legacy.is_dir() and not folder.exists():
+        try:
+            legacy.rename(folder)
+            log.info("Dossier vidéo de soirée renommé : %s -> %s", legacy.name, folder.name)
+        except OSError:
+            log.exception("Migration du dossier vidéo de soirée impossible : %s", legacy)
+            return legacy
+    return folder
 
 
 def list_recordings(config: Config, event_id: str) -> list[Path]:
@@ -49,6 +74,16 @@ def delete_recordings(config: Config, event_id: str) -> int:
         if path.is_file() and path.suffix.casefold() in {".mp4", ".avi", ".wav", ".tmp"}:
             path.unlink()
             removed += 1
+    pending = folder / "_en_attente"
+    if pending.is_dir():
+        for path in pending.iterdir():
+            if path.is_file():
+                path.unlink()
+                removed += 1
+        try:
+            pending.rmdir()
+        except OSError:
+            pass
     try:
         folder.rmdir()
     except OSError:
@@ -61,6 +96,7 @@ class VideoGuestbookRecorder(QThread):
 
     remaining = pyqtSignal(int)
     completed = pyqtSignal(str)
+    cancelled = pyqtSignal()
     failed = pyqtSignal(str)
 
     def __init__(self, frame_source, destination: Path, parent=None) -> None:
@@ -68,8 +104,13 @@ class VideoGuestbookRecorder(QThread):
         self._frame_source = frame_source
         self._destination = destination
         self._stop_requested = threading.Event()
+        self._cancel_requested = threading.Event()
 
     def stop_recording(self) -> None:
+        self._stop_requested.set()
+
+    def cancel_recording(self) -> None:
+        self._cancel_requested.set()
         self._stop_requested.set()
 
     def run(self) -> None:
@@ -130,7 +171,7 @@ class VideoGuestbookRecorder(QThread):
                     last_remaining = remaining
                 next_frame += 1 / VIDEO_FPS
                 self._stop_requested.wait(max(0.0, next_frame - time.monotonic()))
-            if writer is None or frame_count < VIDEO_FPS:
+            if not self._cancel_requested.is_set() and (writer is None or frame_count == 0):
                 raise RuntimeError("La caméra n'a pas fourni assez d'images pour enregistrer la vidéo.")
         except Exception as exc:
             log.exception("Enregistrement du livre d'or vidéo impossible")
@@ -150,11 +191,20 @@ class VideoGuestbookRecorder(QThread):
             if writer is not None:
                 writer.release()
 
+        if self._cancel_requested.is_set():
+            raw_video.unlink(missing_ok=True)
+            self._destination.unlink(missing_ok=True)
+            self.cancelled.emit()
+            return
+
         try:
             with audio_lock:
                 samples = np.concatenate(audio_chunks, axis=0) if audio_chunks else np.empty((0, 1), dtype=np.int16)
-            if len(samples) < AUDIO_RATE // 2:
-                raise RuntimeError("Aucun son exploitable n'a été capté. Vérifie le microphone.")
+            # Un arrêt manuel rapide doit quand même produire une vidéo valide ; on complète
+            # l'audio avec du silence si l'échantillon est trop court pour l'encodeur AAC.
+            minimum_samples = AUDIO_RATE // 2
+            if len(samples) < minimum_samples:
+                samples = np.pad(samples, ((0, minimum_samples - len(samples)), (0, 0)))
             self._mux_mp4(raw_video, samples)
             raw_video.unlink(missing_ok=True)
             self.completed.emit(str(self._destination))
@@ -169,14 +219,24 @@ class VideoGuestbookRecorder(QThread):
 
         with av.open(str(raw_video), "r") as source, av.open(str(self._destination), "w") as output:
             source_video = source.streams.video[0]
-            video_stream = output.add_stream("mpeg4", rate=VIDEO_FPS)
+            try:
+                av.codec.Codec("libx264", "w")
+                codec_name = "libx264"
+            except Exception:
+                codec_name = "mpeg4"
+            video_stream = output.add_stream(codec_name, rate=VIDEO_FPS)
             video_stream.width = source_video.width
             video_stream.height = source_video.height
             video_stream.pix_fmt = "yuv420p"
-            video_stream.codec_context.bit_rate = VIDEO_BITRATE
-            video_stream.codec_context.max_bit_rate = VIDEO_BITRATE
-            log.info("Finalisation du livre d'or : %dx%d à %d kbit/s",
-                     video_stream.width, video_stream.height, VIDEO_BITRATE // 1000)
+            if codec_name == "libx264":
+                video_stream.options = {"preset": "ultrafast", "crf": "18"}
+                log.info("Finalisation du livre d'or : %dx%d en H.264 ultrafast, qualité CRF 18",
+                         video_stream.width, video_stream.height)
+            else:
+                video_stream.codec_context.bit_rate = VIDEO_FALLBACK_BITRATE
+                video_stream.codec_context.max_bit_rate = VIDEO_FALLBACK_BITRATE
+                log.info("Finalisation du livre d'or : %dx%d en MPEG-4 à %d kbit/s (H.264 indisponible)",
+                         video_stream.width, video_stream.height, VIDEO_FALLBACK_BITRATE // 1000)
             audio_stream = output.add_stream("aac", rate=AUDIO_RATE)
             audio_stream.layout = "mono"
             for index, frame in enumerate(source.decode(video=0)):

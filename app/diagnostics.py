@@ -98,7 +98,7 @@ class Probes:
 
 def _check_software(config: Config) -> Check:
     mode = "exécutable" if getattr(sys, "frozen", False) else "développement"
-    return Check("Logiciel", OK, f"Photo Booth {__version__} ({mode}), Python {platform.python_version()}, "
+    return Check("Logiciel", OK, f"Photobooth {__version__} ({mode}), Python {platform.python_version()}, "
                                  f"dossier {paths.app_dir()}")
 
 
@@ -206,6 +206,7 @@ def _check_guests(config: Config) -> Check:
         return Check("Invités", WARN, f"{path.name} absent (il sera créé vide au lancement de la borne)")
     try:
         people = guests.load_guests(path)
+        guests.validate_pseudos(path, people)
     except guests.GuestListError as exc:
         return Check("Invités", FAIL, str(exc.args[0]).splitlines()[0])
     if not people:
@@ -289,7 +290,7 @@ def format_report(checks: list[Check]) -> str:
         summary = f"La borne peut démarrer ; {warnings} point(s) d'attention ci-dessus."
     else:
         summary = "Tout est prêt."
-    return "\n".join(["Diagnostic Photo Booth", "", *lines, "", summary])
+    return "\n".join(["Diagnostic Photobooth", "", *lines, "", summary])
 
 
 def exit_code(checks: list[Check]) -> int:

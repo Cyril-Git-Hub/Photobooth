@@ -26,7 +26,7 @@ MIN_MODEL_SIZE = 20_000  # un fichier plus petit est forcément une page d'erreu
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="photobooth", description="Photo Booth")
+    parser = argparse.ArgumentParser(prog="photobooth", description="Photobooth")
     parser.add_argument("--windowed", action="store_true", help="fenêtre normale au lieu du plein écran (développement)")
     parser.add_argument("--diaporama-fenetre", action="store_true",
                         help="affiche le diaporama dans une fenêtre ordinaire (pour le voir sans second écran)")
@@ -50,7 +50,7 @@ def build_parser() -> argparse.ArgumentParser:
 def run_tools(args: argparse.Namespace) -> int | None:
     """Exécute une commande sans interface. Renvoie son code de sortie, ou None s'il faut lancer la borne."""
     if args.version:
-        print(f"Photo Booth {__version__}")
+        print(f"Photobooth {__version__}")
         return 0
     if args.telecharger_modeles is not None:
         extra = (["--tous"] if args.tous else []) + (["--force"] if args.force else [])
@@ -91,7 +91,7 @@ def _sample_photo(folder: Path) -> Path:
     image = np.zeros((360, 640, 3), np.uint8)
     image[:, :, 0] = np.linspace(40, 220, 640, dtype=np.uint8)[None, :]
     image[:, :, 2] = np.linspace(220, 40, 640, dtype=np.uint8)[None, :]
-    cv2.putText(image, "TEST PHOTO BOOTH", (60, 195), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 255, 255), 3, cv2.LINE_AA)
+    cv2.putText(image, "TEST Photobooth", (60, 195), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 255, 255), 3, cv2.LINE_AA)
     path = folder / "test.jpg"
     ok, buffer = cv2.imencode(".jpg", image)
     path.write_bytes(buffer.tobytes())

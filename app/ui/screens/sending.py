@@ -240,6 +240,8 @@ class SendingScreen(BaseScreen):
             self._queue_status = "Ta photo est enregistrée !"
             return self._queue_status
         try:
+            display_first_name = session.guest_pseudo or session.guest_first_name
+            display_last_name = "" if session.guest_pseudo else session.guest_last_name
             self.nav.slideshow.add_photo(session.photos[-1])
         except Exception:
             log.exception("Ajout au diaporama impossible")
@@ -253,13 +255,13 @@ class SendingScreen(BaseScreen):
                               "strip" if session.photo_format == "strip" else
                               "framed" if session.frame_mode else "single")
                 self.nav.events.record_photo(
-                    session.event_id, session.email, session.guest_first_name,
-                    session.guest_last_name, session.photos[-1], media_type)
+                    session.event_id, session.email, display_first_name,
+                    display_last_name, session.photos[-1], media_type)
             except Exception:
                 log.exception("Indexation de la photo pour la planche-contact impossible")
         try:
-            result = self.nav.mail.enqueue_photo(session.photos[-1], session.guest_first_name,
-                                                 session.guest_last_name, session.email)
+            result = self.nav.mail.enqueue_photo(session.photos[-1], display_first_name,
+                                                 display_last_name, session.email)
             stats = self.nav.mail.stats()
         except Exception:
             log.exception("Mise en file d'envoi impossible : la photo reste enregistrée")
