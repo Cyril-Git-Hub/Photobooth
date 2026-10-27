@@ -9,7 +9,7 @@ from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QGridLayout, QHBoxLayout, QHeaderView,
     QInputDialog, QLabel, QLineEdit, QMessageBox, QScrollArea, QSlider, QTableWidget,
-    QTableWidgetItem, QVBoxLayout, QWidget,
+    QScroller, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
 from ..core.contact_sheets import create_contact_sheets
@@ -19,6 +19,7 @@ from ..core.keyboards import EMAIL_ROWS
 from ..core.text_buffer import TextBuffer
 from ..core.video_guestbook import delete_recordings, event_folder, list_recordings
 from .files import open_folder
+from .green_screen_dialog import GreenScreenCalibrationDialog
 from .widgets.big_button import BigButton
 from .widgets.virtual_keyboard import VirtualKeyboard
 from .scale import px
@@ -49,9 +50,25 @@ class AdminDialog(QDialog):
         super().__init__(window)
         self._window = window
         self.setWindowTitle("Administration")
-        self.setMinimumWidth(px(760))
+        screen = window.screen()
+        available = screen.availableGeometry() if screen else None
+        available_width = available.width() if available else px(1280)
+        available_height = available.height() if available else px(800)
+        self.setMinimumSize(min(px(760), max(320, available_width - px(32))),
+                            min(px(400), max(280, available_height - px(32))))
+        self.resize(min(px(1100), int(available_width * 0.94)),
+                    min(px(900), int(available_height * 0.92)))
 
-        layout = QVBoxLayout(self)
+        outer_layout = QVBoxLayout(self)
+        outer_layout.setContentsMargins(px(8), px(8), px(8), px(8))
+        scroll = QScrollArea(self)
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        QScroller.grabGesture(scroll.viewport(), QScroller.ScrollerGestureType.LeftMouseButtonGesture)
+        content = QWidget()
+        scroll.setWidget(content)
+        outer_layout.addWidget(scroll)
+        layout = QVBoxLayout(content)
         layout.setSpacing(px(10))
         self._info = QLabel()
         self._mail_info = QLabel()
@@ -69,6 +86,11 @@ class AdminDialog(QDialog):
         sound_row.addWidget(QLabel("Volume"))
         self._sound_volume = QSlider(Qt.Orientation.Horizontal)
         self._sound_volume.setRange(0, 100)
+        self._sound_volume.setMinimumHeight(px(56))
+        self._sound_volume.setStyleSheet(
+            f"QSlider::groove:horizontal {{ height: {px(8)}px; }} "
+            f"QSlider::handle:horizontal {{ width: {px(32)}px; margin: -{px(12)}px 0; }}"
+        )
         self._sound_volume.setValue(window.config.son_volume)
         self._sound_volume.valueChanged.connect(self._on_sound_volume_changed)
         self._sound_volume.sliderReleased.connect(self._persist_sound_settings)
@@ -76,11 +98,38 @@ class AdminDialog(QDialog):
         self._sound_volume_label = QLabel(f"{window.config.son_volume} %")
         sound_row.addWidget(self._sound_volume_label)
         layout.addLayout(sound_row)
+        countdown_row = QHBoxLayout()
+        countdown_row.addWidget(QLabel("Décompte avant la prise de vue"))
+        self._countdown = QComboBox()
+        self._countdown.setMinimumHeight(px(56))
+        self._countdown.view().setStyleSheet(
+            f"QListView::item {{ min-height: {px(44)}px; padding: {px(4)}px; }}"
+        )
+        for seconds in range(1, 11):
+            self._countdown.addItem(f"{seconds} seconde" + ("s" if seconds != 1 else ""), seconds)
+        self._countdown.setCurrentIndex(self._countdown.findData(window.config.duree_decompte))
+        self._countdown.currentIndexChanged.connect(self._on_countdown_changed)
+        countdown_row.addWidget(self._countdown, 1)
+        layout.addLayout(countdown_row)
         self._sound_save_timer = QTimer(self)
         self._sound_save_timer.setSingleShot(True)
         self._sound_save_timer.setInterval(500)
         self._sound_save_timer.timeout.connect(self._persist_sound_settings)
         self.finished.connect(lambda _result: self._persist_sound_settings())
+
+        detourage_row = QHBoxLayout()
+        detourage_row.addWidget(QLabel("Mode de détourage"))
+        self._detourage_mode = QComboBox()
+        self._detourage_mode.setMinimumHeight(px(48))
+        self._detourage_mode.view().setStyleSheet(
+            f"QListView::item {{ min-height: {px(44)}px; padding: {px(4)}px; }}"
+        )
+        self._detourage_mode.addItem("Intelligence artificielle", "ia")
+        self._detourage_mode.addItem("Fond vert", "fond_vert")
+        self._detourage_mode.setCurrentIndex(self._detourage_mode.findData(window.config.mode_detourage))
+        self._detourage_mode.currentIndexChanged.connect(self._on_detourage_mode_changed)
+        detourage_row.addWidget(self._detourage_mode, 1)
+        layout.addLayout(detourage_row)
 
         activation_button = BigButton("Gérer les activations", "secondary")
         activation_button.clicked.connect(self._manage_activations)
@@ -91,12 +140,21 @@ class AdminDialog(QDialog):
         guest_email_button.clicked.connect(self._edit_guest_emails)
         layout.addWidget(guest_email_button)
 
+        self._chroma_button = BigButton("Régler le fond vert avec la webcam", "secondary")
+        self._chroma_button.setMinimumSize(px(300), px(BUTTON_HEIGHT))
+        self._chroma_button.clicked.connect(self._calibrate_green_screen)
+        layout.addWidget(self._chroma_button)
+        self._update_chroma_controls()
+
         event_label = QLabel("Soirée et planches-contact")
         event_label.setStyleSheet("font-weight: bold")
         layout.addWidget(event_label)
         event_row = QHBoxLayout()
         self._event_combo = QComboBox()
         self._event_combo.setMinimumHeight(px(48))
+        self._event_combo.view().setStyleSheet(
+            f"QListView::item {{ min-height: {px(44)}px; padding: {px(4)}px; }}"
+        )
         event_row.addWidget(self._event_combo, 1)
         start_event = BigButton("Démarrer une nouvelle soirée", "secondary")
         start_event.setMinimumSize(px(280), px(BUTTON_HEIGHT))
@@ -305,6 +363,19 @@ class AdminDialog(QDialog):
         self._window.sounds.update_settings(self._sound_active.isChecked(), volume)
         self._sound_save_timer.start()
 
+    def _on_countdown_changed(self, _index: int) -> None:
+        seconds = self._countdown.currentData()
+        if seconds is None:
+            return
+        try:
+            self._window.config.save_countdown_settings(seconds)
+        except (OSError, ValueError) as exc:
+            log.exception("Enregistrement du décompte impossible")
+            QMessageBox.warning(self, "Décompte", f"Le réglage n'a pas été enregistré :\n{exc}")
+            self._countdown.blockSignals(True)
+            self._countdown.setCurrentIndex(self._countdown.findData(self._window.config.duree_decompte))
+            self._countdown.blockSignals(False)
+
     def _persist_sound_settings(self) -> None:
         try:
             self._window.config.save_sound_settings(
@@ -341,6 +412,13 @@ class AdminDialog(QDialog):
         self._sound_volume.setValue(self._window.config.son_volume)
         self._sound_volume.blockSignals(False)
         self._sound_volume_label.setText(f"{self._window.config.son_volume} %")
+        self._detourage_mode.blockSignals(True)
+        self._detourage_mode.setCurrentIndex(self._detourage_mode.findData(self._window.config.mode_detourage))
+        self._detourage_mode.blockSignals(False)
+        self._countdown.blockSignals(True)
+        self._countdown.setCurrentIndex(self._countdown.findData(self._window.config.duree_decompte))
+        self._countdown.blockSignals(False)
+        self._update_chroma_controls()
         self._refresh_info()
         log.info("Configuration rechargée")
 
@@ -403,6 +481,50 @@ class AdminDialog(QDialog):
             return
         GuestEmailDialog(path, guests, self).exec()
 
+    def _calibrate_green_screen(self) -> None:
+        if self._window.config.mode_detourage != "fond_vert":
+            return
+        if self._window.camera.is_active():
+            QMessageBox.information(
+                self, "Calibration du fond vert",
+                "Retourne d’abord à l’accueil pour libérer la caméra, puis relance la calibration."
+            )
+            return
+        GreenScreenCalibrationDialog(self._window, self).exec()
+
+    def _on_detourage_mode_changed(self, _index: int) -> None:
+        mode = self._detourage_mode.currentData()
+        if mode == self._window.config.mode_detourage:
+            self._update_chroma_controls()
+            return
+        if self._window.camera.is_active():
+            self._detourage_mode.blockSignals(True)
+            self._detourage_mode.setCurrentIndex(self._detourage_mode.findData(self._window.config.mode_detourage))
+            self._detourage_mode.blockSignals(False)
+            QMessageBox.information(
+                self, "Mode de détourage",
+                "Retourne d’abord à l’accueil pour libérer la caméra, puis change le mode de détourage."
+            )
+            return
+        try:
+            self._window.config.save_detourage_mode(mode)
+            self._window.close_segmenter()
+        except (OSError, ValueError) as exc:
+            log.exception("Enregistrement du mode de détourage impossible")
+            self._detourage_mode.blockSignals(True)
+            self._detourage_mode.setCurrentIndex(self._detourage_mode.findData(self._window.config.mode_detourage))
+            self._detourage_mode.blockSignals(False)
+            QMessageBox.warning(self, "Mode non enregistré", f"Le mode n’a pas été modifié :\n{exc}")
+            return
+        log.info("Mode de détourage modifié : %s", mode)
+        self._update_chroma_controls()
+        self._refresh_info()
+
+    def _update_chroma_controls(self) -> None:
+        active = self._window.config.mode_detourage == "fond_vert"
+        self._chroma_button.setVisible(active)
+        self._chroma_button.setEnabled(active and not self._window.camera.is_active())
+
     def _clear_slideshow(self) -> None:
         self._window.slideshow.clear()
         log.info("Diaporama vidé")
@@ -418,9 +540,23 @@ class GuestEmailDialog(QDialog):
         self._path = path
         self._guests = guests
         self.setWindowTitle("Adresses mail des invités")
-        self.resize(px(900), px(680))
-
-        layout = QVBoxLayout(self)
+        screen = parent.screen() if parent else QApplication.primaryScreen()
+        available = screen.availableGeometry() if screen else None
+        available_width = available.width() if available else px(1100)
+        available_height = available.height() if available else px(800)
+        self.setMinimumSize(min(px(600), max(320, available_width - px(24))),
+                            min(px(420), max(300, available_height - px(24))))
+        self.resize(min(px(900), int(available_width * 0.94)),
+                    min(px(680), int(available_height * 0.92)))
+        outer_layout = QVBoxLayout(self)
+        outer_layout.setContentsMargins(px(8), px(8), px(8), px(8))
+        scroll = QScrollArea(self)
+        scroll.setWidgetResizable(True)
+        QScroller.grabGesture(scroll.viewport(), QScroller.ScrollerGestureType.LeftMouseButtonGesture)
+        content = QWidget()
+        scroll.setWidget(content)
+        outer_layout.addWidget(scroll)
+        layout = QVBoxLayout(content)
         note = QLabel("Sélectionne un invité, saisis son adresse avec le clavier tactile, puis valide. "
                       "La touche Effacer vide l'adresse.")
         note.setWordWrap(True)
@@ -463,6 +599,8 @@ class GuestEmailDialog(QDialog):
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save
                                    | QDialogButtonBox.StandardButton.Cancel)
+        buttons.button(QDialogButtonBox.StandardButton.Save).setMinimumSize(px(140), px(56))
+        buttons.button(QDialogButtonBox.StandardButton.Cancel).setMinimumSize(px(140), px(56))
         buttons.accepted.connect(self._save)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
@@ -522,8 +660,14 @@ class ActivationDialog(QDialog):
         self._window = window
         cfg = window.config
         self.setWindowTitle("Gérer les activations")
-        self.setMinimumWidth(px(560))
-        self.setMinimumHeight(px(460))
+        screen = window.screen()
+        available = screen.availableGeometry() if screen else None
+        available_width = available.width() if available else px(1000)
+        available_height = available.height() if available else px(760)
+        self.setMinimumSize(min(px(560), max(320, available_width - px(24))),
+                            min(px(420), max(300, available_height - px(24))))
+        self.resize(min(px(700), int(available_width * 0.92)),
+                    min(px(720), int(available_height * 0.92)))
         layout = QVBoxLayout(self)
         layout.addWidget(QLabel("Active ou désactive les fonctions proposées aux invités."))
 
@@ -544,6 +688,7 @@ class ActivationDialog(QDialog):
         self._sounds = self._option(options, "Effets sonores", cfg.son_active)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        QScroller.grabGesture(scroll.viewport(), QScroller.ScrollerGestureType.LeftMouseButtonGesture)
         scroll.setWidget(content)
         layout.addWidget(scroll, 1)
 
@@ -551,6 +696,8 @@ class ActivationDialog(QDialog):
         note.setWordWrap(True)
         layout.addWidget(note)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
+        buttons.button(QDialogButtonBox.StandardButton.Save).setMinimumSize(px(140), px(56))
+        buttons.button(QDialogButtonBox.StandardButton.Cancel).setMinimumSize(px(140), px(56))
         buttons.accepted.connect(self._save)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
@@ -558,7 +705,7 @@ class ActivationDialog(QDialog):
     @staticmethod
     def _option(layout: QVBoxLayout, text: str, checked: bool) -> QCheckBox:
         checkbox = QCheckBox(text)
-        checkbox.setMinimumHeight(px(42))
+        checkbox.setMinimumHeight(px(56))
         checkbox.setChecked(checked)
         layout.addWidget(checkbox)
         return checkbox

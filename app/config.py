@@ -30,7 +30,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
     "general": {
         "mode_detourage": "ia",
         "nb_poses": "4",
-        "duree_decompte": "3",
+        "duree_decompte": "5",
         "camera_index": "0",
         "resolution_largeur": "1920",
         "resolution_hauteur": "1080",
@@ -123,8 +123,8 @@ TEMPLATE = """\
 mode_detourage = ia
 # Nombre de poses en mode photomaton (1 à 6)
 nb_poses = 4
-# Durée du décompte avant chaque photo, en secondes
-duree_decompte = 3
+# Durée du décompte avant chaque photo, de 1 à 10 secondes (5 par défaut)
+duree_decompte = 5
 # Index de la caméra (0 = première caméra)
 camera_index = 0
 resolution_largeur = 1920
@@ -263,7 +263,7 @@ class Config:
     # [general]
     mode_detourage: str = "ia"
     nb_poses: int = 4
-    duree_decompte: int = 3
+    duree_decompte: int = 5
     camera_index: int = 0
     resolution_largeur: int = 1920
     resolution_hauteur: int = 1080
@@ -607,6 +607,108 @@ class Config:
                 if key not in found:
                     lines.insert(insertion, f"{key} = {value}")
                     insertion += 1
+
+        content = "\n".join(lines) + "\n"
+        backup = self.config_path.with_suffix(".ini.bak")
+        temporary = self.config_path.with_suffix(self.config_path.suffix + ".tmp")
+        backup.write_bytes(self.config_path.read_bytes())
+        temporary.write_text(content, encoding="utf-8")
+        os.replace(temporary, self.config_path)
+        self.reload()
+
+    def save_detourage_mode(self, mode: str) -> None:
+        """Enregistre le mode de détourage choisi dans l'administration."""
+        mode = str(mode).strip().lower()
+        if mode not in DETOURAGE_MODES:
+            raise ValueError(f"Mode de détourage invalide : {mode}")
+        lines = self.config_path.read_text(encoding="utf-8-sig").splitlines()
+        section_start = next((index for index, line in enumerate(lines)
+                              if re.match(r"^\s*\[general\]\s*(?:[;#].*)?$", line, re.IGNORECASE)), None)
+        if section_start is None:
+            lines.extend(["", "[general]"])
+            section_start = len(lines) - 1
+        section_end = next((index for index in range(section_start + 1, len(lines))
+                            if re.match(r"^\s*\[[^\]]+\]", lines[index])), len(lines))
+        found = False
+        for index in range(section_start + 1, section_end):
+            match = re.match(r"^(\s*)mode_detourage(\s*=).*$", lines[index], re.IGNORECASE)
+            if match:
+                lines[index] = f"{match.group(1)}mode_detourage{match.group(2)} {mode}"
+                found = True
+                break
+        if not found:
+            lines.insert(section_end, f"mode_detourage = {mode}")
+
+        content = "\n".join(lines) + "\n"
+        backup = self.config_path.with_suffix(".ini.bak")
+        temporary = self.config_path.with_suffix(self.config_path.suffix + ".tmp")
+        backup.write_bytes(self.config_path.read_bytes())
+        temporary.write_text(content, encoding="utf-8")
+        os.replace(temporary, self.config_path)
+        self.reload()
+
+    def save_countdown_settings(self, seconds: int) -> None:
+        """Enregistre le décompte de prise de vue choisi dans l'administration."""
+        seconds = int(seconds)
+        if not 1 <= seconds <= 10:
+            raise ValueError("Le décompte doit être compris entre 1 et 10 secondes.")
+        lines = self.config_path.read_text(encoding="utf-8-sig").splitlines()
+        section_start = next((index for index, line in enumerate(lines)
+                              if re.match(r"^\s*\[general\]\s*(?:[;#].*)?$", line, re.IGNORECASE)), None)
+        if section_start is None:
+            lines.extend(["", "[general]"])
+            section_start = len(lines) - 1
+        section_end = next((index for index in range(section_start + 1, len(lines))
+                            if re.match(r"^\s*\[[^\]]+\]", lines[index])), len(lines))
+        found = False
+        for index in range(section_start + 1, section_end):
+            match = re.match(r"^(\s*)duree_decompte(\s*=).*$", lines[index], re.IGNORECASE)
+            if match:
+                lines[index] = f"{match.group(1)}duree_decompte{match.group(2)} {seconds}"
+                found = True
+                break
+        if not found:
+            lines.insert(section_end, f"duree_decompte = {seconds}")
+        content = "\n".join(lines) + "\n"
+        backup = self.config_path.with_suffix(".ini.bak")
+        temporary = self.config_path.with_suffix(self.config_path.suffix + ".tmp")
+        backup.write_bytes(self.config_path.read_bytes())
+        temporary.write_text(content, encoding="utf-8")
+        os.replace(temporary, self.config_path)
+        self.reload()
+
+    def save_chroma_settings(self, hue_min: int, hue_max: int, saturation_min: int, value_min: int) -> None:
+        """Enregistre les seuils du fond vert en préservant les autres réglages du fichier."""
+        values = {
+            "teinte_min": str(max(0, min(179, int(hue_min)))),
+            "teinte_max": str(max(0, min(179, int(hue_max)))),
+            "saturation_min": str(max(0, min(255, int(saturation_min)))),
+            "valeur_min": str(max(0, min(255, int(value_min)))),
+        }
+        if int(values["teinte_min"]) > int(values["teinte_max"]):
+            raise ValueError("La teinte minimale doit être inférieure ou égale à la teinte maximale.")
+
+        lines = self.config_path.read_text(encoding="utf-8-sig").splitlines()
+        section_start = next((index for index, line in enumerate(lines)
+                              if re.match(r"^\s*\[fond_vert\]\s*(?:[;#].*)?$", line, re.IGNORECASE)), None)
+        if section_start is None:
+            lines.extend(["", "[fond_vert]"])
+            section_start = len(lines) - 1
+        section_end = next((index for index in range(section_start + 1, len(lines))
+                            if re.match(r"^\s*\[[^\]]+\]", lines[index])), len(lines))
+        found: set[str] = set()
+        for index in range(section_start + 1, section_end):
+            match = re.match(r"^(\s*)(teinte_min|teinte_max|saturation_min|valeur_min)(\s*=).*$",
+                             lines[index], re.IGNORECASE)
+            if match:
+                key = match.group(2).lower()
+                lines[index] = f"{match.group(1)}{key}{match.group(3)} {values[key]}"
+                found.add(key)
+        insertion = section_end
+        for key, value in values.items():
+            if key not in found:
+                lines.insert(insertion, f"{key} = {value}")
+                insertion += 1
 
         content = "\n".join(lines) + "\n"
         backup = self.config_path.with_suffix(".ini.bak")

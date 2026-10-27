@@ -42,21 +42,35 @@ def _valid(path: Path) -> bool:
 
 
 def list_stickers(config: Config) -> list[StickerAsset]:
-    """Charge les autocollants fournis et ceux ajoutés par l'organisateur."""
+    """Charge les autocollants du theme s il en definit, sinon ceux par defaut."""
+    theme_folder = config.dossier_theme / "autocollants"
+    theme_assets = _list_folder(theme_folder)
+    if theme_assets:
+        log.info("%d autocollant(s) charge(s) depuis le theme %s", len(theme_assets), theme_folder)
+        return theme_assets
+
     paths = (resource_path("assets/autocollants"), config.base_dir / "autocollants")
     found: dict[str, StickerAsset] = {}
     paths[1].mkdir(parents=True, exist_ok=True)
     for folder in paths:
-        if not folder.is_dir():
-            continue
-        for path in sorted(folder.iterdir(), key=lambda item: item.name.casefold()):
-            if not path.is_file() or path.suffix.casefold() not in SUPPORTED:
-                continue
-            if not _valid(path):
-                log.warning("Autocollant ignoré (fichier illisible) : %s", path)
-                continue
-            found[path.stem.casefold()] = StickerAsset(path.stem.replace("_", " "), path)
+        for asset in _list_folder(folder):
+            found[asset.path.stem.casefold()] = asset
+    log.info("%d autocollant(s) charge(s) depuis les ressources par defaut", len(found))
     return list(found.values())
+
+
+def _list_folder(folder: Path) -> list[StickerAsset]:
+    found: list[StickerAsset] = []
+    if not folder.is_dir():
+        return found
+    for path in sorted(folder.iterdir(), key=lambda item: item.name.casefold()):
+        if not path.is_file() or path.suffix.casefold() not in SUPPORTED:
+            continue
+        if not _valid(path):
+            log.warning("Autocollant ignore (fichier illisible) : %s", path)
+            continue
+        found.append(StickerAsset(path.stem.replace("_", " "), path))
+    return found
 
 
 def load_sticker(path: Path, size: int = 640) -> QImage:

@@ -57,6 +57,8 @@ par exemple `cadre_interface = visuels/cadre-film.png`. Le cadre complet reste a
 Le thème classique reprend les couleurs actuelles. Les anciennes ressources `fonds/`
 et `cadres/` à la racine restent utilisées si les dossiers du thème ne contiennent aucune image.
 
+Les autocollants d’un thème se placent dans `themes/<nom>/autocollants/`. Si ce dossier contient au moins un fichier valide, l’application n’affiche que ces autocollants ; sinon, elle reprend les autocollants intégrés et ceux de `autocollants/` à la racine.
+Les masques d'un theme se placent au format PNG transparent dans `themes/<nom>/masques/`. Prefixes reconnus : `cheveux_`, `dessusTete_`, `front_`, `yeux_`, `nez_`, `moustache_`, `bouche_`, `menton_`, `joues_` et `oreille_`. Joues et oreilles sont dupliquees en miroir. Si le dossier contient un masque valide, seuls ceux du theme sont proposes ; sinon, les masques integres et ceux de `masques/` a la racine sont utilises.
 Pour créer un thème, copie `themes/classique/`, renomme le dossier, modifie son `theme.ini`, puis sélectionne son nom dans `config.ini`.
 Les modifications sont prises en compte au démarrage ou avec **Recharger la configuration** dans le mode administrateur.
 

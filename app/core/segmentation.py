@@ -204,6 +204,9 @@ class ChromaKeySegmenter(Segmenter):
         p = self.params
         hsv = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2HSV)
         backdrop = cv2.inRange(hsv, (p.teinte_min, p.saturation_min, p.valeur_min), (p.teinte_max, 255, 255))
+        # Les ombres et les plis peuvent laisser de petits trous dans le fond détecté.
+        # Les refermer avant l'inversion évite que ces points isolés soient gardés comme sujet.
+        backdrop = cv2.morphologyEx(backdrop, cv2.MORPH_CLOSE, _K5)
         person = cv2.bitwise_not(backdrop)
         person = cv2.morphologyEx(person, cv2.MORPH_OPEN, _K3)    # grains isolés dans le fond
         person = cv2.morphologyEx(person, cv2.MORPH_CLOSE, _K5)   # petits trous dans la personne

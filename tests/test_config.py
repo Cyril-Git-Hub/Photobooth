@@ -59,6 +59,23 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual((cfg.fv_teinte_min, cfg.fv_teinte_max, cfg.fv_adoucissement), (40, 80, 5))
             self.assertFalse(cfg.fv_despill)
 
+    def test_enregistrement_seuils_fond_vert_preserve_le_reste(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            write_ini(base, "[general]\nmode_detourage = fond_vert\n"
+                            "[fond_vert]\nteinte_min = 35\nteinte_max = 85\n"
+                            "saturation_min = 25\nvaleur_min = 20\ndespill = false\n"
+                            "[mail]\nsmtp_hote = exemple.test\n")
+            cfg = Config.load(base_dir=base)
+            cfg.save_chroma_settings(72, 108, 18, 12)
+            self.assertEqual((cfg.fv_teinte_min, cfg.fv_teinte_max,
+                              cfg.fv_saturation_min, cfg.fv_valeur_min), (72, 108, 18, 12))
+            self.assertFalse(cfg.fv_despill)
+            parser = Config._new_parser()
+            parser.read(cfg.config_path, encoding="utf-8")
+            self.assertEqual(parser["mail"]["smtp_hote"], "exemple.test")
+            self.assertTrue(cfg.config_path.with_suffix(".ini.bak").exists())
+
     def test_choix_du_modele_ia(self):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
