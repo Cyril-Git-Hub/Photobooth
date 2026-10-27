@@ -252,8 +252,14 @@ class CaptureScreen(BaseScreen):
             if widget is not None:
                 widget.deleteLater()
         self._mask_buttons.clear()
-        defaults = resource_path("assets/masques")
-        assets = virtual_masks.scan_masks([defaults, self.config.dossier_masques])
+        theme_masks = self.config.dossier_theme / "masques"
+        assets = virtual_masks.scan_masks([theme_masks])
+        if assets:
+            log.info("%d masque(s) charge(s) depuis le theme %s", len(assets), theme_masks)
+        else:
+            defaults = resource_path("assets/masques")
+            assets = virtual_masks.scan_masks([defaults, self.config.dossier_masques])
+            log.info("%d masque(s) charge(s) depuis les ressources par defaut", len(assets))
         self._mask_assets = {asset.path: asset for asset in assets}
         self._mask_option.setVisible(bool(assets))
         self._mask_panel.setVisible(bool(assets) and self._mask_gallery_open)
@@ -609,7 +615,9 @@ class CaptureScreen(BaseScreen):
                 log.exception("Échec du détourage de la photo")
                 self._fail(PROCESS_ERROR)
                 return None
-        elif self.session.frame_mode and self._frame_overlay is not None:
+        # Le cadre est superposé après le décor, comme dans l'aperçu en direct.
+        # Il doit aussi être appliqué lorsque le détourage/décor est actif.
+        if self.session.frame_mode and self._frame_overlay is not None:
             try:
                 frame = frames.apply_frame(frame, self._frame_overlay)
             except Exception:
