@@ -22,6 +22,9 @@ QPushButton {
     font-size: 30px;
     font-weight: 600;
 }
+QPushButton#adminAuthButton { border-radius: 14px; padding: 6px 12px; font-size: 19px; }
+QPushButton#adminAuthKey { border-radius: 14px; padding: 2px; font-size: 28px; }
+QPushButton#adminPatternSetting { border-radius: 14px; padding: 6px 12px; font-size: 18px; }
 QPushButton:hover { border-color: rgba(255, 255, 255, 0.42); }
 QPushButton#formatOptionButton { border-radius: 16px; padding: 10px 18px; font-size: 23px; }
 QPushButton:disabled { color: rgba(244, 241, 255, 0.48); background: #2b2757; border-color: transparent; }

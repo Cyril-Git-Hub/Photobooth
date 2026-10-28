@@ -36,8 +36,8 @@
 9. **Sauvegarde (conseillé)** : section `[sauvegarde]`, ligne `dossier = E:/sauvegarde-photos` (clé USB, disque externe...). Chaque photo validée y est recopiée toute seule.
 10. **Theme** (facultatif) : choisis `theme = classique` dans `[general]`. Les themes sont dans `themes/<nom>/`; copie `classique` pour en creer un et personnaliser couleurs, textes, mail et ressources. Ajoute les autocollants dans `autocollants/` et les masques PNG transparents dans `masques/` dans le dossier du theme. Chaque dossier remplace separement les ressources par defaut lorsqu'il contient au moins un fichier valide ; sinon, les ressources integrees et celles a la racine restent utilisees. Un cadre PNG/WebP transparent declare avec `cadre_interface` dans `[ressources]` s'affiche au premier plan sur les ecrans du parcours, sauf pendant la prise de vue. Les effets sonores WAV se deposent dans `sons/`.
 11. **GIF animé** (facultatif) : le bouton apparaît dans le choix du format. Réglages de disponibilité, nombre d'images, rythme et limite de poids dans la section `[gif]` de `config.ini`.
-12. **Code administrateur** : change `code_admin` dans `config.ini` (1234 par défaut).
-13. **Sons** : ouvre le mode administrateur (3 appuis rapides dans le coin supérieur gauche) pour couper les effets ou régler leur volume. Les réglages sont conservés dans `config.ini`.
+12. **Accès administrateur** : le schéma tactile est utilisé par défaut (relier 1-2-3-6-9 sur la grille 3×3). L'écran d'accès permet aussi de basculer vers le pavé numérique du code (`code_admin`, 1234 par défaut). Depuis le menu admin, choisis le mode proposé par défaut et **Définir le schéma** pour enregistrer un nouveau tracé ; il faut le dessiner deux fois.
+13. **Sons** : ouvre le mode administrateur (5 appuis rapides dans le coin supérieur gauche) pour couper les effets ou régler leur volume. Les réglages sont conservés dans `config.ini`.
 14. **Vérifie tout** : `photobooth-outils.exe --autotest` (caméra, modèle, décors, invités, mails, écrans) puis `photobooth-outils.exe --test-mail` (envoie un vrai mail de test).
 
 ## Le jour J
@@ -69,6 +69,7 @@ Touche **5 fois rapidement le coin en haut à gauche** de l'écran, puis tape le
 - régler le volume des effets sonores ;
 - **calibrer le fond vert** : retourne d’abord à l’accueil pour libérer la webcam, puis ouvre cette option. Clique sur plusieurs zones du tissu dans l’aperçu, notamment dans les plis, les ombres et les zones éclairées. Ajuste les seuils pour que le fond soit blanc dans le masque et les personnes noires. L’aperçu magenta montre les zones retirées. **Enregistrer** conserve les valeurs dans `config.ini` ; **Annuler** les laisse inchangées. Ces seuils sont utilisés quand `mode_detourage = fond_vert` dans `[general]` ;
 - régler le **décompte avant la prise de vue** entre 1 et 10 secondes (5 par défaut) ; le choix est enregistré immédiatement ;
+- choisir le mode proposé par défaut pour le déverrouillage admin et définir le schéma tactile ; l'écran d'accès permet de basculer ponctuellement entre le schéma et le pavé de code ;
 - **quitter** la borne.
 
 Avec un clavier : `Ctrl + Maj + Q`.
@@ -117,7 +118,7 @@ En dernier recours, un écran de la borne plus haut que l'écran du PC reste uti
 
 ## Soirées et planches-contact
 
-Au début de chaque soirée, ouvre le mode administrateur (3 appuis rapides dans le coin supérieur gauche) et choisis **Démarrer une nouvelle soirée**. Cette soirée reste active après minuit et après un redémarrage, jusqu'au démarrage explicite de la suivante. Si une soirée est déjà active, l'application demande confirmation avant de la clôturer.
+Au début de chaque soirée, ouvre le mode administrateur (5 appuis rapides dans le coin supérieur gauche) et choisis **Démarrer une nouvelle soirée**. Cette soirée reste active après minuit et après un redémarrage, jusqu'au démarrage explicite de la suivante. Si une soirée est déjà active, l'application demande confirmation avant de la clôturer.
 
 En fin de soirée ou plus tard, retourne dans le mode administrateur, sélectionne la soirée dans la liste puis choisis **Créer les planches-contact**. Une planche PNG est créée pour chaque invité identifié par son adresse mail, dans `exports\planches-contact\`. Elle inclut les photos uniques, les photos avec cadre, les bandes photomaton (une seule vignette de la bande, sans recompter les poses) et une vignette de la première image de chaque GIF. Le dossier créé s'ouvre automatiquement.
 

@@ -1,6 +1,7 @@
-"""Accès administrateur : protégé par un code, caché derrière un geste (voir main_window.py)."""
+"""Accès administrateur : schéma ou code tactile, derrière un geste (voir main_window.py)."""
 from __future__ import annotations
 
+import hmac
 import logging
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -8,7 +9,7 @@ from typing import TYPE_CHECKING
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QGridLayout, QHBoxLayout, QHeaderView,
-    QInputDialog, QLabel, QLineEdit, QMessageBox, QScrollArea, QSlider, QTableWidget,
+    QLabel, QMessageBox, QScrollArea, QSlider, QTableWidget,
     QScroller, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
@@ -20,6 +21,7 @@ from ..core.text_buffer import TextBuffer
 from ..core.video_guestbook import delete_recordings, event_folder, list_recordings
 from .files import open_folder
 from .green_screen_dialog import GreenScreenCalibrationDialog
+from .admin_auth import PatternDialog, PinDialog
 from .widgets.big_button import BigButton
 from .widgets.virtual_keyboard import VirtualKeyboard
 from .scale import px
@@ -33,14 +35,25 @@ BUTTON_HEIGHT = 64    # plus bas que les boutons des invités : la boîte doit t
 
 
 def open_admin_dialog(window: "MainWindow") -> None:
-    code, ok = QInputDialog.getText(
-        window, "Accès administrateur", "Code :", QLineEdit.EchoMode.Password)
-    if not ok:
-        return
-    if code != window.config.code_admin:
-        log.warning("Code administrateur incorrect")
-        QMessageBox.warning(window, "Accès refusé", "Code incorrect.")
-        return
+    mode = window.config.admin_auth_mode
+    while True:
+        if mode == "code":
+            dialog = PinDialog(window)
+            expected = window.config.code_admin
+        else:
+            dialog = PatternDialog(window)
+            expected = window.config.admin_pattern
+        result = dialog.exec()
+        if dialog.switch_to:
+            mode = dialog.switch_to
+            continue
+        if result != QDialog.DialogCode.Accepted:
+            return
+        if not hmac.compare_digest(dialog.value or "", expected):
+            log.warning("Code administrateur incorrect")
+            QMessageBox.warning(window, "Accès refusé", "Code ou schéma incorrect.")
+            return
+        break
     log.info("Accès administrateur ouvert")
     AdminDialog(window).exec()
 
@@ -111,6 +124,25 @@ class AdminDialog(QDialog):
         self._countdown.currentIndexChanged.connect(self._on_countdown_changed)
         countdown_row.addWidget(self._countdown, 1)
         layout.addLayout(countdown_row)
+        auth_row = QHBoxLayout()
+        auth_row.addWidget(QLabel("Déverrouillage administrateur"))
+        self._admin_auth_mode = QComboBox()
+        self._admin_auth_mode.setMinimumHeight(px(56))
+        self._admin_auth_mode.addItem("Schéma tactile", "pattern")
+        self._admin_auth_mode.addItem("Code numérique", "code")
+        self._admin_auth_mode.setCurrentIndex(
+            self._admin_auth_mode.findData(window.config.admin_auth_mode))
+        self._admin_auth_mode.view().setStyleSheet(
+            f"QListView::item {{ min-height: {px(44)}px; padding: {px(4)}px; }}"
+        )
+        self._admin_auth_mode.currentIndexChanged.connect(self._on_admin_auth_mode_changed)
+        auth_row.addWidget(self._admin_auth_mode, 1)
+        self._pattern_button = BigButton("Définir le schéma", "secondary")
+        self._pattern_button.setObjectName("adminPatternSetting")
+        self._pattern_button.setMinimumSize(px(190), px(56))
+        self._pattern_button.clicked.connect(self._define_admin_pattern)
+        auth_row.addWidget(self._pattern_button)
+        layout.addLayout(auth_row)
         self._sound_save_timer = QTimer(self)
         self._sound_save_timer.setSingleShot(True)
         self._sound_save_timer.setInterval(500)
@@ -376,6 +408,33 @@ class AdminDialog(QDialog):
             self._countdown.setCurrentIndex(self._countdown.findData(self._window.config.duree_decompte))
             self._countdown.blockSignals(False)
 
+    def _on_admin_auth_mode_changed(self, _index: int) -> None:
+        mode = self._admin_auth_mode.currentData()
+        if mode == self._window.config.admin_auth_mode:
+            return
+        try:
+            self._window.config.save_admin_auth_settings(mode, self._window.config.admin_pattern)
+        except (OSError, ValueError) as exc:
+            log.exception("Enregistrement du mode d'accès administrateur impossible")
+            QMessageBox.warning(self, "Accès administrateur", f"Le réglage n'a pas été enregistré :\n{exc}")
+            self._admin_auth_mode.blockSignals(True)
+            self._admin_auth_mode.setCurrentIndex(
+                self._admin_auth_mode.findData(self._window.config.admin_auth_mode))
+            self._admin_auth_mode.blockSignals(False)
+
+    def _define_admin_pattern(self) -> None:
+        dialog = PatternDialog(self, confirm=True)
+        if dialog.exec() != QDialog.DialogCode.Accepted or not dialog.value:
+            return
+        try:
+            self._window.config.save_admin_auth_settings(
+                self._window.config.admin_auth_mode, dialog.value)
+        except (OSError, ValueError) as exc:
+            log.exception("Enregistrement du schéma administrateur impossible")
+            QMessageBox.warning(self, "Schéma administrateur", f"Le schéma n'a pas été enregistré :\n{exc}")
+            return
+        log.info("Schéma d'accès administrateur modifié")
+
     def _persist_sound_settings(self) -> None:
         try:
             self._window.config.save_sound_settings(
@@ -418,6 +477,10 @@ class AdminDialog(QDialog):
         self._countdown.blockSignals(True)
         self._countdown.setCurrentIndex(self._countdown.findData(self._window.config.duree_decompte))
         self._countdown.blockSignals(False)
+        self._admin_auth_mode.blockSignals(True)
+        self._admin_auth_mode.setCurrentIndex(
+            self._admin_auth_mode.findData(self._window.config.admin_auth_mode))
+        self._admin_auth_mode.blockSignals(False)
         self._update_chroma_controls()
         self._refresh_info()
         log.info("Configuration rechargée")

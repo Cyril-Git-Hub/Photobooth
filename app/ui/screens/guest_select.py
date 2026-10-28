@@ -18,7 +18,6 @@ from ..scale import px
 
 log = logging.getLogger(__name__)
 
-COLUMNS = 3
 EMPTY_LIST = ("La liste d'invités est vide.\nAjoute des lignes dans le fichier {name} "
               "(colonnes : nom, prénom, pseudo, mail), puis reviens sur cet écran.")
 
@@ -34,6 +33,7 @@ class GuestSelectScreen(BaseScreen):
 
         heading = QLabel("Qui es-tu ?")
         heading.setObjectName("heading")
+        heading.setProperty("screenRole", "screenTitle")
         heading.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._search_label = QLabel("")
         self._search_label.setObjectName("search")
@@ -41,7 +41,9 @@ class GuestSelectScreen(BaseScreen):
 
         self._grid_host = QWidget()
         self._grid = QGridLayout(self._grid_host)
-        self._grid.setSpacing(px(16))
+        self._grid.setContentsMargins(px(10), px(8), px(10), px(8))
+        self._grid.setHorizontalSpacing(px(12))
+        self._grid.setVerticalSpacing(px(10))
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
@@ -68,8 +70,8 @@ class GuestSelectScreen(BaseScreen):
         buttons.addStretch(1)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(px(30), px(24), px(30), px(24))
-        layout.setSpacing(px(12))
+        layout.setContentsMargins(px(32), px(18), px(32), px(18))
+        layout.setSpacing(px(8))
         layout.addWidget(heading)
         layout.addWidget(self._search_label)
         layout.addWidget(scroll, 1)
@@ -125,12 +127,22 @@ class GuestSelectScreen(BaseScreen):
             message.setWordWrap(True)
             self._grid.addWidget(message, 0, 0)
             return
+        # On utilise la largeur disponible pour afficher davantage de noms par rangée.
+        # La hauteur reste confortable au doigt et le défilement est conservé pour les longues listes.
+        viewport_width = max(px(600), self.width() - px(80))
+        min_tile_width = px(220)
+        columns = max(3, min(6, viewport_width // min_tile_width))
+        rows = (len(matches) + columns - 1) // columns
+        viewport_height = max(px(300), self.height() - px(210))
+        tile_height = max(px(58), min(px(78), viewport_height // max(1, min(rows, 8))))
         for index, guest in enumerate(matches):
             variant = {"M": "man", "F": "woman"}.get(guest.sex, "secondary")
             tile = BigButton(guest.display_name, variant)
-            tile.setMinimumSize(px(300), px(84))
+            tile.setObjectName("guestNameButton")
+            tile.setMinimumSize(min_tile_width, tile_height)
+            tile.setMaximumHeight(tile_height)
             tile.clicked.connect(lambda _checked=False, g=guest: self._choose(g))
-            self._grid.addWidget(tile, index // COLUMNS, index % COLUMNS)
+            self._grid.addWidget(tile, index // columns, index % columns)
 
     # ---------- recherche ----------
 

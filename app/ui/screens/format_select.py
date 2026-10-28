@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout
+from PyQt6.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QVBoxLayout
 
 from ..widgets.big_button import BigButton
 from .base import BaseScreen
@@ -14,6 +14,7 @@ class FormatSelectScreen(BaseScreen):
         super().__init__(nav)
         heading = QLabel("Quel format ?")
         heading.setObjectName("heading")
+        heading.setProperty("screenRole", "screenTitle")
         heading.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self._single = BigButton("Photo unique", "notListed")
@@ -44,35 +45,25 @@ class FormatSelectScreen(BaseScreen):
         back = BigButton("Retour", "secondary")
         back.clicked.connect(lambda: self.nav.go_to("guest_select"))
 
-        choices = QHBoxLayout()
-        choices.setSpacing(px(40))
-        choices.addStretch(1)
-        choices.addWidget(self._single)
-        choices.addWidget(self._strip)
-        choices.addStretch(1)
-        framed_row = QHBoxLayout()
-        framed_row.addStretch(1)
-        framed_row.addWidget(self._gif)
-        framed_row.addStretch(1)
-        challenge_row = QHBoxLayout()
-        challenge_row.addStretch(1)
-        challenge_row.addWidget(self._challenge)
-        challenge_row.addSpacing(px(20))
-        challenge_row.addWidget(self._guestbook)
-        challenge_row.addStretch(1)
+        choices = QGridLayout()
+        choices.setHorizontalSpacing(px(22))
+        choices.setVerticalSpacing(px(18))
+        options = (self._single, self._strip, self._gif, self._challenge, self._guestbook)
+        for index, button in enumerate(options):
+            choices.addWidget(button, index // 3, index % 3)
+        for column in range(3):
+            choices.setColumnStretch(column, 1)
         footer = QHBoxLayout()
         footer.addStretch(1)
         footer.addWidget(back)
         footer.addStretch(1)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(px(60), px(40), px(60), px(40))
-        layout.setSpacing(px(30))
+        layout.setContentsMargins(px(48), px(28), px(48), px(24))
+        layout.setSpacing(px(18))
         layout.addWidget(heading)
         layout.addStretch(1)
         layout.addLayout(choices)
-        layout.addLayout(framed_row)
-        layout.addLayout(challenge_row)
         layout.addStretch(1)
         layout.addWidget(self._email_note)
         layout.addLayout(footer)

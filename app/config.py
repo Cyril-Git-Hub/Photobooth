@@ -22,6 +22,8 @@ from .core.models import MODEL_NAMES, MODELS
 log = logging.getLogger(__name__)
 
 DETOURAGE_MODES = ("ia", "fond_vert")
+ADMIN_AUTH_MODES = ("pattern", "code")
+DEFAULT_ADMIN_PATTERN = "1-2-3-6-9"
 MAIL_SECURITIES = ("auto", "starttls", "ssl", "aucune")
 DIAPORAMA_ORDERS = ("chronologique", "aleatoire")
 THEMES_PAR_DEFAUT = ("films", "series", "dessins animés", "animes japonais")
@@ -45,6 +47,8 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "ia_inverser_masque": "false",
         "inactivite_secondes": "60",
         "code_admin": "1234",
+        "admin_auth_mode": "pattern",
+        "admin_pattern": DEFAULT_ADMIN_PATTERN,
         "indicateur_organisateur": "true",
         "echelle_interface": "auto",
         "theme": "classique",
@@ -150,6 +154,10 @@ ia_inverser_masque = false
 inactivite_secondes = 60
 # Code du mode administrateur (à changer !)
 code_admin = 1234
+# Accès administrateur : pattern (par défaut) ou code
+admin_auth_mode = pattern
+# Schéma initial : relier 1-2-3-6-9 sur la grille 3x3 (modifiable dans le menu admin)
+admin_pattern = 1-2-3-6-9
 # Petit voyant en haut à droite de la borne quand les mails sont hors-ligne, en attente ou en échec (jamais en temps normal)
 indicateur_organisateur = true
 # Taille de l'interface : auto (adaptée à l'écran) ou un nombre entre 0.4 et 2.0 (1.0 = écran 1920x1080, 0.7 = plus petit).
@@ -278,6 +286,8 @@ class Config:
     ia_inverser_masque: bool = False
     inactivite_secondes: int = 60
     code_admin: str = "1234"
+    admin_auth_mode: str = "pattern"
+    admin_pattern: str = DEFAULT_ADMIN_PATTERN
     indicateur_organisateur: bool = True
     echelle_interface: float | None = None      # None : automatique
     theme: str = "classique"
@@ -450,6 +460,16 @@ class Config:
         if not re.fullmatch(r"[A-Za-z0-9_-]+", theme_name):
             log.warning("[general] theme invalide (%r) : thème classique utilisé", theme_name)
             theme_name = "classique"
+        admin_auth_mode = get_str("general", "admin_auth_mode").strip().lower()
+        if admin_auth_mode not in ADMIN_AUTH_MODES:
+            log.warning("[general] admin_auth_mode invalide (%r) : schéma utilisé", admin_auth_mode)
+            admin_auth_mode = "pattern"
+        admin_pattern = get_str("general", "admin_pattern").strip()
+        pattern_points = admin_pattern.split("-")
+        if (not re.fullmatch(r"[1-9](?:-[1-9]){3,8}", admin_pattern)
+                or len(set(pattern_points)) != len(pattern_points)):
+            log.warning("[general] admin_pattern invalide : schéma par défaut utilisé")
+            admin_pattern = DEFAULT_ADMIN_PATTERN
         ia_modele = get_str("general", "ia_modele").lower()
         if ia_modele not in MODEL_NAMES:
             log.warning("[general] ia_modele invalide (%r) : valeur par défaut %s", ia_modele, DEFAULTS["general"]["ia_modele"])
@@ -488,6 +508,8 @@ class Config:
             ia_inverser_masque=get_bool("general", "ia_inverser_masque"),
             inactivite_secondes=get_int("general", "inactivite_secondes", 0, 3600),
             code_admin=get_str("general", "code_admin") or DEFAULTS["general"]["code_admin"],
+            admin_auth_mode=admin_auth_mode,
+            admin_pattern=admin_pattern,
             indicateur_organisateur=get_bool("general", "indicateur_organisateur"),
             echelle_interface=echelle,
             theme=theme_name or "classique",
@@ -669,6 +691,45 @@ class Config:
                 break
         if not found:
             lines.insert(section_end, f"duree_decompte = {seconds}")
+        content = "\n".join(lines) + "\n"
+        backup = self.config_path.with_suffix(".ini.bak")
+        temporary = self.config_path.with_suffix(self.config_path.suffix + ".tmp")
+        backup.write_bytes(self.config_path.read_bytes())
+        temporary.write_text(content, encoding="utf-8")
+        os.replace(temporary, self.config_path)
+        self.reload()
+
+    def save_admin_auth_settings(self, mode: str, pattern: str) -> None:
+        """Enregistre le mode tactile d'accès admin et son schéma de secours."""
+        mode = str(mode).strip().lower()
+        points = str(pattern).strip().split("-")
+        if mode not in ADMIN_AUTH_MODES:
+            raise ValueError("Le mode d'accès doit être « pattern » ou « code ».")
+        if (not re.fullmatch(r"[1-9](?:-[1-9]){3,8}", "-".join(points))
+                or len(set(points)) != len(points)):
+            raise ValueError("Le schéma doit relier au moins 4 points différents.")
+
+        lines = self.config_path.read_text(encoding="utf-8-sig").splitlines()
+        section_start = next((index for index, line in enumerate(lines)
+                              if re.match(r"^\s*\[general\]\s*(?:[;#].*)?$", line, re.IGNORECASE)), None)
+        if section_start is None:
+            lines.extend(["", "[general]"])
+            section_start = len(lines) - 1
+        section_end = next((index for index in range(section_start + 1, len(lines))
+                            if re.match(r"^\s*\[[^\]]+\]", lines[index])), len(lines))
+        updates = {"admin_auth_mode": mode, "admin_pattern": "-".join(points)}
+        found: set[str] = set()
+        for index in range(section_start + 1, section_end):
+            match = re.match(r"^(\s*)(admin_auth_mode|admin_pattern)(\s*=).*$", lines[index], re.IGNORECASE)
+            if match:
+                key = match.group(2).lower()
+                lines[index] = f"{match.group(1)}{key}{match.group(3)} {updates[key]}"
+                found.add(key)
+        insertion = section_end
+        for key, value in updates.items():
+            if key not in found:
+                lines.insert(insertion, f"{key} = {value}")
+                insertion += 1
         content = "\n".join(lines) + "\n"
         backup = self.config_path.with_suffix(".ini.bak")
         temporary = self.config_path.with_suffix(self.config_path.suffix + ".tmp")
