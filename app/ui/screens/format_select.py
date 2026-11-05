@@ -164,3 +164,4 @@ class FormatSelectScreen(BaseScreen):
         self.session.challenge_mask = ""
         self.session.challenge_style = ""
         self.session.challenge_reference_png = None
+        self.session.challenge_guest_name = ""

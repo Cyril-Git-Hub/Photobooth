@@ -12,6 +12,7 @@ log = logging.getLogger(__name__)
 VALID_FORMATS = {"single", "strip", "gif"}
 VALID_BACKGROUNDS = {"none", "choose", "random"}
 VALID_STYLES = {"original", "cartoon", "sketch", "watercolor", "pop_art", "manga"}
+VALID_TYPES = {"photo", "guest_wheel"}
 
 
 @dataclass(frozen=True)
@@ -25,6 +26,7 @@ class Challenge:
     image: Path | None = None
     mask: str = ""
     style: str = ""
+    challenge_type: str = "photo"
 
 
 def load_challenges(user_file: Path, allow_gif: bool = True) -> list[Challenge]:
@@ -86,9 +88,12 @@ def load_challenges(user_file: Path, allow_gif: bool = True) -> list[Challenge]:
             instruction = str(item.get("consigne", "")).strip()
             photo_format = str(item.get("format", "single")).strip().casefold()
             background = str(item.get("decor", "none")).strip().casefold()
+            challenge_type = str(item.get("type", "photo")).strip().casefold()
             background_value = str(item.get("fond", "")).strip()
             if (not challenge_id or challenge_id in seen_ids or not title or not instruction
-                    or photo_format not in VALID_FORMATS or background not in VALID_BACKGROUNDS):
+                    or photo_format not in VALID_FORMATS or background not in VALID_BACKGROUNDS
+                    or challenge_type not in VALID_TYPES
+                    or (challenge_type == "guest_wheel" and photo_format != "single")):
                 log.warning("Défi ignoré car sa définition est invalide : %r (fichier %s)",
                             challenge_id, candidate)
                 continue
@@ -124,7 +129,7 @@ def load_challenges(user_file: Path, allow_gif: bool = True) -> list[Challenge]:
                 style = ""
             challenges.append(Challenge(
                 challenge_id, title, instruction, photo_format, background,
-                background_image, image_path, mask, style))
+                background_image, image_path, mask, style, challenge_type))
             seen_ids.add(challenge_id)
             log.info("Défi chargé : id=%s | titre=%s | image=%s | fond=%s",
                      challenge_id, title, image_path if image_path else "aucune",

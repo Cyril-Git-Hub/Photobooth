@@ -30,6 +30,7 @@ class Session:
     challenge_mask: str = ""
     challenge_style: str = ""
     challenge_reference_png: bytes | None = None
+    challenge_guest_name: str = ""
     event_id: str = ""
     event_started_at: float = 0.0
     photo_source_frame: np.ndarray | None = None  # image caméra sans décor, gardée pour segmenter le sujet au résultat

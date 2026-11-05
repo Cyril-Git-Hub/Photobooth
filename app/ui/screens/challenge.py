@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import random
+from html import escape
 
 from PyQt6.QtCore import QBuffer, QIODevice, Qt
 from PyQt6.QtGui import QImage, QPainter, QPixmap
@@ -10,8 +11,10 @@ from PyQt6.QtSvg import QSvgRenderer
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout
 
 from ...core import backgrounds, challenges
+from ...core.guests import Guest, GuestListError, load_guests
 from ..scale import px
 from ..widgets.big_button import BigButton
+from ..widgets.guest_wheel import GuestWheel
 from .base import BaseScreen
 
 log = logging.getLogger(__name__)
@@ -51,6 +54,9 @@ class ChallengeScreen(BaseScreen):
         self._challenges: list[challenges.Challenge] = []
         self._current: challenges.Challenge | None = None
         self._previous_id = ""
+        self._wheel_guests: list[Guest] = []
+        self._wheel_error = ""
+        self._winner: Guest | None = None
 
         heading = QLabel("Casting/Audition")
         heading.setObjectName("heading")
@@ -63,6 +69,9 @@ class ChallengeScreen(BaseScreen):
         self._image.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._image.setMinimumSize(px(300), px(300))
         self._image.setMaximumSize(px(600), px(600))
+        self._wheel = GuestWheel()
+        self._wheel.hide()
+        self._wheel.finished.connect(self._wheel_finished)
         self._title = QLabel("")
         self._title.setObjectName("heading")
         self._title.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -81,11 +90,14 @@ class ChallengeScreen(BaseScreen):
         self._another.clicked.connect(self._choose_another)
         self._start = BigButton("Je relève le défi !", "notListed")
         self._start.clicked.connect(self._start_challenge)
+        self._spin = BigButton("Lancer la roue", "notListed")
+        self._spin.clicked.connect(self._spin_wheel)
 
         content = QHBoxLayout()
         content.setSpacing(px(40))
         content.addStretch(1)
         content.addWidget(self._image, 1)
+        content.addWidget(self._wheel, 1)
         info = QVBoxLayout()
         info.setSpacing(px(20))
         info.addWidget(self._kind)
@@ -100,6 +112,7 @@ class ChallengeScreen(BaseScreen):
         footer.addStretch(1)
         footer.addWidget(self._back)
         footer.addWidget(self._another)
+        footer.addWidget(self._spin)
         footer.addWidget(self._start)
         footer.addStretch(1)
 
@@ -111,6 +124,8 @@ class ChallengeScreen(BaseScreen):
         layout.addLayout(footer)
 
     def on_enter(self) -> None:
+        self._spin.hide()
+        self._wheel.hide()
         self._challenges = challenges.load_challenges(
             self.config.dossier_theme / "defis.json", allow_gif=self.config.gif_actif)
         if not self._challenges:
@@ -145,11 +160,17 @@ class ChallengeScreen(BaseScreen):
         self._show_challenge(selected)
 
     def _show_challenge(self, challenge: challenges.Challenge) -> None:
+        retained_name = (self.session.challenge_guest_name
+                         if self.session.challenge_id == challenge.id else "")
         self._current = challenge
         self._previous_id = challenge.id
+        self._wheel.stop()
+        self._winner = None
         self._title.setText(challenge.title)
         self._instruction.setText(challenge.instruction)
-        kind = {"single": "PHOTO UNIQUE", "strip": "PHOTOMATON", "gif": "GIF ANIMÉ"}[challenge.photo_format]
+        is_guest_wheel = challenge.challenge_type == "guest_wheel"
+        kind = ("ROUE DES INVITÉS · PHOTO UNIQUE" if is_guest_wheel else
+                {"single": "PHOTO UNIQUE", "strip": "PHOTOMATON", "gif": "GIF ANIMÉ"}[challenge.photo_format])
         if challenge.background_image is not None:
             kind += " · DÉCOR IMPOSÉ"
         elif challenge.background == "choose":
@@ -157,7 +178,29 @@ class ChallengeScreen(BaseScreen):
         elif challenge.background == "random":
             kind += " · DÉCOR SURPRISE"
         self._kind.setText(kind)
-        if (challenge.background_image is None and challenge.background != "none"
+        if is_guest_wheel:
+            self._load_wheel_guests(retained_name)
+            self._wheel.set_names([guest.pseudo for guest in self._wheel_guests])
+            self._winner = next((guest for guest in self._wheel_guests
+                                 if guest.display_name == retained_name), None)
+            self._image.hide()
+            self._wheel.show()
+            self._spin.show()
+            self._spin.setEnabled(bool(self._wheel_guests))
+            self._start.setEnabled(self._winner is not None)
+            self._start.setText("On l'a trouvé ! Faire la photo")
+            if self._wheel_error:
+                self._availability.setText(self._wheel_error)
+            elif self._winner is not None:
+                self._show_winner(self._winner, "Tu peux refaire la photo avec cette personne.")
+            elif self._wheel_guests:
+                self._availability.setText(
+                    f"{len(self._wheel_guests)} invité(s) dans la roue. "
+                    "Lance le tirage, puis retrouve la personne pour faire la photo ensemble.")
+            else:
+                self._availability.setText(
+                    "Aucun autre invité n'est disponible pour le tirage. Vérifie la liste d'invités.")
+        elif (challenge.background_image is None and challenge.background != "none"
                 and not self._available_backgrounds()):
             self._availability.setText(
                 "Aucun décor n’est chargé : le défi reste jouable sans décor. "
@@ -172,16 +215,66 @@ class ChallengeScreen(BaseScreen):
             extras.append(f"style proposé : {challenge.style.replace('_', ' ')}")
         if extras:
             self._availability.setText(self._availability.text() + "\n" + " · ".join(extras))
-        self._image.set_source(QPixmap())
-        self._image.hide()
-        if challenge.image is not None:
-            pixmap = self._load_reference(challenge.image)
-            if not pixmap.isNull():
-                self._image.set_source(pixmap)
-                self._image.show()
-            else:
-                log.error("Image du défi illisible à l'affichage : id=%s | image=%s",
-                          challenge.id, challenge.image)
+        self._spin.setVisible(is_guest_wheel)
+        if not is_guest_wheel:
+            self._start.setEnabled(True)
+            self._start.setText("Je relève le défi !")
+            self._wheel.hide()
+            self._image.set_source(QPixmap())
+            self._image.hide()
+            if challenge.image is not None:
+                pixmap = self._load_reference(challenge.image)
+                if not pixmap.isNull():
+                    self._image.set_source(pixmap)
+                    self._image.show()
+                else:
+                    log.error("Image du défi illisible à l'affichage : id=%s | image=%s",
+                              challenge.id, challenge.image)
+
+    def _load_wheel_guests(self, retained_name: str = "") -> None:
+        self._wheel_guests = []
+        self._wheel_error = ""
+        try:
+            guests = load_guests(self.config.fichier_invites)
+        except GuestListError as exc:
+            self._wheel_error = exc.args[0]
+            log.error("Impossible de charger la liste pour la roue des invités : %s",
+                      self._wheel_error.replace("\n", " "))
+            return
+
+        guests = [guest for guest in guests if guest.pseudo.strip()]
+        if self.session.guest_from_list and self.session.guest_pseudo:
+            guests = [guest for guest in guests
+                      if guest.pseudo.casefold() != self.session.guest_pseudo.casefold()]
+
+        retained = next((guest for guest in guests if guest.pseudo == retained_name), None)
+        if retained is not None:
+            others = [guest for guest in guests if guest != retained]
+            self._wheel_guests = [retained, *random.sample(others, min(9, len(others)))]
+        else:
+            self._wheel_guests = random.sample(guests, min(10, len(guests)))
+
+    def _spin_wheel(self) -> None:
+        if self._wheel_guests:
+            self._winner = None
+            self._start.setEnabled(False)
+            self._spin.setEnabled(False)
+            self._availability.setText("La roue tourne…")
+            self._wheel.spin()
+
+    def _wheel_finished(self, index: int) -> None:
+        if not 0 <= index < len(self._wheel_guests):
+            return
+        self._winner = self._wheel_guests[index]
+        self._show_winner(self._winner, "Va la retrouver pour faire la photo ensemble.")
+        self._spin.setEnabled(True)
+        self._start.setEnabled(True)
+
+    def _show_winner(self, winner: Guest, instruction: str) -> None:
+        pseudo = escape(winner.pseudo)
+        self._availability.setText(
+            f"Personne tirée au sort : <big><b>{pseudo}</b></big> ! "
+            f"{escape(instruction)}")
 
     @staticmethod
     def _load_reference(path) -> QPixmap:
@@ -205,9 +298,15 @@ class ChallengeScreen(BaseScreen):
         challenge = self._current
         if challenge is None:
             return
+        if challenge.challenge_type == "guest_wheel" and self._winner is None:
+            return
         self.session.challenge_id = challenge.id
         self.session.challenge_title = challenge.title
+        self.session.challenge_guest_name = self._winner.pseudo if self._winner else ""
         self.session.challenge_instruction = challenge.instruction
+        if self.session.challenge_guest_name:
+            self.session.challenge_instruction += (
+                f"\nPersonne à retrouver : {self.session.challenge_guest_name}")
         self.session.challenge_background_required = False
         self.session.challenge_mask = challenge.mask
         self.session.challenge_style = challenge.style
@@ -259,4 +358,5 @@ class ChallengeScreen(BaseScreen):
         self.session.challenge_mask = ""
         self.session.challenge_style = ""
         self.session.challenge_reference_png = None
+        self.session.challenge_guest_name = ""
         self.nav.go_to("format_select")
