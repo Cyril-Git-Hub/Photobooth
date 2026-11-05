@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from app.core.screens import pick_second_screen
+from app.core.screens import pick_main_screen, pick_second_screen
 from app.core.slideshow_log import SlideshowLog
 
 
@@ -108,6 +108,28 @@ class PickScreenTests(unittest.TestCase):
         a, b = object(), object()
         self.assertIsNone(pick_second_screen([a], None))                    # on ne prend pas le seul écran, qui est celui de la borne
         self.assertIs(pick_second_screen([a, b], None), b)
+
+    class NamedScreen:
+        def __init__(self, name):
+            self._name = name
+
+        def name(self):
+            return self._name
+
+    def test_auto_utilise_lecran_principal_windows(self):
+        laptop, external = self.NamedScreen("laptop"), self.NamedScreen("external")
+        self.assertIs(pick_main_screen([laptop, external], "auto", external), external)
+
+    def test_choix_enregistre_est_independant_de_lecran_principal_windows(self):
+        laptop, external = self.NamedScreen("laptop"), self.NamedScreen("external")
+        self.assertIs(pick_main_screen([laptop, external], "laptop", external), laptop)
+
+    def test_ecran_enregistre_absent_retombe_sur_lecran_principal(self):
+        laptop = self.NamedScreen("laptop")
+        self.assertIs(pick_main_screen([laptop], "missing", laptop), laptop)
+
+    def test_aucun_ecran(self):
+        self.assertIsNone(pick_main_screen([], "auto", None))
 
 
 if __name__ == "__main__":

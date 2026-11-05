@@ -264,8 +264,7 @@ class CaptureScreen(BaseScreen):
         self._mask_option.setVisible(bool(assets))
         self._mask_panel.setVisible(bool(assets) and self._mask_gallery_open)
         if not assets:
-            self.session.virtual_mask_path = None
-            self.session.virtual_mask_paths.clear()
+            self.session.clear_virtual_masks()
             return
 
         none = QToolButton()
@@ -330,8 +329,7 @@ class CaptureScreen(BaseScreen):
             except Exception as exc:
                 log.warning("Détection des visages indisponible : %s", exc)
                 self._mask_error = "Détection visage indisponible : masque désactivé."
-                self.session.virtual_mask_paths = []
-                self.session.virtual_mask_path = None
+                self.session.clear_virtual_masks()
                 paths = []
         for button_path, button in self._mask_buttons.items():
             button.setChecked((button_path is None and not paths) or button_path in paths)

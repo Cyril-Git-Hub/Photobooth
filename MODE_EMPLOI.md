@@ -37,13 +37,13 @@
 10. **Theme** (facultatif) : choisis `theme = classique` dans `[general]`. Les themes sont dans `themes/<nom>/`; copie `classique` pour en creer un et personnaliser couleurs, textes, mail et ressources. Ajoute les autocollants dans `autocollants/` et les masques PNG transparents dans `masques/` dans le dossier du theme. Chaque dossier remplace separement les ressources par defaut lorsqu'il contient au moins un fichier valide ; sinon, les ressources integrees et celles a la racine restent utilisees. Un cadre PNG/WebP transparent declare avec `cadre_interface` dans `[ressources]` s'affiche au premier plan sur les ecrans du parcours, sauf pendant la prise de vue. Les effets sonores WAV se deposent dans `sons/`.
 11. **GIF animé** (facultatif) : le bouton apparaît dans le choix du format. Réglages de disponibilité, nombre d'images, rythme et limite de poids dans la section `[gif]` de `config.ini`.
 12. **Accès administrateur** : le schéma tactile est utilisé par défaut (relier 1-2-3-6-9 sur la grille 3×3). L'écran d'accès permet aussi de basculer vers le pavé numérique du code (`code_admin`, 1234 par défaut). Depuis le menu admin, choisis le mode proposé par défaut et **Définir le schéma** pour enregistrer un nouveau tracé ; il faut le dessiner deux fois.
-13. **Sons** : ouvre le mode administrateur (5 appuis rapides dans le coin supérieur gauche) pour couper les effets ou régler leur volume. Les réglages sont conservés dans `config.ini`.
+13. **Sons** : ouvre le mode administrateur (5 appuis rapides dans le coin supérieur gauche) pour couper les effets ou régler leur volume. Le menu est organisé en onglets **Réglages**, **Soirées** et **Outils** ; les commandes **Quitter** et **Fermer** restent accessibles en bas. Les réglages sont conservés dans `config.ini`.
 14. **Vérifie tout** : `photobooth-outils.exe --autotest` (caméra, modèle, décors, invités, mails, écrans) puis `photobooth-outils.exe --test-mail` (envoie un vrai mail de test).
 
 ## Le jour J
 
 1. Branche le PC **sur secteur** (la veille et l'écran éteint sont désactivés pendant la soirée).
-2. **Écrans supplémentaires** : branche-les, puis Windows + P > **Étendre**. Le deuxième écran affiche le diaporama ; si un troisième écran est détecté, il affiche l'aperçu caméra pendant la prise de vue. La détection est automatique, y compris si tu branches les écrans après le lancement.
+2. **Écrans supplémentaires** : branche-les, puis Windows + P > **Étendre**. Dans le menu admin, choisis l'écran tactile du portable comme écran de la borne si Windows a désigné un écran externe comme principal ; ce choix s'applique au prochain lancement. L'écran de veille animé reste sur l'écran de la borne. Le deuxième écran affiche le diaporama et le troisième fait défiler les photos aléatoirement lorsqu'il n'affiche pas l'aperçu caméra pendant une prise de vue. La détection des écrans secondaires est automatique, y compris si tu les branches après le lancement.
 3. Lance **`lancer.bat`**.
 4. Place la caméra à hauteur de visage, avec la lumière **devant** les invités et un mur uni derrière eux : c'est ce qui améliore le plus le détourage.
 5. Vérifie internet (Wi-Fi) : sans réseau, les photos sont quand même prises, et les mails partent dès son retour.
@@ -127,6 +127,8 @@ Seules les photos validées pendant une soirée active et associées à une adre
 ## Écran de veille
 
 Après le délai `inactivite_secondes` de `[general]`, l'écran de veille du thème s'affiche. Si l'invité était dans le parcours, la borne revient à l'accueil sous cet écran, sans attendre un second délai. Si elle était déjà à l'accueil, la veille s'affiche directement. Touche l'écran de veille pour révéler l'accueil, puis **Commencer** pour lancer le parcours. Le geste administrateur reste disponible dans le coin supérieur gauche. Mets le délai à `0` pour désactiver le retour automatique et l'écran de veille.
+
+Le nombre de photos de la soirée qui flottent sur l'écran de veille se règle dans le menu administrateur, de 1 à 20 (15 par défaut). Le nombre réellement affiché dépend du nombre de photos disponibles.
 
 ## Autocollants photo
 

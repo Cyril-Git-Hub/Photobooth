@@ -243,6 +243,7 @@ class SendingScreen(BaseScreen):
             display_first_name = session.guest_pseudo or session.guest_first_name
             display_last_name = "" if session.guest_pseudo else session.guest_last_name
             self.nav.slideshow.add_photo(session.photos[-1])
+            self.nav.capture_display.refresh()
         except Exception:
             log.exception("Ajout au diaporama impossible")
         try:

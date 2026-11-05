@@ -42,5 +42,9 @@ class Session:
     def display_name(self) -> str:
         return self.guest_pseudo or f"{self.guest_first_name} {self.guest_last_name}".strip()
 
+    def clear_virtual_masks(self) -> None:
+        self.virtual_mask_path = None
+        self.virtual_mask_paths.clear()
+
     def reset(self) -> None:
         self.__dict__.update(vars(Session()))

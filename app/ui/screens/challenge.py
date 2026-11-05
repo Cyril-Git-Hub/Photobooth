@@ -224,8 +224,7 @@ class ChallengeScreen(BaseScreen):
         self.session.frame_mode = False
         self.session.frame_path = None
         self.session.background_path = None
-        self.session.virtual_mask_path = None
-        self.session.virtual_mask_paths.clear()
+        self.session.clear_virtual_masks()
 
         if challenge.background_image is not None:
             self.session.background_path = challenge.background_image

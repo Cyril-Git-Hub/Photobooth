@@ -136,6 +136,10 @@ class SlideshowController:
         else:                                                    # la photo en cours finit son temps minimal
             self._timer.start(int((MIN_SHOW_SECONDS - elapsed) * 1000) + 50)
 
+    def photos(self) -> list[Path]:
+        """Photos validées connues du diaporama, même lorsque celui-ci n'a pas d'écran dédié."""
+        return self._log.load()
+
     def clear(self) -> None:
         """Nouvelle soirée : le diaporama repart de zéro (les photos, elles, restent sur le disque)."""
         self._log.clear()

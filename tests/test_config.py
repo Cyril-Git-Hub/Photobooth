@@ -12,6 +12,16 @@ def write_ini(base: Path, content: str, encoding: str = "utf-8") -> None:
 
 
 class ConfigTests(unittest.TestCase):
+    def test_efface_tous_les_masques_virtuels_de_la_session(self):
+        session = Session()
+        session.virtual_mask_path = Path("ancien.png")
+        session.virtual_mask_paths = [Path("ancien.png"), Path("autre.png")]
+
+        session.clear_virtual_masks()
+
+        self.assertIsNone(session.virtual_mask_path)
+        self.assertEqual(session.virtual_mask_paths, [])
+
     def test_fichier_par_defaut_cree(self):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
@@ -21,6 +31,46 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(cfg.nb_poses, 4)
             self.assertEqual(cfg.dossier_photos, base.resolve() / "photos")
             self.assertEqual(cfg.fichier_invites, base.resolve() / "invites.xlsx")
+            self.assertEqual(cfg.ecran_principal, "auto")
+            self.assertEqual(cfg.nb_photos_veille, 15)
+
+    def test_enregistre_nombre_photos_de_veille_sans_ecraser_le_reste(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            write_ini(base, "[general]\nplein_ecran = true\n[mail]\nsmtp_hote = mail.example\n")
+            cfg = Config.load(base_dir=base)
+
+            cfg.save_screensaver_photo_count(20)
+
+            self.assertEqual(cfg.nb_photos_veille, 20)
+            content = cfg.config_path.read_text(encoding="utf-8")
+            self.assertIn("nb_photos_veille = 20", content)
+            self.assertIn("smtp_hote = mail.example", content)
+            self.assertTrue(cfg.config_path.with_suffix(".ini.bak").exists())
+            with self.assertRaises(ValueError):
+                cfg.save_screensaver_photo_count(21)
+
+    def test_nombre_photos_veille_invalide_revient_au_defaut(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            write_ini(base, "[general]\nnb_photos_veille = 21\n")
+
+            with self.assertLogs("app.config", level="WARNING"):
+                cfg = Config.load(base_dir=base)
+
+            self.assertEqual(cfg.nb_photos_veille, 15)
+
+    def test_enregistre_lecran_principal_sans_ecraser_le_reste(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            write_ini(base, "[general]\nplein_ecran = true\n[mail]\nsmtp_hote = mail.example\n")
+            cfg = Config.load(base_dir=base)
+            cfg.save_main_screen(r"\\.\DISPLAY2")
+            self.assertEqual(cfg.ecran_principal, r"\\.\DISPLAY2")
+            content = cfg.config_path.read_text(encoding="utf-8")
+            self.assertIn("ecran_principal = \\\\.\\DISPLAY2", content)
+            self.assertIn("smtp_hote = mail.example", content)
+            self.assertTrue(cfg.config_path.with_suffix(".ini.bak").exists())
 
     def test_option_miroir_unique(self):
         with tempfile.TemporaryDirectory() as tmp:

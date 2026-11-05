@@ -44,6 +44,11 @@ def px(value: int | float) -> int:
     return max(1, round(value * _scale))
 
 
+def touch_px(value: int | float) -> int:
+    """Taille tactile mise à l'échelle, avec une cible minimale de 48 pixels logiques."""
+    return max(48, px(value))
+
+
 def scale_stylesheet(stylesheet: str, scale: float | None = None) -> str:
     """Multiplie chaque valeur « NNpx » d'une feuille de style par l'échelle."""
     factor = _scale if scale is None else scale

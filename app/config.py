@@ -40,12 +40,14 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "son_volume": "70",
         "second_ecran_active": "true",
         "plein_ecran": "true",
+        "ecran_principal": "auto",
         "miroir": "true",
         "apercu_incruste": "true",
         "apercu_largeur": "960",
         "ia_modele": "paysage",
         "ia_inverser_masque": "false",
         "inactivite_secondes": "60",
+        "nb_photos_veille": "15",
         "code_admin": "1234",
         "admin_auth_mode": "pattern",
         "admin_pattern": DEFAULT_ADMIN_PATTERN,
@@ -138,6 +140,8 @@ son_active = true
 son_volume = 70
 second_ecran_active = true
 plein_ecran = true
+# Écran de la borne : « auto » suit l'écran principal de Windows ; sinon, choisir l'écran dans le menu admin.
+ecran_principal = auto
 # Image en miroir (comme devant une glace). S'applique à l'aperçu ET à la photo finale :
 # la photo est exactement ce que l'invité a vu, donc bien placée par rapport au décor.
 # Attention : en miroir, les textes sur les vêtements apparaissent inversés. false = ni aperçu ni photo en miroir.
@@ -152,6 +156,8 @@ ia_modele = paysage
 ia_inverser_masque = false
 # Écran de veille après N secondes d'inactivité ; dans le parcours, revient aussi à l'accueil (0 = désactivé)
 inactivite_secondes = 60
+# Nombre de photos animées sur l'écran de veille (1 à 20, 15 par défaut)
+nb_photos_veille = 15
 # Code du mode administrateur (à changer !)
 code_admin = 1234
 # Accès administrateur : pattern (par défaut) ou code
@@ -279,12 +285,14 @@ class Config:
     son_volume: int = 70
     second_ecran_active: bool = True
     plein_ecran: bool = True
+    ecran_principal: str = "auto"
     miroir: bool = True
     apercu_incruste: bool = True
     apercu_largeur: int = 960
     ia_modele: str = "paysage"
     ia_inverser_masque: bool = False
     inactivite_secondes: int = 60
+    nb_photos_veille: int = 15
     code_admin: str = "1234"
     admin_auth_mode: str = "pattern"
     admin_pattern: str = DEFAULT_ADMIN_PATTERN
@@ -501,12 +509,14 @@ class Config:
             son_volume=get_int("general", "son_volume", 0, 100),
             second_ecran_active=get_bool("general", "second_ecran_active"),
             plein_ecran=get_bool("general", "plein_ecran"),
+            ecran_principal=get_str("general", "ecran_principal") or "auto",
             miroir=get_bool("general", "miroir"),
             apercu_incruste=get_bool("general", "apercu_incruste"),
             apercu_largeur=get_int("general", "apercu_largeur", 320, 1920),
             ia_modele=ia_modele,
             ia_inverser_masque=get_bool("general", "ia_inverser_masque"),
             inactivite_secondes=get_int("general", "inactivite_secondes", 0, 3600),
+            nb_photos_veille=get_int("general", "nb_photos_veille", 1, 20),
             code_admin=get_str("general", "code_admin") or DEFAULTS["general"]["code_admin"],
             admin_auth_mode=admin_auth_mode,
             admin_pattern=admin_pattern,
@@ -699,6 +709,36 @@ class Config:
         os.replace(temporary, self.config_path)
         self.reload()
 
+    def save_screensaver_photo_count(self, count: int) -> None:
+        """Enregistre le nombre de photos animées de l'écran de veille."""
+        count = int(count)
+        if not 1 <= count <= 20:
+            raise ValueError("Le nombre de photos de veille doit être compris entre 1 et 20.")
+        lines = self.config_path.read_text(encoding="utf-8-sig").splitlines()
+        section_start = next((index for index, line in enumerate(lines)
+                              if re.match(r"^\s*\[general\]\s*(?:[;#].*)?$", line, re.IGNORECASE)), None)
+        if section_start is None:
+            lines.extend(["", "[general]"])
+            section_start = len(lines) - 1
+        section_end = next((index for index in range(section_start + 1, len(lines))
+                            if re.match(r"^\s*\[[^\]]+\]", lines[index])), len(lines))
+        found = False
+        for index in range(section_start + 1, section_end):
+            match = re.match(r"^(\s*)nb_photos_veille(\s*=).*$", lines[index], re.IGNORECASE)
+            if match:
+                lines[index] = f"{match.group(1)}nb_photos_veille{match.group(2)} {count}"
+                found = True
+                break
+        if not found:
+            lines.insert(section_end, f"nb_photos_veille = {count}")
+        content = "\n".join(lines) + "\n"
+        backup = self.config_path.with_suffix(".ini.bak")
+        temporary = self.config_path.with_suffix(self.config_path.suffix + ".tmp")
+        backup.write_bytes(self.config_path.read_bytes())
+        temporary.write_text(content, encoding="utf-8")
+        os.replace(temporary, self.config_path)
+        self.reload()
+
     def save_admin_auth_settings(self, mode: str, pattern: str) -> None:
         """Enregistre le mode tactile d'accès admin et son schéma de secours."""
         mode = str(mode).strip().lower()
@@ -730,6 +770,37 @@ class Config:
             if key not in found:
                 lines.insert(insertion, f"{key} = {value}")
                 insertion += 1
+        content = "\n".join(lines) + "\n"
+        backup = self.config_path.with_suffix(".ini.bak")
+        temporary = self.config_path.with_suffix(self.config_path.suffix + ".tmp")
+        backup.write_bytes(self.config_path.read_bytes())
+        temporary.write_text(content, encoding="utf-8")
+        os.replace(temporary, self.config_path)
+        self.reload()
+
+    def save_main_screen(self, screen_name: str) -> None:
+        """Enregistre le nom Windows de l'écran utilisé par la borne, en préservant le reste du fichier."""
+        screen_name = str(screen_name).strip()
+        if not screen_name:
+            raise ValueError("Le nom de l'écran ne peut pas être vide.")
+
+        lines = self.config_path.read_text(encoding="utf-8-sig").splitlines()
+        section_start = next((index for index, line in enumerate(lines)
+                              if re.match(r"^\s*\[general\]\s*(?:[;#].*)?$", line, re.IGNORECASE)), None)
+        if section_start is None:
+            lines.extend(["", "[general]"])
+            section_start = len(lines) - 1
+        section_end = next((index for index in range(section_start + 1, len(lines))
+                            if re.match(r"^\s*\[[^\]]+\]", lines[index])), len(lines))
+        found = False
+        for index in range(section_start + 1, section_end):
+            match = re.match(r"^(\s*)ecran_principal(\s*=).*$", lines[index], re.IGNORECASE)
+            if match:
+                lines[index] = f"{match.group(1)}ecran_principal{match.group(2)} {screen_name}"
+                found = True
+                break
+        if not found:
+            lines.insert(section_end, f"ecran_principal = {screen_name}")
         content = "\n".join(lines) + "\n"
         backup = self.config_path.with_suffix(".ini.bak")
         temporary = self.config_path.with_suffix(self.config_path.suffix + ".tmp")

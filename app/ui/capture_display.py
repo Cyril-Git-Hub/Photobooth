@@ -1,11 +1,17 @@
 """Aperçu caméra plein écran sur le troisième écran, sans commandes tactiles."""
 from __future__ import annotations
 
-from PyQt6.QtCore import Qt, QTimer
+import logging
+from pathlib import Path
+
+from PyQt6.QtCore import QSize, Qt, QTimer
 from PyQt6.QtGui import QColor, QImage, QImageReader, QPainter
 from PyQt6.QtWidgets import QApplication, QWidget
 
+from ..core.playlist import Playlist
 from ..core.screens import pick_third_screen
+
+log = logging.getLogger(__name__)
 
 
 class CaptureDisplayWindow(QWidget):
@@ -33,6 +39,11 @@ class CaptureDisplayWindow(QWidget):
     def set_background(self, image: QImage) -> None:
         self._background = image
         self._image = None
+        self._countdown = ""
+        self.update()
+
+    def set_gallery_photo(self, image: QImage) -> None:
+        self._image = image
         self._countdown = ""
         self.update()
 
@@ -76,6 +87,12 @@ class CaptureDisplayController:
         self._window: CaptureDisplayWindow | None = None
         self._theme = main_window.theme
         self._live_preview = False
+        self._gallery_active = False
+        self._gallery = Playlist("aleatoire")
+        self._gallery_paths: tuple[Path, ...] = ()
+        self._timer = QTimer()
+        self._timer.setSingleShot(True)
+        self._timer.timeout.connect(self._advance_gallery)
         qapp = QApplication.instance()
         qapp.screenAdded.connect(self._screens_changed)
         qapp.screenRemoved.connect(self._screens_changed)
@@ -89,8 +106,7 @@ class CaptureDisplayController:
 
     def set_live_preview(self, active: bool) -> None:
         self._live_preview = bool(active)
-        if not self._live_preview and self._window is not None:
-            self._window.set_background(self._background_image())
+        self.refresh()
 
     def set_countdown(self, text: str) -> None:
         if self._live_preview and self._window is not None:
@@ -105,8 +121,7 @@ class CaptureDisplayController:
         if self._window is not None:
             self._window.setWindowTitle(f"{theme.app_title} : aperçu de prise de vue")
             self._window.set_colors(getattr(theme, "colors", None))
-            if not self._live_preview:
-                self._window.set_background(self._background_image())
+            self.refresh()
 
     def _background_image(self) -> QImage:
         if self._theme is not None:
@@ -128,11 +143,58 @@ class CaptureDisplayController:
             self._window = CaptureDisplayWindow(self._background_image(),
                                                 getattr(self._theme, "colors", None),
                                                 getattr(self._theme, "app_title", "Photobooth"))
-        elif not self._live_preview:
-            self._window.set_background(self._background_image())
         self._window.show_on(screen)
+        if self._live_preview:
+            self._timer.stop()
+            self._gallery_active = False
+            return
+
+        paths = tuple(self._main.slideshow.photos())
+        changed = paths != self._gallery_paths
+        if changed:
+            self._gallery_paths = paths
+            self._gallery.load(paths)
+        if changed or not self._gallery_active:
+            self._gallery_active = True
+            self._advance_gallery()
+        elif not self._timer.isActive():
+            self._advance_gallery()
+
+    def _advance_gallery(self) -> None:
+        if not self._gallery_active or self._window is None:
+            return
+        shown = False
+        for _ in range(len(self._gallery)):
+            path = self._gallery.next()
+            if path is None:
+                break
+            image = self._load_gallery_photo(path)
+            if not image.isNull():
+                self._window.set_gallery_photo(image)
+                shown = True
+                break
+            self._gallery.remove(path)
+        if not shown:
+            self._window.set_background(self._background_image())
+        self._timer.start(max(5, self._main.config.dp_duree) * 1000)
+
+    def _load_gallery_photo(self, path: Path) -> QImage:
+        reader = QImageReader(str(path))
+        reader.setAutoTransform(True)
+        size = reader.size()
+        if size.isValid() and self._window is not None:
+            reader.setScaledSize(size.scaled(
+                QSize(self._window.width(), self._window.height()),
+                Qt.AspectRatioMode.KeepAspectRatio,
+            ))
+        image = reader.read()
+        if image.isNull():
+            log.warning("Photo illisible sur l'écran annexe de prise de vue : %s", path)
+        return image
 
     def close(self) -> None:
+        self._timer.stop()
+        self._gallery_active = False
         if self._window is not None:
             self._window.close()
             self._window = None
