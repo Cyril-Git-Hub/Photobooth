@@ -14,6 +14,56 @@ QLabel#title   { font-size: 56px; font-weight: 700; color: #ffd166; }
 QLabel#heading { font-size: 40px; font-weight: 700; color: #ffd166; }
 QLabel#note    { font-size: 24px; color: #b8b2d9; }
 QLabel#summary { font-size: 18px; color: #8f89b5; }
+QLabel#adminHeading { font-size: 30px; font-weight: 700; color: #ffd166; }
+QLabel#adminStatus {
+    background: #201d40;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 16px;
+}
+QDialog#adminDialog QLabel { font-size: 16px; }
+QDialog#adminDialog QLabel#adminHeading { font-size: 30px; }
+QDialog#adminDialog QLabel#adminStatus { font-size: 16px; }
+QDialog#adminDialog QGroupBox {
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 12px;
+    margin-top: 12px;
+    padding-top: 8px;
+    font-size: 18px;
+    font-weight: 600;
+    color: #ffd166;
+}
+QDialog#adminDialog QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 14px;
+    padding: 0 6px;
+}
+QDialog#adminDialog QTabWidget::pane {
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 12px;
+    background: #17152f;
+}
+QDialog#adminDialog QTabBar::tab {
+    background: #201d40;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    padding: 8px 18px;
+    min-height: 34px;
+    font-size: 17px;
+}
+QDialog#adminDialog QTabBar::tab:selected {
+    background: #3b3680;
+    color: #ffd166;
+}
+QDialog#adminDialog QPushButton {
+    border-radius: 12px;
+    padding: 7px 12px;
+    font-size: 17px;
+}
+QDialog#adminDialog QPushButton#adminPatternSetting { font-size: 17px; }
+QDialog#adminDialog QComboBox, QDialog#adminDialog QCheckBox { font-size: 16px; }
 
 QPushButton {
     border: 2px solid rgba(255, 255, 255, 0.12);
@@ -22,6 +72,9 @@ QPushButton {
     font-size: 30px;
     font-weight: 600;
 }
+QPushButton#adminAuthButton { border-radius: 14px; padding: 6px 12px; font-size: 19px; }
+QPushButton#adminAuthKey { border-radius: 14px; padding: 2px; font-size: 28px; }
+QPushButton#adminPatternSetting { border-radius: 14px; padding: 6px 12px; font-size: 18px; }
 QPushButton:hover { border-color: rgba(255, 255, 255, 0.42); }
 QPushButton#formatOptionButton { border-radius: 16px; padding: 10px 18px; font-size: 23px; }
 QPushButton:disabled { color: rgba(244, 241, 255, 0.48); background: #2b2757; border-color: transparent; }

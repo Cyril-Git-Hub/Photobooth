@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import QApplication, QMessageBox
 from app import __version__, cli, diagnostics, paths, power, single_instance
 from app.config import Config, complete_missing
 from app.core import guests
+from app.core.screens import pick_main_screen
 from app.logger import setup_logging
 from app.ui.main_window import MainWindow
 from app.ui import scale
@@ -70,16 +71,26 @@ def _run_app(args) -> int:
         lock.unlock()
         return EXIT_ERROR
 
-    geometry = app.primaryScreen().geometry()
+    screens = app.screens()
+    primary_screen = app.primaryScreen()
+    main_screen = pick_main_screen(screens, config.ecran_principal, primary_screen)
+    if main_screen is None:
+        raise RuntimeError("Aucun écran n'est disponible pour afficher la borne.")
+    if config.ecran_principal != "auto" and main_screen.name() != config.ecran_principal:
+        log.warning("Écran de borne mémorisé introuvable (%s) : utilisation de l'écran disponible %s",
+                    config.ecran_principal, main_screen.name())
+    geometry = main_screen.geometry()
     factor = scale.resolve(config.echelle_interface, geometry.width(), geometry.height())
     scale.set_scale(factor)
-    log.info("Écran principal %dx%d : échelle de l'interface %.2f (%s)", geometry.width(), geometry.height(), factor,
+    log.info("Écran de la borne %s (%dx%d) : échelle de l'interface %.2f (%s)", main_screen.name(),
+             geometry.width(), geometry.height(), factor,
              "réglée dans config.ini" if config.echelle_interface is not None else "automatique")
     log.info("Démarrage de Photobooth %s (détourage=%s, poses=%d)", __version__, config.mode_detourage, config.nb_poses)
     power.prevent_sleep(True)          # ni veille ni écran éteint pendant la soirée
     try:
         app.setStyleSheet(build_stylesheet(theme=config.active_theme))
         window = MainWindow(config, fullscreen=config.plein_ecran and not args.windowed,
+                            main_screen=main_screen,
                             slideshow_windowed=args.diaporama_fenetre)
         window.show()
         return app.exec()

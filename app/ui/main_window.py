@@ -43,9 +43,11 @@ _ACTIVITY_EVENTS = {
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, config: Config, fullscreen: bool = True, slideshow_windowed: bool = False) -> None:
+    def __init__(self, config: Config, fullscreen: bool = True, slideshow_windowed: bool = False,
+                 main_screen=None) -> None:
         super().__init__()
         self.config = config
+        self._main_screen = main_screen
         self.theme = getattr(config, "active_theme", None)
         self.sounds = SoundManager(config, self)
         self.events = EventStore(config)
@@ -102,7 +104,7 @@ class MainWindow(QMainWindow):
         self._frame_overlay.raise_()
         self._frame_pixmap: QPixmap | None = None
         self._load_screen_frame()
-        self._screensaver = ScreensaverOverlay(self.theme, self._start_from_screensaver)
+        self._screensaver = ScreensaverOverlay(self.theme, self._start_from_screensaver, self._booth_frame)
         self._screensaver.setGeometry(self._booth_frame.rect())
         self._screensaver.hide()
         self._badge_timer = QTimer(self)
@@ -130,9 +132,20 @@ class MainWindow(QMainWindow):
         self.go_to("home")
         if fullscreen:
             self.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
+        if self._main_screen is not None:
+            self.winId()
+            handle = self.windowHandle()
+            if handle is not None:
+                handle.setScreen(self._main_screen)
+        if fullscreen:
+            if self._main_screen is not None:
+                self.setGeometry(self._main_screen.geometry())
             self.showFullScreen()
         else:
-            self.resize(*scale.windowed_size(1280, 720, QApplication.primaryScreen()))   # sans dépasser l'écran
+            screen = self._main_screen or QApplication.primaryScreen()
+            self.resize(*scale.windowed_size(1280, 720, screen))   # sans dépasser l'écran
+            if screen is not None:
+                self.move(screen.availableGeometry().center() - self.rect().center())
             self.show()
         # Charger le modèle IA prend 1 à 2 secondes : on le fait au démarrage, pas devant le premier invité
         QTimer.singleShot(500, self._warm_up)
@@ -168,7 +181,7 @@ class MainWindow(QMainWindow):
         QApplication.instance().setApplicationName(self.theme.app_title)
         QApplication.instance().setStyleSheet(build_stylesheet(theme=self.theme))
         self._screensaver.deleteLater()
-        self._screensaver = ScreensaverOverlay(self.theme, self._start_from_screensaver)
+        self._screensaver = ScreensaverOverlay(self.theme, self._start_from_screensaver, self._booth_frame)
         self._screensaver.setGeometry(self._booth_frame.rect())
         self._screensaver.hide()
         self._load_screen_frame()
@@ -290,6 +303,7 @@ class MainWindow(QMainWindow):
         self._screensaver_timer.stop()
         log.info("Inactivité sur l'accueil : affichage de l'écran de veille")
         self._frame_overlay.hide()
+        self._screensaver.set_photos(self.slideshow.photos(), self.config.nb_photos_veille)
         self._screensaver.setGeometry(self._booth_frame.rect())
         self._screensaver.show()
         self._screensaver.raise_()

@@ -172,5 +172,5 @@ python -m unittest discover -s tests -t .
 
 ## Accès administrateur
 
-- Dans l'appli : 3 appuis rapides dans le coin haut gauche de l'écran, puis le code (`code_admin`, 1234 par défaut).
+- Dans l'appli : 5 appuis rapides dans le coin haut gauche de l'écran, puis le schéma tactile par défaut (1-2-3-6-9) ou le code (`code_admin`, 1234 par défaut). Le menu admin permet de définir un nouveau schéma et de choisir la méthode proposée par défaut.
 - En développement : `Ctrl+Maj+Q`.
