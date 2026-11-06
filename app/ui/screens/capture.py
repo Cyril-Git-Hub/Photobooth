@@ -27,6 +27,7 @@ from ...core.segmentation import SegmentationError
 from ...core.webcam import shrink
 from ...paths import resource_path
 from ..widgets.big_button import BigButton
+from ..widgets.dance_pose import stamp_dance_pose
 from ..widgets.preview_widget import PreviewWidget
 from .base import BaseScreen
 from ..scale import px
@@ -71,6 +72,7 @@ class CaptureScreen(BaseScreen):
         self._mask_buttons: dict[Path | None, QToolButton] = {}
         self._mask_processor: virtual_masks.FaceMaskRenderer | None = None
         self._mask_error = ""
+        self._dance_auto_started = False
 
         self._preview = PreviewWidget()
         self._frame_panel = QWidget()
@@ -197,6 +199,7 @@ class CaptureScreen(BaseScreen):
     def _begin(self) -> None:
         """Prépare le décor puis démarre (ou reprend) l'aperçu. Appelé à l'arrivée et par « Réessayer »."""
         self._poses = []
+        self._dance_auto_started = False
         reference = (QImage.fromData(self.session.challenge_reference_png, "PNG")
                      if self.session.challenge_reference_png else None)
         self._preview.set_colors(self.nav.theme.colors if self.nav.theme else None)
@@ -215,8 +218,15 @@ class CaptureScreen(BaseScreen):
         self._frame_overlay = None
         self._mask_processor = None
         self._mask_error = ""
-        self._frame_option.setVisible(self.session.photo_format == "single" and not self.session.challenge_id)
-        self._prepare_mask_gallery()
+        is_dance = self.session.challenge_type == "dance"
+        self._frame_option.setVisible(
+            self.session.photo_format == "single" and not is_dance)
+        self._mask_option.setVisible(not is_dance)
+        if is_dance:
+            self.session.clear_virtual_masks()
+            self._mask_panel.hide()
+        else:
+            self._prepare_mask_gallery()
         if self.session.frame_mode:
             self._frame_panel.setVisible(self._frame_gallery_open)
             if not self._prepare_frame():
@@ -503,7 +513,9 @@ class CaptureScreen(BaseScreen):
         self._state = state
         busy = state in (State.COUNTING, State.POSE_REVIEW, State.SAVING)
         planned = self._planned_poses()
-        self._back.setEnabled(not busy)
+        can_cancel_dance = self.session.challenge_type == "dance"
+        self._back.setEnabled(not busy or can_cancel_dance)
+        self._back.setText("Annuler le défi" if can_cancel_dance else "Retour")
         self._frame_option.setEnabled(not busy)
         self._mask_option.setEnabled(not busy)
         for button in self._frame_buttons.values():
@@ -514,6 +526,12 @@ class CaptureScreen(BaseScreen):
             button.setEnabled(not busy)
         frame_ready = not self.session.frame_mode or self._frame_overlay is not None
         self._action.setEnabled(state in (State.READY, State.ERROR) and frame_ready)
+        self._action.setVisible(self.session.challenge_type != "dance" or state is State.ERROR)
+        if self.session.challenge_type == "dance":
+            self._frame_option.hide()
+            self._mask_option.hide()
+            self._frame_panel.hide()
+            self._mask_panel.hide()
         action_text = "Lancer le GIF" if self.session.photo_format == "gif" else "Lancer le photomaton"
         self._action.setText("Réessayer" if state is State.ERROR
                              else "Prendre la photo" if planned == 1 else action_text)
@@ -523,6 +541,9 @@ class CaptureScreen(BaseScreen):
         elif state is State.READY:
             self._status.setText(self._ready_status_text())
             self._update_mask_status()
+            if self.session.challenge_type == "dance" and not self._dance_auto_started:
+                self._dance_auto_started = True
+                QTimer.singleShot(0, self._start_sequence)
         elif state is State.ERROR:
             self._preview.set_message(self._error_text)
 
@@ -568,6 +589,8 @@ class CaptureScreen(BaseScreen):
             self._begin()   # recharge le décor si besoin, relance la caméra si elle est perdue
 
     def _start_sequence(self) -> None:
+        if not self._active:
+            return
         self._total = self._planned_poses()
         self._poses = []
         active_event = self.nav.events.active_event()
@@ -581,6 +604,16 @@ class CaptureScreen(BaseScreen):
         self.nav.sounds.play("countdown")
         if self._total > 1:
             self._status.setText(f"Pose {len(self._poses) + 1}/{self._total}")
+        pose_index = len(self._poses)
+        if (self.session.challenge_type == "dance"
+                and pose_index < len(self.session.dance_pose_ids)):
+            self._preview.overlay.set_dance_pose(
+                self.session.dance_pose_ids[pose_index], pose_index + 1, self._total)
+            self.nav.capture_display.set_dance_pose(
+                self.session.dance_pose_ids[pose_index], pose_index + 1, self._total)
+        else:
+            self._preview.overlay.set_dance_pose(None)
+            self.nav.capture_display.set_dance_pose(None)
         self._preview.overlay.show_number(str(self._remaining))
         self.nav.capture_display.set_countdown(str(self._remaining))
         self._timer.start()
@@ -673,10 +706,20 @@ class CaptureScreen(BaseScreen):
                             if self.session.event_started_at else None)
         try:
             if self.session.photo_format == "gif":
-                gif_frames = [stamp_result(frame) for frame in self._poses]
+                if self.session.challenge_type == "dance":
+                    dance_frames = [
+                        stamp_dance_pose(frame, pose_id, index + 1, len(self._poses))
+                        for index, (frame, pose_id) in enumerate(
+                            zip(self._poses, self.session.dance_pose_ids))
+                    ]
+                    gif_frames = [stamp_result(frame) for frame in dance_frames]
+                else:
+                    gif_frames = [stamp_result(frame) for frame in self._poses]
                 path = gif_builder.save_gif(
                     self.config, gif_frames, guest,
-                    effect=self.session.gif_effect, hold_last=self.session.gif_hold_last,
+                    effect="loop" if self.session.challenge_type == "dance" else self.session.gif_effect,
+                    hold_last=False if self.session.challenge_type == "dance" else self.session.gif_hold_last,
+                    frame_duration_ms=2000 if self.session.challenge_type == "dance" else None,
                     event_started_at=event_started_at,
                 )
                 self.session.photos.append(path)

@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 VALID_FORMATS = {"single", "strip", "gif"}
 VALID_BACKGROUNDS = {"none", "choose", "random"}
 VALID_STYLES = {"original", "cartoon", "sketch", "watercolor", "pop_art", "manga"}
-VALID_TYPES = {"photo", "guest_wheel"}
+VALID_TYPES = {"photo", "guest_wheel", "dance"}
 
 
 @dataclass(frozen=True)
@@ -93,7 +93,8 @@ def load_challenges(user_file: Path, allow_gif: bool = True) -> list[Challenge]:
             if (not challenge_id or challenge_id in seen_ids or not title or not instruction
                     or photo_format not in VALID_FORMATS or background not in VALID_BACKGROUNDS
                     or challenge_type not in VALID_TYPES
-                    or (challenge_type == "guest_wheel" and photo_format != "single")):
+                    or (challenge_type == "guest_wheel" and photo_format != "single")
+                    or (challenge_type == "dance" and photo_format != "gif")):
                 log.warning("Défi ignoré car sa définition est invalide : %r (fichier %s)",
                             challenge_id, candidate)
                 continue

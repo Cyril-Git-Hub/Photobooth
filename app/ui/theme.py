@@ -78,6 +78,26 @@ QPushButton#adminPatternSetting { border-radius: 14px; padding: 6px 12px; font-s
 QPushButton:hover { border-color: rgba(255, 255, 255, 0.42); }
 QPushButton#formatOptionButton { border-radius: 16px; padding: 10px 18px; font-size: 23px; }
 QPushButton:disabled { color: rgba(244, 241, 255, 0.48); background: #2b2757; border-color: transparent; }
+QPushButton#guestWheelSpinButton {
+    background: #2b2757;
+    color: #ffd166;
+    border: 1px solid rgba(255, 209, 102, 0.48);
+    border-radius: 18px;
+    padding: 8px 24px;
+    font-size: 19px;
+    font-weight: 600;
+}
+QPushButton#guestWheelSpinButton:hover { background: #3b3680; border-color: #ffd166; }
+QPushButton#guestWheelSpinButton:disabled { color: #8f89b5; border-color: rgba(255, 255, 255, 0.08); }
+QLabel#challengeGateHint {
+    background: #30243c;
+    border: 1px solid rgba(255, 209, 102, 0.6);
+    border-radius: 12px;
+    color: #ffd166;
+    padding: 10px 14px;
+    font-size: 18px;
+    font-weight: 600;
+}
 QPushButton[variant="primary"] {
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ff4d8d, stop:1 #d93a75);
     color: #ffffff; border-color: rgba(255, 255, 255, 0.24);

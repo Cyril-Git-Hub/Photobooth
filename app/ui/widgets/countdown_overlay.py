@@ -5,12 +5,17 @@ from PyQt6.QtCore import Qt, QVariantAnimation
 from PyQt6.QtGui import QColor, QFont, QPainter
 from PyQt6.QtWidgets import QWidget
 
+from .dance_pose import draw_dance_pose
+
 
 class CountdownOverlay(QWidget):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._text = ""
+        self._dance_pose: int | None = None
+        self._dance_step = 0
+        self._dance_total = 0
         self._pulse = 0.0   # 1 -> 0 pendant un chiffre : il rétrécit et s'estompe
         self._flash = 0.0   # 1 -> 0 : flash blanc
         self._pulse_anim = self._make_anim(900, self._set_pulse)
@@ -39,6 +44,12 @@ class CountdownOverlay(QWidget):
         self._pulse_anim.start()
         self.update()
 
+    def set_dance_pose(self, pose_index: int | None, step: int = 0, total: int = 0) -> None:
+        self._dance_pose = pose_index
+        self._dance_step = step
+        self._dance_total = total
+        self.update()
+
     def flash(self) -> None:
         self._flash = 1.0
         self._flash_anim.stop()
@@ -51,6 +62,7 @@ class CountdownOverlay(QWidget):
         self._text = ""
         self._pulse = 0.0
         self._flash = 0.0
+        self.set_dance_pose(None)
         self.update()
 
     def paintEvent(self, event) -> None:
@@ -69,4 +81,23 @@ class CountdownOverlay(QWidget):
             painter.drawText(self.rect().translated(6, 6), flags, self._text)
             painter.setPen(QColor(255, 209, 102, alpha))
             painter.drawText(self.rect(), flags, self._text)
+        if self._dance_pose is not None:
+            pose_rect = self.rect().adjusted(
+                int(self.width() * 0.70), int(self.height() * 0.04),
+                -int(self.width() * 0.03), -int(self.height() * 0.58))
+            painter.setBrush(QColor(18, 16, 42, 190))
+            painter.setPen(QColor(255, 196, 77))
+            painter.drawRoundedRect(pose_rect, 12, 12)
+            draw_dance_pose(
+                painter, pose_rect.adjusted(6, 6, -6, -30), self._dance_pose)
+            label_font = QFont(painter.font())
+            label_font.setBold(True)
+            label_font.setPixelSize(max(12, int(pose_rect.height() * 0.16)))
+            painter.setFont(label_font)
+            painter.setPen(QColor("#ffffff"))
+            painter.drawText(
+                pose_rect.adjusted(2, 0, -2, -2),
+                Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter,
+                f"Pose {self._dance_step}/{self._dance_total}",
+            )
         painter.end()

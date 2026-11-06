@@ -54,7 +54,7 @@ class GifOptionsScreen(BaseScreen):
         back = BigButton("Retour", "secondary")
         back.clicked.connect(lambda: self.nav.go_to("challenge" if self.session.challenge_id else "format_select"))
         start = BigButton("Continuer", "notListed")
-        start.clicked.connect(lambda: self.nav.go_to("capture"))
+        start.clicked.connect(self._continue)
         footer = QHBoxLayout()
         footer.addStretch(1)
         footer.addWidget(back)
@@ -95,3 +95,6 @@ class GifOptionsScreen(BaseScreen):
 
     def on_leave(self) -> None:
         self.session.gif_hold_last = self._hold.isChecked()
+
+    def _continue(self) -> None:
+        self.nav.go_to("capture")
