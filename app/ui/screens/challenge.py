@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
 )
 
 from ...core import backgrounds, challenges
+from ...core.models import AUXILIARY_MODELS
 from ...core.guests import Guest, GuestListError, load_guests
 from ..scale import px
 from ..widgets.big_button import BigButton
@@ -281,6 +282,17 @@ class ChallengeScreen(BaseScreen):
         else:
             self._availability.setText(
                 "Les défis réutilisent le compte à rebours, les poses, les décors et les réglages GIF du photobooth.")
+        missing_accessory_model = (
+            challenge.accessory is not None
+            and any(
+                not (self.config.dossier_modeles / AUXILIARY_MODELS[name].filename).is_file()
+                for name in ("pose", "main")
+            )
+        )
+        if missing_accessory_model:
+            self._availability.setText(
+                "Modèles de pose et de main requis pour cet effet. Prépare-les avant la soirée avec : "
+                "python tools\\telecharger_modele.py pose main")
         extras = []
         if challenge.mask:
             extras.append(f"Masque proposé : {challenge.mask}")
@@ -290,10 +302,10 @@ class ChallengeScreen(BaseScreen):
             self._availability.setText(self._availability.text() + "\n" + " · ".join(extras))
         if not is_guest_wheel:
             self._info_panel.setMinimumWidth(0)
-            self._availability.setWordWrap(False)
+            self._availability.setWordWrap(missing_accessory_model)
             self._availability.setMinimumHeight(0)
             self._availability.setMaximumHeight(16777215)
-            self._start.setEnabled(True)
+            self._start.setEnabled(not missing_accessory_model)
             self._start.setText("Je relève le défi !")
             self._gate_hint.hide()
             self._spin.hide()
@@ -392,6 +404,7 @@ class ChallengeScreen(BaseScreen):
         self.session.challenge_guest_name = self._winner.pseudo if self._winner else ""
         self.session.challenge_type = challenge.challenge_type
         if challenge.challenge_type == "dance":
+            self.session.challenge_accessory = None
             self.session.photo_format = "gif"
             self.session.gif_capture_mode = "spaced"
             self.session.gif_effect = "loop"
@@ -414,6 +427,7 @@ class ChallengeScreen(BaseScreen):
                 f"\nPersonne à retrouver : {self.session.challenge_guest_name}")
         self.session.challenge_background_required = False
         self.session.challenge_mask = challenge.mask
+        self.session.challenge_accessory = challenge.accessory
         self.session.challenge_style = challenge.style
         self.session.challenge_reference_png = None
         if challenge.image is not None:

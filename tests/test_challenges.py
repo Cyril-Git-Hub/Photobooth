@@ -45,6 +45,38 @@ class ChallengeTests(unittest.TestCase):
         self.assertEqual([(item.id, item.challenge_type) for item in loaded],
                          [("photo", "photo"), ("wheel", "guest_wheel"), ("dance", "dance")])
 
+    def test_defis_desactives_sont_ignores_et_champ_absent_reste_actif(self):
+        definitions = {
+            "defis": [
+                {"id": "off", "titre": "Inactif", "consigne": "Ignore.", "actif": False},
+                {"id": "on", "titre": "Actif", "consigne": "Joue."},
+            ],
+            "categories": [{
+                "id": "poses", "titre": "Pose", "consigne": "Imite.",
+                "actif": False, "images": ["pose.jpg"],
+            }],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "defis.json"
+            (Path(directory) / "pose.jpg").write_bytes(b"image")
+            path.write_text(json.dumps(definitions), encoding="utf-8")
+
+            loaded = load_challenges(path)
+
+        self.assertEqual([item.id for item in loaded], ["on"])
+
+    def test_tous_les_defis_desactives_ne_reactivent_pas_les_defis_integres(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "defis.json"
+            path.write_text(json.dumps({
+                "defis": [{"id": "off", "titre": "Inactif", "consigne": "Ignore.",
+                           "actif": False}],
+            }), encoding="utf-8")
+
+            loaded = load_challenges(path)
+
+        self.assertEqual(loaded, [])
+
     def test_guest_wheel_uses_ten_random_pseudos_and_excludes_current_guest(self):
         guests = [Guest(str(index), f"First{index}", pseudo=f"Pseudo{index}")
                   for index in range(20)]

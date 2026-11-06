@@ -5,7 +5,11 @@ import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
+from .accessory_config import (
+    AccessoryPlacement, AccessorySpec, DEFAULT_ACCESSORY_PLACEMENT, parse_placement,
+)
 from ..paths import resource_path
 
 log = logging.getLogger(__name__)
@@ -27,6 +31,7 @@ class Challenge:
     mask: str = ""
     style: str = ""
     challenge_type: str = "photo"
+    accessory: AccessorySpec | None = None
 
 
 def load_challenges(user_file: Path, allow_gif: bool = True) -> list[Challenge]:
@@ -47,6 +52,18 @@ def load_challenges(user_file: Path, allow_gif: bool = True) -> list[Challenge]:
             raw_config = raw_challenges
             raw_challenges = raw_config.get("defis", [])
             categories = raw_config.get("categories", [])
+            profiles_raw = raw_config.get("profils_accessoires", {})
+            profiles: dict[str, AccessoryPlacement] = {}
+            if isinstance(profiles_raw, dict):
+                for profile_name, profile_data in profiles_raw.items():
+                    try:
+                        profiles[str(profile_name)] = parse_placement(
+                            profile_data, DEFAULT_ACCESSORY_PLACEMENT)
+                    except ValueError as exc:
+                        log.warning("Profil d'accessoire invalide %r dans %s : %s",
+                                    profile_name, candidate, exc)
+            elif profiles_raw:
+                log.warning("« profils_accessoires » doit être un objet dans %s", candidate)
             if not isinstance(raw_challenges, list):
                 log.warning("Liste de défis invalide dans %s", candidate)
                 raw_challenges = []
@@ -72,16 +89,26 @@ def load_challenges(user_file: Path, allow_gif: bool = True) -> list[Challenge]:
                         })
         else:
             categories = []
+            profiles = {}
         if not isinstance(raw_challenges, list):
             log.warning("Format de liste invalide dans %s", candidate)
             continue
 
         challenges: list[Challenge] = []
         seen_ids: set[str] = set()
+        has_disabled_challenge = False
         log.info("Lecture des défis dans %s", candidate)
         for item in raw_challenges:
             if not isinstance(item, dict):
                 log.warning("Défi ignoré dans %s : entrée JSON invalide", candidate)
+                continue
+            active = item.get("actif", True)
+            if not isinstance(active, bool):
+                log.warning("Défi ignoré : « actif » doit être un booléen | id=%r", item.get("id"))
+                continue
+            if not active:
+                has_disabled_challenge = True
+                log.info("Défi désactivé : %s", item.get("id", "(sans identifiant)"))
                 continue
             challenge_id = str(item.get("id", "")).strip()
             title = str(item.get("titre", "")).strip()
@@ -90,11 +117,14 @@ def load_challenges(user_file: Path, allow_gif: bool = True) -> list[Challenge]:
             background = str(item.get("decor", "none")).strip().casefold()
             challenge_type = str(item.get("type", "photo")).strip().casefold()
             background_value = str(item.get("fond", "")).strip()
+            accessory_value = item.get("accessoire", "")
             if (not challenge_id or challenge_id in seen_ids or not title or not instruction
                     or photo_format not in VALID_FORMATS or background not in VALID_BACKGROUNDS
                     or challenge_type not in VALID_TYPES
                     or (challenge_type == "guest_wheel" and photo_format != "single")
-                    or (challenge_type == "dance" and photo_format != "gif")):
+                    or (challenge_type == "dance" and photo_format != "gif")
+                    or (accessory_value and
+                        (photo_format != "single" or challenge_type != "photo"))):
                 log.warning("Défi ignoré car sa définition est invalide : %r (fichier %s)",
                             challenge_id, candidate)
                 continue
@@ -123,6 +153,57 @@ def load_challenges(user_file: Path, allow_gif: bool = True) -> list[Challenge]:
                     log.error("Défi ignoré : image de référence introuvable | id=%s | chemin=%s",
                               challenge_id, image_path)
                     continue
+            accessory_path = None
+            accessory_spec = None
+            accessory_data: dict[str, Any] = {}
+            accessory_configured = bool(accessory_value)
+            if isinstance(accessory_value, str):
+                accessory_image = accessory_value.strip()
+                if accessory_configured and not accessory_image:
+                    log.error("Défi ignoré : chemin d'accessoire vide | id=%s", challenge_id)
+                    continue
+            elif isinstance(accessory_value, dict):
+                accessory_data = accessory_value
+                accessory_image = accessory_data.get("image", "")
+                if not isinstance(accessory_image, str) or not accessory_image.strip():
+                    log.error("Défi ignoré : « accessoire.image » est obligatoire | id=%s",
+                              challenge_id)
+                    continue
+                accessory_image = accessory_image.strip()
+            elif accessory_value:
+                log.warning("Défi ignoré : « accessoire » doit être un chemin ou un objet | id=%s",
+                            challenge_id)
+                continue
+            else:
+                accessory_image = ""
+            if accessory_image:
+                accessory_path = Path(accessory_image)
+                if not accessory_path.is_absolute():
+                    accessory_path = (candidate.parent / accessory_path).resolve()
+                    if not accessory_path.is_file():
+                        accessory_path = resource_path(accessory_image)
+                if accessory_path.suffix.casefold() != ".png" or not accessory_path.is_file():
+                    log.error("Défi ignoré : accessoire PNG introuvable | id=%s | chemin=%s",
+                              challenge_id, accessory_path)
+                    continue
+                profile_name = accessory_data.get("profil", "")
+                if not isinstance(profile_name, str):
+                    log.error("Défi ignoré : « accessoire.profil » doit être un nom | id=%s",
+                              challenge_id)
+                    continue
+                if profile_name and profile_name not in profiles:
+                    log.error("Défi ignoré : profil d'accessoire inconnu %r | id=%s",
+                              profile_name, challenge_id)
+                    continue
+                placement = profiles.get(profile_name, DEFAULT_ACCESSORY_PLACEMENT)
+                if "placement" in accessory_data:
+                    try:
+                        placement = parse_placement(accessory_data["placement"], placement)
+                    except ValueError as exc:
+                        log.error("Défi ignoré : placement d'accessoire invalide | id=%s | %s",
+                                  challenge_id, exc)
+                        continue
+                accessory_spec = AccessorySpec(accessory_path, placement)
             mask = str(item.get("masque", "")).strip()
             style = str(item.get("style", "")).strip().casefold()
             if style and style not in VALID_STYLES:
@@ -130,7 +211,7 @@ def load_challenges(user_file: Path, allow_gif: bool = True) -> list[Challenge]:
                 style = ""
             challenges.append(Challenge(
                 challenge_id, title, instruction, photo_format, background,
-                background_image, image_path, mask, style, challenge_type))
+                background_image, image_path, mask, style, challenge_type, accessory_spec))
             seen_ids.add(challenge_id)
             log.info("Défi chargé : id=%s | titre=%s | image=%s | fond=%s",
                      challenge_id, title, image_path if image_path else "aucune",
@@ -140,6 +221,9 @@ def load_challenges(user_file: Path, allow_gif: bool = True) -> list[Challenge]:
             if candidate != user_file:
                 log.info("Aucun défi valide dans %s ; défis intégrés utilisés", user_file)
             return challenges
+        if candidate == user_file and has_disabled_challenge:
+            log.info("Tous les défis du thème sont désactivés dans %s", user_file)
+            return []
         if candidate == user_file:
             log.info("Aucun défi complet dans %s ; utilisation des défis intégrés", user_file)
     log.error("Aucun fichier de défis valide trouvé")

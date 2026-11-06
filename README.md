@@ -26,6 +26,7 @@ Commandes disponibles (avec `python main.py` en développement, ou `photobooth-o
 ```
 python tools\telecharger_modele.py                (paysage + carre, petits fichiers)
 python tools\telecharger_modele.py multiclasse    (optionnel : plus précis sur les vêtements, plus lent)
+python tools\telecharger_modele.py pose main      (requis pour les accessoires sur les mains)
 ```
 
 Les fichiers sont placés dans `models/`. Le modèle utilisé se règle dans `config.ini` : `ia_modele = paysage` (défaut), `carre` ou `multiclasse`.
@@ -66,12 +67,26 @@ Les modifications sont prises en compte au démarrage ou avec **Recharger la con
 
 ## Défis personnalisés
 
-Le thème classique fournit un modèle vide dans `themes/classique/defis.json`. Un fichier peut combiner des catégories et des défis individuels. Les chemins d’images sont relatifs au fichier `defis.json`.
+Le thème classique fournit un modèle vide dans `themes/classique/defis.json`. Un fichier peut combiner des catégories, des défis individuels et des profils réutilisables dans `profils_accessoires`. Les chemins d’images sont relatifs au fichier `defis.json`. Un défi photo unique peut référencer un profil et donner son PNG transparent ; il est ajouté après la prise à partir des repères du bras et des 21 repères du modèle MediaPipe Hand Landmarker. Télécharge les modèles nécessaires avec `python tools\telecharger_modele.py pose main` avant la soirée.
 
-Une catégorie définit une fois les réglages communs, puis fournit une liste `images`. L’application crée un défi par image et génère son identifiant à partir du préfixe `id` (`imite-01`, `imite-02`, etc.). Pour un défi aux réglages particuliers, ajoute un objet dans `defis`. Chaque défi a besoin d’un identifiant unique, d’un titre et d’une consigne. `format` accepte `single`, `strip` ou `gif`. `decor` accepte `none`, `choose` ou `random`. Le champ facultatif `fond` impose un décor précis et remplace `decor`. Les images modèles sont fournies par `image` pour un défi individuel, ou par chaque entrée de `images` dans une catégorie. `masque` et `style` sont facultatifs ; les styles disponibles sont `original`, `cartoon`, `sketch`, `watercolor`, `pop_art` et `manga`. Le champ facultatif `type: "guest_wheel"` permet de tirer au sort un autre invité du fichier configuré dans `[invites]` ; il exige le format `single`. `type: "dance"` crée un défi Just Dance au format GIF : la séquence de poses apparaît sur l’écran du défi et chaque pose de référence est incrustée sur l’image correspondante du GIF, affichée deux secondes. Ce défi démarre directement en mode espacé et boucle, sans réglages GIF ni choix d’accessoires. Les champs `_commentaire` sont ignorés par l’application. Si aucun défi valide n’est défini pour le thème, les défis intégrés restent disponibles.
+Une catégorie définit une fois les réglages communs, puis fournit une liste `images`. L’application crée un défi par image et génère son identifiant à partir du préfixe `id` (`imite-01`, `imite-02`, etc.). Pour un défi aux réglages particuliers, ajoute un objet dans `defis`. Chaque défi a besoin d’un identifiant unique, d’un titre et d’une consigne. `actif` active ou masque le défi (`true` par défaut) ; dans une catégorie, cette option s’applique à tous les défis générés. `format` accepte `single`, `strip` ou `gif`. `decor` accepte `none`, `choose` ou `random`. Le champ facultatif `fond` impose un décor précis et remplace `decor`. Les images modèles sont fournies par `image` pour un défi individuel, ou par chaque entrée de `images` dans une catégorie. `masque` et `style` sont facultatifs ; les styles disponibles sont `original`, `cartoon`, `sketch`, `watercolor`, `pop_art` et `manga`. Un profil d’accessoire définit une fois l’ancrage, l’orientation, l’échelle et les décalages ; chaque défi ne fournit ensuite que le nom du profil et l’image. `ancrage_corps` accepte `main` ou `poignet`, `orientation` accepte `axe_main`, `axe_avant_bras`, `verticale` ou `horizontale`, et `taille.repere` accepte `avant_bras` ou `main`. `rotation_deg` ajoute une rotation en degrés dans le sens horaire à l’orientation détectée ; `90` tourne ainsi l’objet d’un quart de tour. Les valeurs de `decalage` sont des fractions du repère de taille choisi : `0.5` décale donc l’objet de la moitié de la longueur mesurée. Dans un défi, `placement` peut remplacer ponctuellement des réglages du profil. Ainsi un sabre, une épée, un fleuret et un katana peuvent partager le même profil et n’avoir que leur image qui change. Le champ facultatif `type: "guest_wheel"` permet de tirer au sort un autre invité du fichier configuré dans `[invites]` ; il exige le format `single`. `type: "dance"` crée un défi Just Dance au format GIF : la séquence de poses apparaît sur l’écran du défi et chaque pose de référence est incrustée sur l’image correspondante du GIF, affichée deux secondes. Ce défi démarre directement en mode espacé et boucle, sans réglages GIF ni choix d’accessoires. Les champs `_commentaire` sont ignorés par l’application. Si aucun défi valide n’est défini pour le thème, les défis intégrés restent disponibles.
+
+Le paramètre `couche` d’un profil vaut `devant` (défaut) ou `derriere`. `derriere` réincruste la main par-dessus l’accessoire à partir de ses 21 repères ; l’objet reste devant le bras et le corps.
+
+Le paramètre `sens` vaut `libre` (défaut) ou `vers_le_haut`. Pour `vers_le_haut`, l’accessoire est retourné de 180° si nécessaire afin que la lame pointe vers le haut de la photo, même si l’axe détecté de la main s’inverse.
 
 ```json
 {
+  "profils_accessoires": {
+    "arme_tenue_en_main": {
+      "ancrage_corps": "main",
+      "orientation": "axe_main",
+      "ancrage_image": {"x": 0.5, "y": 0.82},
+      "taille": {"repere": "avant_bras", "ratio": 2.7},
+      "rotation_deg": 0,
+      "decalage": {"x": 0, "y": 0}
+    }
+  },
   "categories": [{
     "id": "imite",
     "titre": "Copie cette pose",
@@ -83,7 +98,18 @@ Une catégorie définit une fois les réglages communs, puis fournit une liste `
     "style": "",
     "images": ["defis/pose1.jpg", "defis/pose2.jpg"]
   }],
-  "defis": []
+  "defis": [{
+    "id": "katana",
+    "titre": "Samouraï",
+    "consigne": "Prends la pose d'un samouraï.",
+    "format": "single",
+    "decor": "none",
+    "accessoire": {
+      "profil": "arme_tenue_en_main",
+      "image": "defis/katana.png",
+      "placement": {"taille": {"ratio": 2.2}}
+    }
+  }]
 }
 ```
 

@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QScrollArea, QScroller, QStyle, QToolButton, QVBoxLayout, QWidget,
 )
 
-from ...core import backgrounds, frames, gif_builder, storage, strip_builder, virtual_masks
+from ...core import accessories, backgrounds, frames, gif_builder, storage, strip_builder, virtual_masks
 from ...core.challenge_stamp import stamp_challenge_reference, stamp_challenge_title
 from ...core.compositor import SceneRenderer
 from ...core.qt_image import bgr_to_qimage
@@ -72,6 +72,7 @@ class CaptureScreen(BaseScreen):
         self._mask_buttons: dict[Path | None, QToolButton] = {}
         self._mask_processor: virtual_masks.FaceMaskRenderer | None = None
         self._mask_error = ""
+        self._accessory_processor: accessories.AccessoryRenderer | None = None
         self._dance_auto_started = False
 
         self._preview = PreviewWidget()
@@ -195,6 +196,9 @@ class CaptureScreen(BaseScreen):
         camera.set_preview_enabled(False)
         self._renderer = None
         self._mask_processor = None
+        if self._accessory_processor is not None:
+            self._accessory_processor.close()
+            self._accessory_processor = None
 
     def _begin(self) -> None:
         """Prépare le décor puis démarre (ou reprend) l'aperçu. Appelé à l'arrivée et par « Réessayer »."""
@@ -218,6 +222,9 @@ class CaptureScreen(BaseScreen):
         self._frame_overlay = None
         self._mask_processor = None
         self._mask_error = ""
+        if self._accessory_processor is not None:
+            self._accessory_processor.close()
+            self._accessory_processor = None
         is_dance = self.session.challenge_type == "dance"
         self._frame_option.setVisible(
             self.session.photo_format == "single" and not is_dance)
@@ -657,6 +664,18 @@ class CaptureScreen(BaseScreen):
                 return None
         if self._mask_processor is not None:
             frame = self._mask_processor.apply_photo(self._last_source_frame, frame)
+        if self.session.challenge_accessory is not None:
+            try:
+                if self._accessory_processor is None:
+                    self._accessory_processor = accessories.AccessoryRenderer(
+                        self.config.dossier_modeles / accessories.POSE_MODEL_FILENAME,
+                        self.config.dossier_modeles / accessories.HAND_MODEL_FILENAME,
+                        self.session.challenge_accessory,
+                    )
+                frame, _applied = self._accessory_processor.apply_photo(
+                    self._last_source_frame, frame)
+            except accessories.AccessoryError as exc:
+                log.error("Accessoire de défi indisponible : %s", exc)
         return frame
 
     def _capture_pose(self) -> None:

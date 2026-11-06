@@ -14,6 +14,13 @@ class ModelSpec:
     description: str
 
 
+@dataclass(frozen=True)
+class DownloadSpec:
+    filename: str
+    url: str
+    description: str
+
+
 MODELS: dict[str, ModelSpec] = {
     "paysage": ModelSpec(
         "selfie_segmenter_landscape.tflite",
@@ -30,3 +37,15 @@ MODELS: dict[str, ModelSpec] = {
 }
 MODEL_NAMES = tuple(MODELS)
 DEFAULT_DOWNLOADS = ("paysage", "carre")   # petits fichiers, téléchargés par défaut
+
+AUXILIARY_MODELS: dict[str, DownloadSpec] = {
+    "pose": DownloadSpec(
+        "pose_landmarker_lite.task",
+        "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+        "repérage des articulations pour les accessoires photo"),
+    "main": DownloadSpec(
+        "hand_landmarker.task",
+        "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+        "repérage détaillé des mains pour les accessoires photo"),
+}
+DOWNLOAD_MODELS = {**MODELS, **AUXILIARY_MODELS}

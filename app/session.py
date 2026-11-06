@@ -6,6 +6,8 @@ from pathlib import Path
 
 import numpy as np
 
+from .core.accessory_config import AccessorySpec
+
 
 @dataclass
 class Session:
@@ -28,6 +30,7 @@ class Session:
     challenge_instruction: str = ""
     challenge_background_required: bool = False
     challenge_mask: str = ""
+    challenge_accessory: AccessorySpec | None = None
     challenge_style: str = ""
     challenge_reference_png: bytes | None = None
     challenge_guest_name: str = ""

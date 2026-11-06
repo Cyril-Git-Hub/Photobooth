@@ -42,6 +42,7 @@ themes/*/sons/*
 
 # Modèles IA (téléchargés par photobooth-outils --telecharger-modeles)
 models/*.tflite
+models/*.task
 
 # Cache local de PowerShell (créé automatiquement par Windows)
 /Microsoft/Windows/PowerShell/ModuleAnalysisCache
