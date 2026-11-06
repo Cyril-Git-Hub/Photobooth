@@ -164,3 +164,6 @@ class FormatSelectScreen(BaseScreen):
         self.session.challenge_mask = ""
         self.session.challenge_style = ""
         self.session.challenge_reference_png = None
+        self.session.challenge_guest_name = ""
+        self.session.challenge_type = "photo"
+        self.session.dance_pose_ids = []

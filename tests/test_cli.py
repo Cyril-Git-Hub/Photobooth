@@ -8,7 +8,8 @@ from unittest import mock
 
 from app import __version__, cli
 from app.config import Config
-from app.core.models import MODELS
+from app.core import model_downloads
+from app.core.models import DOWNLOAD_MODELS, MODELS
 
 
 class ParserTests(unittest.TestCase):
@@ -79,7 +80,8 @@ class DownloadTests(unittest.TestCase):
             return io.BytesIO(payload)
         out = io.StringIO()
         with mock.patch.object(cli.Config, "load", return_value=self.config), \
-             mock.patch.object(cli.urllib.request, "urlopen", side_effect=urlopen), contextlib.redirect_stdout(out):
+             mock.patch.object(model_downloads.urllib.request, "urlopen", side_effect=urlopen), \
+             contextlib.redirect_stdout(out):
             code = cli.download_models(list(args))
         return code, out.getvalue()
 
@@ -104,7 +106,21 @@ class DownloadTests(unittest.TestCase):
         self.assertEqual(self.files(), [MODELS["multiclasse"].filename])
         self.requests.clear()
         self.download("--tous")
-        self.assertEqual(len(self.files()), 3); self.assertEqual(self.requests, [MODELS["paysage"].url, MODELS["carre"].url])
+        self.assertEqual(len(self.files()), 5)
+        self.assertEqual(self.requests, [DOWNLOAD_MODELS[name].url
+                                         for name in ("paysage", "carre", "pose", "main")])
+
+    def test_modele_pose(self):
+        code, _output = self.download("pose")
+        self.assertEqual(code, 0)
+        self.assertEqual(self.files(), [DOWNLOAD_MODELS["pose"].filename])
+        self.assertEqual(self.requests, [DOWNLOAD_MODELS["pose"].url])
+
+    def test_modele_main(self):
+        code, _output = self.download("main")
+        self.assertEqual(code, 0)
+        self.assertEqual(self.files(), [DOWNLOAD_MODELS["main"].filename])
+        self.assertEqual(self.requests, [DOWNLOAD_MODELS["main"].url])
 
     def test_deja_present_pas_retelecharge(self):
         self.download(); self.requests.clear()
