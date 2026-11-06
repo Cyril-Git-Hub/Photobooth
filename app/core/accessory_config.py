@@ -24,6 +24,8 @@ class AccessoryPlacement:
 class AccessorySpec:
     image: Path
     placement: AccessoryPlacement
+    hand_images: tuple[Path, Path] | None = None
+    hand_images_back: tuple[Path, Path] | None = None
 
 
 DEFAULT_ACCESSORY_PLACEMENT = AccessoryPlacement()

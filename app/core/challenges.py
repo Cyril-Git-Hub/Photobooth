@@ -156,6 +156,8 @@ def load_challenges(user_file: Path, allow_gif: bool = True) -> list[Challenge]:
             accessory_path = None
             accessory_spec = None
             accessory_data: dict[str, Any] = {}
+            hand_accessory_paths: tuple[Path, Path] | None = None
+            hand_accessory_back_paths: tuple[Path, Path] | None = None
             accessory_configured = bool(accessory_value)
             if isinstance(accessory_value, str):
                 accessory_image = accessory_value.strip()
@@ -165,11 +167,65 @@ def load_challenges(user_file: Path, allow_gif: bool = True) -> list[Challenge]:
             elif isinstance(accessory_value, dict):
                 accessory_data = accessory_value
                 accessory_image = accessory_data.get("image", "")
-                if not isinstance(accessory_image, str) or not accessory_image.strip():
+                images_value = accessory_data.get("images")
+                back_images_value = None
+                if images_value is not None:
+                    if not isinstance(images_value, dict):
+                        log.error("Défi ignoré : « accessoire.images » doit être un objet | id=%s",
+                                  challenge_id)
+                        continue
+                    if "paume" in images_value or "dos" in images_value:
+                        palm_images_value = images_value.get("paume")
+                        back_images_value = images_value.get("dos")
+                        if palm_images_value is None:
+                            log.error("Défi ignoré : « accessoire.images.paume » est obligatoire | id=%s",
+                                      challenge_id)
+                            continue
+                    else:
+                        palm_images_value = images_value
+
+                    def resolve_hand_images(
+                        image_set: Any, orientation: str,
+                    ) -> tuple[Path, Path] | None:
+                        if (not isinstance(image_set, dict)
+                                or not all(isinstance(image_set.get(side), str)
+                                           and image_set[side].strip()
+                                           for side in ("gauche", "droite"))):
+                            log.error(
+                                "Défi ignoré : « accessoire.images.%s » doit définir gauche et droite | id=%s",
+                                orientation, challenge_id)
+                            return None
+                        paths = []
+                        for side in ("gauche", "droite"):
+                            path = Path(image_set[side].strip())
+                            if not path.is_absolute():
+                                path = (candidate.parent / path).resolve()
+                                if not path.is_file():
+                                    path = resource_path(image_set[side].strip())
+                            if path.suffix.casefold() != ".png" or not path.is_file():
+                                log.error(
+                                    "Défi ignoré : image d'accessoire %s introuvable | id=%s | chemin=%s",
+                                    side, challenge_id, path)
+                                return None
+                            paths.append(path)
+                        return paths[0], paths[1]
+
+                    hand_accessory_paths = resolve_hand_images(palm_images_value, "paume")
+                    if hand_accessory_paths is None:
+                        continue
+                    if back_images_value is not None:
+                        hand_accessory_back_paths = resolve_hand_images(back_images_value, "dos")
+                        if hand_accessory_back_paths is None:
+                            continue
+                    else:
+                        hand_accessory_back_paths = None
+                    accessory_image = str(hand_accessory_paths[0])
+                elif not isinstance(accessory_image, str) or not accessory_image.strip():
                     log.error("Défi ignoré : « accessoire.image » est obligatoire | id=%s",
                               challenge_id)
                     continue
-                accessory_image = accessory_image.strip()
+                else:
+                    accessory_image = accessory_image.strip()
             elif accessory_value:
                 log.warning("Défi ignoré : « accessoire » doit être un chemin ou un objet | id=%s",
                             challenge_id)
@@ -203,7 +259,9 @@ def load_challenges(user_file: Path, allow_gif: bool = True) -> list[Challenge]:
                         log.error("Défi ignoré : placement d'accessoire invalide | id=%s | %s",
                                   challenge_id, exc)
                         continue
-                accessory_spec = AccessorySpec(accessory_path, placement)
+                accessory_spec = AccessorySpec(
+                    accessory_path, placement, hand_accessory_paths,
+                    hand_accessory_back_paths)
             mask = str(item.get("masque", "")).strip()
             style = str(item.get("style", "")).strip().casefold()
             if style and style not in VALID_STYLES:

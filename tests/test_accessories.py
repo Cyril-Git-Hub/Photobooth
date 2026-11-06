@@ -6,7 +6,9 @@ from types import SimpleNamespace
 import json
 import numpy as np
 
-from app.core.accessories import _match_hand_to_pose, place_accessory
+from app.core.accessories import (
+    _hand_orientation, _handedness_label, _match_hand_to_pose, place_accessory,
+)
 from app.core.accessory_config import AccessoryPlacement, DEFAULT_ACCESSORY_PLACEMENT
 from app.core.challenges import load_challenges
 
@@ -22,6 +24,47 @@ def _hand_landmarks():
 
 
 class AccessoryPlacementTests(unittest.TestCase):
+    def test_latralite_media_pipe_est_corrigee_selon_le_miroir_camera(self):
+        left = [SimpleNamespace(category_name="Left")]
+        right = [SimpleNamespace(category_name="Right")]
+
+        self.assertEqual(_handedness_label(left, image_is_mirrored=True), "left")
+        self.assertEqual(_handedness_label(right, image_is_mirrored=True), "right")
+        self.assertEqual(_handedness_label(left, image_is_mirrored=False), "right")
+        self.assertEqual(_handedness_label(right, image_is_mirrored=False), "left")
+
+    def test_orientation_paume_dos_tient_compte_du_cote_et_du_miroir(self):
+        right_palm = _hand_landmarks()
+        right_palm = [
+            SimpleNamespace(x=point.x, y=point.y, z=0.0)
+            for point in right_palm
+        ]
+        mirrored_right_palm = [
+            SimpleNamespace(x=1.0 - point.x, y=point.y, z=point.z)
+            for point in right_palm
+        ]
+        left_palm = [
+            SimpleNamespace(x=1.0 - point.x, y=point.y, z=point.z)
+            for point in right_palm
+        ]
+
+        self.assertEqual(_hand_orientation(right_palm, "right", 200, 200, False), "paume")
+        self.assertEqual(
+            _hand_orientation(mirrored_right_palm, "right", 200, 200, True), "paume")
+        self.assertEqual(_hand_orientation(left_palm, "left", 200, 200, False), "paume")
+        self.assertEqual(_hand_orientation(right_palm, "right", 200, 200, True), "dos")
+
+    def test_orientation_indeterminee_pour_une_main_vue_de_tranche(self):
+        edge_on = _hand_landmarks()
+        edge_on = [
+            SimpleNamespace(x=point.x, y=point.y, z=0.0)
+            for point in edge_on
+        ]
+        edge_on[17].x = edge_on[0].x + 2 * (edge_on[5].x - edge_on[0].x)
+        edge_on[17].y = edge_on[0].y + 2 * (edge_on[5].y - edge_on[0].y)
+
+        self.assertIsNone(_hand_orientation(edge_on, "right", 200, 200, False))
+
     def test_associe_la_main_au_poignet_de_pose_le_plus_fiable(self):
         pose = [SimpleNamespace(x=0.0, y=0.0, visibility=0.0) for _ in range(33)]
         pose[11] = SimpleNamespace(x=0.2, y=0.2, visibility=1.0)
@@ -200,6 +243,69 @@ class ChallengeAccessoryTests(unittest.TestCase):
             loaded = load_challenges(challenge_file)
 
         self.assertEqual(loaded[0].accessory.placement.hand_layer, "derriere")
+
+    def test_defi_accepte_des_png_separes_pour_chaque_main(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "gauche.png").write_bytes(b"png")
+            (root / "droite.png").write_bytes(b"png")
+            challenge_file = root / "defis.json"
+            challenge_file.write_text(json.dumps({
+                "profils_accessoires": {"gants": {"orientation": "axe_main"}},
+                "defis": [{
+                    "id": "boxeur", "titre": "Boxeur", "consigne": "Garde haute !",
+                    "format": "single", "decor": "none",
+                    "accessoire": {
+                        "profil": "gants",
+                        "images": {"gauche": "gauche.png", "droite": "droite.png"},
+                    },
+                }],
+            }), encoding="utf-8")
+
+            loaded = load_challenges(challenge_file)
+
+        accessory = loaded[0].accessory
+        self.assertEqual(accessory.image, root / "gauche.png")
+        self.assertEqual(accessory.hand_images, (root / "gauche.png", root / "droite.png"))
+
+    def test_defi_accepte_des_png_separes_selon_cote_et_orientation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            names = (
+                "paume-gauche.png", "paume-droite.png",
+                "dos-gauche.png", "dos-droite.png",
+            )
+            for name in names:
+                (root / name).write_bytes(b"png")
+            challenge_file = root / "defis.json"
+            challenge_file.write_text(json.dumps({
+                "profils_accessoires": {"gants": {"orientation": "axe_main"}},
+                "defis": [{
+                    "id": "boxeur", "titre": "Boxeur", "consigne": "Garde haute !",
+                    "format": "single", "decor": "none",
+                    "accessoire": {
+                        "profil": "gants",
+                        "images": {
+                            "paume": {
+                                "gauche": "paume-gauche.png",
+                                "droite": "paume-droite.png",
+                            },
+                            "dos": {
+                                "gauche": "dos-gauche.png",
+                                "droite": "dos-droite.png",
+                            },
+                        },
+                    },
+                }],
+            }), encoding="utf-8")
+
+            loaded = load_challenges(challenge_file)
+
+        accessory = loaded[0].accessory
+        self.assertEqual(accessory.hand_images, (
+            root / "paume-gauche.png", root / "paume-droite.png"))
+        self.assertEqual(accessory.hand_images_back, (
+            root / "dos-gauche.png", root / "dos-droite.png"))
 
     def test_parametres_locaux_remplacent_ceux_du_profil(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -75,6 +75,15 @@ Le paramètre `couche` d’un profil vaut `devant` (défaut) ou `derriere`. `der
 
 Le paramètre `sens` vaut `libre` (défaut) ou `vers_le_haut`. Pour `vers_le_haut`, l’accessoire est retourné de 180° si nécessaire afin que la lame pointe vers le haut de la photo, même si l’axe détecté de la main s’inverse.
 
+Pour équiper les deux mains différemment, `accessoire.images` accepte une paire `gauche`/`droite`, ou des paires distinctes sous `paume` et `dos`. Avec les deux vues, MediaPipe choisit l’image selon l’orientation détectée de la main ; une vue de tranche ou ambiguë utilise celle de la paume. Le réglage miroir de la caméra est pris en compte pour la latéralité et l’orientation.
+
+```json
+"images": {
+  "paume": {"gauche": "defis/gant-paume-gauche.png", "droite": "defis/gant-paume-droit.png"},
+  "dos": {"gauche": "defis/gant-dos-gauche.png", "droite": "defis/gant-dos-droit.png"}
+}
+```
+
 ```json
 {
   "profils_accessoires": {

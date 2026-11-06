@@ -671,6 +671,7 @@ class CaptureScreen(BaseScreen):
                         self.config.dossier_modeles / accessories.POSE_MODEL_FILENAME,
                         self.config.dossier_modeles / accessories.HAND_MODEL_FILENAME,
                         self.session.challenge_accessory,
+                        image_is_mirrored=self.config.miroir,
                     )
                 frame, _applied = self._accessory_processor.apply_photo(
                     self._last_source_frame, frame)

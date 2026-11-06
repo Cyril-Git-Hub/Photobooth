@@ -68,6 +68,77 @@ def _match_hand_to_pose(hand_landmarks, pose_landmarks, width: int, height: int)
     return selected, (forearm_length, forearm_direction)
 
 
+def _handedness_label(categories, image_is_mirrored: bool) -> str | None:
+    if not categories:
+        return None
+    label = getattr(categories[0], "category_name", "")
+    if label not in {"Left", "Right"}:
+        return None
+    if not image_is_mirrored:
+        label = "Right" if label == "Left" else "Left"
+    return label.casefold()
+
+
+def _hand_orientation(
+    hand_landmarks,
+    handedness: str,
+    width: int,
+    height: int,
+    image_is_mirrored: bool,
+) -> str | None:
+    """Estime si la paume ou le dos de la main fait face à la caméra."""
+    if len(hand_landmarks) != 21 or handedness not in {"left", "right"}:
+        return None
+    wrist, index_mcp, pinky_mcp = (hand_landmarks[index] for index in (0, 5, 17))
+    points = np.array([
+        (point.x * width, point.y * height, getattr(point, "z", 0.0) * width)
+        for point in (wrist, index_mcp, pinky_mcp)
+    ], dtype=np.float32)
+    index_vector = points[1] - points[0]
+    pinky_vector = points[2] - points[0]
+    normal = np.cross(index_vector, pinky_vector)
+    normal_length = float(np.linalg.norm(normal))
+    if normal_length < 1:
+        return None
+
+    palm_facing = float(normal[2]) / normal_length
+    if handedness == "left":
+        palm_facing *= -1
+    if image_is_mirrored:
+        palm_facing *= -1
+    if abs(palm_facing) < 0.2:
+        return None
+    return "paume" if palm_facing > 0 else "dos"
+
+
+def _pose_arm_near_wrist(landmarks, wrist: np.ndarray, width: int, height: int):
+    if not landmarks:
+        return None
+    candidates = []
+    for shoulder_index, elbow_index, wrist_index in ((11, 13, 15), (12, 14, 16)):
+        shoulder, elbow, pose_wrist = (landmarks[index] for index in
+                                       (shoulder_index, elbow_index, wrist_index))
+        confidence = min(float(getattr(point, "visibility", 1.0))
+                         for point in (shoulder, elbow, pose_wrist))
+        if confidence < MIN_LANDMARK_VISIBILITY:
+            continue
+        shoulder_xy = np.array((shoulder.x * width, shoulder.y * height), dtype=np.float32)
+        elbow_xy = np.array((elbow.x * width, elbow.y * height), dtype=np.float32)
+        pose_wrist_xy = np.array((pose_wrist.x * width, pose_wrist.y * height), dtype=np.float32)
+        forearm = pose_wrist_xy - elbow_xy
+        length = float(np.linalg.norm(forearm))
+        if length < max(8.0, width * 0.01):
+            continue
+        if np.linalg.norm(shoulder_xy - elbow_xy) <= 0:
+            continue
+        distance = float(np.linalg.norm(pose_wrist_xy - wrist))
+        candidates.append((distance, length, forearm / length))
+    if not candidates:
+        return None
+    _, length, direction = min(candidates, key=lambda item: item[0])
+    return length, direction
+
+
 def _hand_mask(
     shape: tuple[int, ...],
     hand_points: np.ndarray,
@@ -178,6 +249,7 @@ class AccessoryRenderer:
         pose_model_path: Path,
         hand_model_path: Path,
         accessory_spec: AccessorySpec,
+        image_is_mirrored: bool = True,
     ) -> None:
         if not pose_model_path.is_file():
             raise AccessoryError(
@@ -187,19 +259,22 @@ class AccessoryRenderer:
             raise AccessoryError(
                 f"Modèle de détection des mains absent : {hand_model_path}. "
                 "Lance « python tools\\telecharger_modele.py main » avant la soirée.")
-        try:
-            data = np.fromfile(str(accessory_spec.image), dtype=np.uint8)
-            accessory = cv2.imdecode(data, cv2.IMREAD_UNCHANGED) if data.size else None
-        except OSError as exc:
-            raise AccessoryError(f"Lecture de l'accessoire impossible : {accessory_spec.image}") from exc
-        except cv2.error as exc:
-            raise AccessoryError(f"Décodage de l'accessoire impossible : {accessory_spec.image}") from exc
-        if accessory is None or accessory.ndim != 3 or accessory.shape[2] != 4:
-            raise AccessoryError(f"Accessoire PNG transparent illisible : {accessory_spec.image}")
-        if not np.any(accessory[:, :, 3]):
-            raise AccessoryError(f"Accessoire entièrement transparent : {accessory_spec.image}")
-        self._accessory = accessory
+        self._accessories = {
+            "default": self._load_accessory(accessory_spec.image),
+        }
+        self._hand_accessories: dict[str, dict[str, np.ndarray]] = {}
+        if accessory_spec.hand_images is not None:
+            self._hand_accessories["paume"] = {
+                "left": self._load_accessory(accessory_spec.hand_images[0]),
+                "right": self._load_accessory(accessory_spec.hand_images[1]),
+            }
+        if accessory_spec.hand_images_back is not None:
+            self._hand_accessories["dos"] = {
+                "left": self._load_accessory(accessory_spec.hand_images_back[0]),
+                "right": self._load_accessory(accessory_spec.hand_images_back[1]),
+            }
         self._placement = accessory_spec.placement
+        self._image_is_mirrored = image_is_mirrored
         try:
             import mediapipe as mp
             from mediapipe.tasks import python as mp_python
@@ -230,6 +305,21 @@ class AccessoryRenderer:
                 self._pose_landmarker.close()
             raise AccessoryError(f"Impossible de charger le modèle de pose : {exc}") from exc
 
+    @staticmethod
+    def _load_accessory(path: Path) -> np.ndarray:
+        try:
+            data = np.fromfile(str(path), dtype=np.uint8)
+            accessory = cv2.imdecode(data, cv2.IMREAD_UNCHANGED) if data.size else None
+        except OSError as exc:
+            raise AccessoryError(f"Lecture de l'accessoire impossible : {path}") from exc
+        except cv2.error as exc:
+            raise AccessoryError(f"Décodage de l'accessoire impossible : {path}") from exc
+        if accessory is None or accessory.ndim != 3 or accessory.shape[2] != 4:
+            raise AccessoryError(f"Accessoire PNG transparent illisible : {path}")
+        if not np.any(accessory[:, :, 3]):
+            raise AccessoryError(f"Accessoire entièrement transparent : {path}")
+        return accessory
+
     def apply_photo(self, source: np.ndarray, rendered: np.ndarray) -> tuple[np.ndarray, bool]:
         if source.shape[:2] != rendered.shape[:2]:
             raise ValueError(f"Tailles incompatibles : source {source.shape}, rendu {rendered.shape}")
@@ -247,13 +337,45 @@ class AccessoryRenderer:
         selected_hand, arm = _match_hand_to_pose(
             hand_result.hand_landmarks, pose_landmarks, source.shape[1], source.shape[0])
         forearm_length, forearm_direction = arm if arm is not None else (None, None)
-        output = place_accessory(
-            rendered, self._accessory, selected_hand, self._placement,
-            forearm_length, forearm_direction)
-        if output is rendered:
-            log.warning("Accessoire non appliqué : main détectée trop petite ou invalide.")
-            return rendered, False
-        return output, True
+        if not self._hand_accessories:
+            output = place_accessory(
+                rendered, self._accessories["default"], selected_hand, self._placement,
+                forearm_length, forearm_direction)
+            if output is rendered:
+                log.warning("Accessoire non appliqué : main détectée trop petite ou invalide.")
+                return rendered, False
+            return output, True
+
+        output = rendered
+        applied = False
+        for index, hand in enumerate(hand_result.hand_landmarks):
+            categories = (hand_result.handedness[index]
+                          if index < len(hand_result.handedness) else [])
+            label = _handedness_label(categories, self._image_is_mirrored)
+            if label is None:
+                log.warning("Gant non appliqué : latéralité de la main indéterminée.")
+                continue
+            orientation = _hand_orientation(
+                hand, label, source.shape[1], source.shape[0],
+                self._image_is_mirrored)
+            if orientation is None:
+                orientation = "paume"
+                if "dos" in self._hand_accessories:
+                    log.warning("Orientation de la main indéterminée ; gant côté paume utilisé.")
+            image = self._hand_accessories.get(
+                orientation, self._hand_accessories["paume"]).get(label)
+            if image is None:
+                continue
+            wrist = np.array((hand[0].x * source.shape[1],
+                              hand[0].y * source.shape[0]), dtype=np.float32)
+            arm = _pose_arm_near_wrist(
+                pose_landmarks, wrist, source.shape[1], source.shape[0])
+            length, direction = arm if arm is not None else (None, None)
+            placed = place_accessory(
+                output, image, hand, self._placement, length, direction)
+            applied = applied or placed is not output
+            output = placed
+        return output, applied
 
     def close(self) -> None:
         self._pose_landmarker.close()
