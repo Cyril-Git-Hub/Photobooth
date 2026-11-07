@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from collections.abc import Callable
 
 import cv2
 import numpy as np
@@ -13,6 +14,7 @@ from .segmentation import Segmenter
 log = logging.getLogger(__name__)
 
 STATS_EVERY = 60          # une ligne de statistiques dans les logs toutes les N images d'aperçu
+MaskModifier = Callable[[np.ndarray, np.ndarray], np.ndarray]
 
 
 def cover_resize(image: np.ndarray, width: int, height: int) -> np.ndarray:
@@ -39,9 +41,13 @@ def blend(frame: np.ndarray, mask: np.ndarray, background: np.ndarray) -> np.nda
 class SceneRenderer:
     """Détoure puis incruste dans le décor. Une instance par décor choisi."""
 
-    def __init__(self, segmenter: Segmenter, background_bgr: np.ndarray) -> None:
+    def __init__(self, segmenter: Segmenter, background_bgr: np.ndarray,
+                 mask_modifier: MaskModifier | None = None,
+                 preview_mask_modifier: MaskModifier | None = None) -> None:
         self._segmenter = segmenter
         self._background = background_bgr
+        self._mask_modifier = mask_modifier
+        self._preview_mask_modifier = preview_mask_modifier or mask_modifier
         self._cache: dict[tuple[int, int], np.ndarray] = {}
         self._cache_lock = threading.Lock()
         self._frames = 0
@@ -55,9 +61,16 @@ class SceneRenderer:
                 self._cache[(width, height)] = cached
             return cached
 
-    def _render(self, frame: np.ndarray, mask: np.ndarray) -> np.ndarray:
+    def _render(
+        self,
+        frame: np.ndarray,
+        mask: np.ndarray,
+        mask_modifier: MaskModifier | None,
+    ) -> np.ndarray:
         if mask.shape != frame.shape[:2]:
             mask = cv2.resize(mask, (frame.shape[1], frame.shape[0]), interpolation=cv2.INTER_LINEAR)
+        if mask_modifier is not None:
+            mask = mask_modifier(frame, mask)
         frame = self._segmenter.clean_frame(frame, mask)
         return blend(frame, mask, self._background_for(frame.shape[1], frame.shape[0]))
 
@@ -65,13 +78,31 @@ class SceneRenderer:
         """Aperçu en direct. Le masque n'est volontairement PAS lissé d'une image à l'autre : un lissage
         dans le temps laisse une image fantôme derrière une personne qui bouge."""
         started = time.perf_counter()
-        out = self._render(frame, self._segmenter.segment(frame))
+        out = self._render(frame, self._segmenter.segment(frame), self._preview_mask_modifier)
         self._record(time.perf_counter() - started, frame.shape)
         return out
 
     def render_photo(self, frame: np.ndarray) -> np.ndarray:
         """Photo finale en pleine résolution."""
-        return self._render(frame, self._segmenter.segment(frame))
+        return self._render(frame, self._segmenter.segment(frame), self._mask_modifier)
+
+    def render_mask_debug_preview(self, frame: np.ndarray) -> np.ndarray:
+        """Montre sur l’image caméra les pixels conservés en vert et ceux retirés en rouge."""
+        mask = self._segmenter.segment(frame)
+        if mask.shape != frame.shape[:2]:
+            mask = cv2.resize(mask, (frame.shape[1], frame.shape[0]), interpolation=cv2.INTER_LINEAR)
+        if self._preview_mask_modifier is None:
+            return frame.copy()
+
+        modified_mask = self._preview_mask_modifier(frame, mask)
+        kept = np.clip(modified_mask, 0.0, 1.0) * 0.3
+        removed = np.clip(mask - modified_mask, 0.0, 1.0) * 0.75
+        overlay = frame.astype(np.float32)
+        overlay = overlay * (1.0 - kept[:, :, None])
+        overlay[:, :, 1] += 255.0 * kept
+        overlay = overlay * (1.0 - removed[:, :, None])
+        overlay[:, :, 2] += 255.0 * removed
+        return np.clip(overlay, 0, 255).astype(np.uint8)
 
     def _record(self, seconds: float, shape: tuple) -> None:
         self._frames += 1

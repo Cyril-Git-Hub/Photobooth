@@ -36,6 +36,13 @@ class ModelsTests(unittest.TestCase):
         self.assertEqual(spec.filename, "hand_landmarker.task")
         self.assertNotIn("main", DEFAULT_DOWNLOADS)
 
+    def test_modele_segmentation_corporelle_est_optionnel_et_telechargeable(self):
+        spec = AUXILIARY_MODELS["corps"]
+        self.assertIs(DOWNLOAD_MODELS["corps"], spec)
+        self.assertTrue(spec.url.startswith("https://") and spec.url.endswith("model_quantized.onnx"))
+        self.assertEqual(spec.filename, "human_parsing_segformer_b0.onnx")
+        self.assertNotIn("corps", DEFAULT_DOWNLOADS)
+
 
 if __name__ == "__main__":
     unittest.main()

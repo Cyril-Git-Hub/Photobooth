@@ -10,6 +10,7 @@ from typing import Any
 from .accessory_config import (
     AccessoryPlacement, AccessorySpec, DEFAULT_ACCESSORY_PLACEMENT, parse_placement,
 )
+from .body_cutouts import BODY_CUTOUTS
 from ..paths import resource_path
 
 log = logging.getLogger(__name__)
@@ -32,6 +33,7 @@ class Challenge:
     style: str = ""
     challenge_type: str = "photo"
     accessory: AccessorySpec | None = None
+    body_cutouts: frozenset[str] = frozenset()
 
 
 def load_challenges(user_file: Path, allow_gif: bool = True) -> list[Challenge]:
@@ -118,11 +120,22 @@ def load_challenges(user_file: Path, allow_gif: bool = True) -> list[Challenge]:
             challenge_type = str(item.get("type", "photo")).strip().casefold()
             background_value = str(item.get("fond", "")).strip()
             accessory_value = item.get("accessoire", "")
+            body_cutouts_value = item.get("corps_masquer", [])
+            if (not isinstance(body_cutouts_value, list)
+                    or any(not isinstance(part, str) or part not in BODY_CUTOUTS
+                           for part in body_cutouts_value)):
+                log.warning("Défi ignoré : « corps_masquer » contient une partie inconnue | id=%s",
+                            challenge_id)
+                continue
+            body_cutouts = frozenset(body_cutouts_value)
             if (not challenge_id or challenge_id in seen_ids or not title or not instruction
                     or photo_format not in VALID_FORMATS or background not in VALID_BACKGROUNDS
                     or challenge_type not in VALID_TYPES
                     or (challenge_type == "guest_wheel" and photo_format != "single")
                     or (challenge_type == "dance" and photo_format != "gif")
+                    or (body_cutouts and (
+                        challenge_type != "photo"
+                        or (not background_value and background == "none")))
                     or (accessory_value and
                         (photo_format != "single" or challenge_type != "photo"))):
                 log.warning("Défi ignoré car sa définition est invalide : %r (fichier %s)",
@@ -136,11 +149,16 @@ def load_challenges(user_file: Path, allow_gif: bool = True) -> list[Challenge]:
                 background_image = Path(background_value)
                 if not background_image.is_absolute():
                     background_image = (candidate.parent / background_image).resolve()
-                    if not background_image.is_file():
+                    if not background_image.is_file() and not body_cutouts:
                         background_image = resource_path(background_value)
                 if not background_image.is_file():
-                    log.warning("Fond imposé du défi introuvable : %s", background_image)
-                    continue
+                    if body_cutouts:
+                        log.warning(
+                            "Fond du défi de disparition absent pour l'instant : %s",
+                            background_image)
+                    else:
+                        log.warning("Fond imposé du défi introuvable : %s", background_image)
+                        continue
             image_value = str(item.get("image", "")).strip()
             image_path = None
             if image_value:
@@ -269,7 +287,8 @@ def load_challenges(user_file: Path, allow_gif: bool = True) -> list[Challenge]:
                 style = ""
             challenges.append(Challenge(
                 challenge_id, title, instruction, photo_format, background,
-                background_image, image_path, mask, style, challenge_type, accessory_spec))
+                background_image, image_path, mask, style, challenge_type, accessory_spec,
+                body_cutouts))
             seen_ids.add(challenge_id)
             log.info("Défi chargé : id=%s | titre=%s | image=%s | fond=%s",
                      challenge_id, title, image_path if image_path else "aucune",

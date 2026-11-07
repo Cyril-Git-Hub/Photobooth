@@ -47,5 +47,9 @@ AUXILIARY_MODELS: dict[str, DownloadSpec] = {
         "hand_landmarker.task",
         "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
         "repérage détaillé des mains pour les accessoires photo"),
+    "corps": DownloadSpec(
+        "human_parsing_segformer_b0.onnx",
+        "https://huggingface.co/Xenova/segformer_b0_clothes/resolve/main/onnx/model_quantized.onnx",
+        "segmentation des vêtements et parties du corps"),
 }
 DOWNLOAD_MODELS = {**MODELS, **AUXILIARY_MODELS}

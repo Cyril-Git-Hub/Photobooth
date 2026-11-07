@@ -65,6 +65,41 @@ class ChallengeTests(unittest.TestCase):
 
         self.assertEqual([item.id for item in loaded], ["on"])
 
+    def test_defi_de_disparition_accepte_un_fond_a_ajouter_plus_tard(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / "defis.json"
+            path.write_text(json.dumps({
+                "defis": [{
+                    "id": "television", "titre": "Sors de la télévision !",
+                    "consigne": "Fais comme si tu sortais de l'écran.",
+                    "decor": "none", "fond": "fonds/television.jpg",
+                    "corps_masquer": ["sous_taille"],
+                }],
+            }), encoding="utf-8")
+
+            loaded = load_challenges(path)
+
+        self.assertEqual(len(loaded), 1)
+        self.assertEqual(loaded[0].body_cutouts, frozenset({"sous_taille"}))
+        self.assertEqual(
+            loaded[0].background_image, (root / "fonds" / "television.jpg").resolve())
+
+    def test_defi_de_disparition_exige_un_decor(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "defis.json"
+            path.write_text(json.dumps({
+                "defis": [{
+                    "id": "sans-fond", "titre": "Sans fond",
+                    "consigne": "Fais disparaitre une jambe.",
+                    "corps_masquer": ["jambe_gauche"],
+                }],
+            }), encoding="utf-8")
+
+            loaded = load_challenges(path)
+
+        self.assertNotIn("sans-fond", [challenge.id for challenge in loaded])
+
     def test_tous_les_defis_desactives_ne_reactivent_pas_les_defis_integres(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "defis.json"

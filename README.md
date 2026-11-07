@@ -77,6 +77,8 @@ Le paramètre `sens` vaut `libre` (défaut) ou `vers_le_haut`. Pour `vers_le_hau
 
 Pour équiper les deux mains différemment, `accessoire.images` accepte une paire `gauche`/`droite`, ou des paires distinctes sous `paume` et `dos`. Avec les deux vues, MediaPipe choisit l’image selon l’orientation détectée de la main ; une vue de tranche ou ambiguë utilise celle de la paume. Le réglage miroir de la caméra est pris en compte pour la latéralité et l’orientation.
 
+Pour faire apparaître le décor à la place de certaines parties du corps, ajoute `corps_masquer` au défi et fournis un `fond` ou choisis un décor. Les choix sont `jambe_gauche`, `jambe_droite`, `bras_gauche`, `bras_droit`, `sous_taille`, `tete` et `haut_corps`. La segmentation corporelle reconnaît notamment pantalon, chaussures, visage, bras et jambes ; `"sous_taille"` utilise aussi les repères de pose des hanches et des jambes pour rester utilisable lorsque le pantalon est mal classé, sans effacer les bras ni toute la zone sous une ligne horizontale. Les robes et jupes sont conservées pour éviter de supprimer aussi le haut du vêtement. Télécharge les modèles requis avec `python tools\telecharger_modele.py corps pose` ; le modèle de segmentation est [SegFormer-B0 human parsing](https://huggingface.co/mattmdjaga/segformer_b0_clothes), distribué sous licence MIT.
+
 ```json
 "images": {
   "paume": {"gauche": "defis/gant-paume-gauche.png", "droite": "defis/gant-paume-droit.png"},

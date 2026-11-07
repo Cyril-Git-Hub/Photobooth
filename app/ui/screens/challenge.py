@@ -289,7 +289,15 @@ class ChallengeScreen(BaseScreen):
                 for name in ("pose", "main")
             )
         )
-        if missing_accessory_model:
+        missing_body_model = (
+            bool(challenge.body_cutouts)
+            and not (self.config.dossier_modeles / AUXILIARY_MODELS["corps"].filename).is_file()
+        )
+        if missing_body_model:
+            self._availability.setText(
+                "Modèle de segmentation corporelle requis pour cet effet. Prépare-le avant la soirée avec : "
+                "python tools\\telecharger_modele.py corps")
+        elif missing_accessory_model:
             self._availability.setText(
                 "Modèles de pose et de main requis pour cet effet. Prépare-les avant la soirée avec : "
                 "python tools\\telecharger_modele.py pose main")
@@ -302,10 +310,10 @@ class ChallengeScreen(BaseScreen):
             self._availability.setText(self._availability.text() + "\n" + " · ".join(extras))
         if not is_guest_wheel:
             self._info_panel.setMinimumWidth(0)
-            self._availability.setWordWrap(missing_accessory_model)
+            self._availability.setWordWrap(missing_accessory_model or missing_body_model)
             self._availability.setMinimumHeight(0)
             self._availability.setMaximumHeight(16777215)
-            self._start.setEnabled(not missing_accessory_model)
+            self._start.setEnabled(not (missing_accessory_model or missing_body_model))
             self._start.setText("Je relève le défi !")
             self._gate_hint.hide()
             self._spin.hide()
@@ -405,6 +413,7 @@ class ChallengeScreen(BaseScreen):
         self.session.challenge_type = challenge.challenge_type
         if challenge.challenge_type == "dance":
             self.session.challenge_accessory = None
+            self.session.challenge_body_cutouts = frozenset()
             self.session.photo_format = "gif"
             self.session.gif_capture_mode = "spaced"
             self.session.gif_effect = "loop"
@@ -428,6 +437,7 @@ class ChallengeScreen(BaseScreen):
         self.session.challenge_background_required = False
         self.session.challenge_mask = challenge.mask
         self.session.challenge_accessory = challenge.accessory
+        self.session.challenge_body_cutouts = challenge.body_cutouts
         self.session.challenge_style = challenge.style
         self.session.challenge_reference_png = None
         if challenge.image is not None:
@@ -448,10 +458,13 @@ class ChallengeScreen(BaseScreen):
             self.session.background_path = challenge.background_image
         elif challenge.background == "random":
             self.session.background_path = backgrounds.random_background(self._available_backgrounds())
-        elif challenge.background == "choose" and self._available_backgrounds():
+        elif challenge.background == "choose" and (
+                self._available_backgrounds() or challenge.body_cutouts):
             self.session.challenge_background_required = True
         elif challenge.background == "none":
             self.session.challenge_background_required = False
+        if challenge.body_cutouts and self.session.background_path is None:
+            self.session.challenge_background_required = True
 
         if self.session.challenge_background_required:
             self.nav.go_to("background_select")
@@ -497,6 +510,8 @@ class ChallengeScreen(BaseScreen):
         self.session.challenge_instruction = ""
         self.session.challenge_background_required = False
         self.session.challenge_mask = ""
+        self.session.challenge_accessory = None
+        self.session.challenge_body_cutouts = frozenset()
         self.session.challenge_style = ""
         self.session.challenge_reference_png = None
         self.session.challenge_guest_name = ""

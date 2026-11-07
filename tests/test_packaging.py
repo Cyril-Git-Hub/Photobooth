@@ -45,6 +45,7 @@ class FakePyInstaller:
     def run(self):
         hooks = types.ModuleType("PyInstaller.utils.hooks")
         hooks.collect_all = lambda package: ([("mediapipe/data.bin", "mediapipe")], [("mediapipe/lib.dll", ".")], ["mediapipe.hidden"])
+        hooks.collect_submodules = lambda package: [f"{package}.hidden"]
         modules = {"PyInstaller": types.ModuleType("PyInstaller"), "PyInstaller.utils": types.ModuleType("PyInstaller.utils"),
                    "PyInstaller.utils.hooks": hooks}
         source = (ROOT / "photobooth.spec").read_text(encoding="utf-8")

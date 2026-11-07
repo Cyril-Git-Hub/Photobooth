@@ -106,9 +106,9 @@ class DownloadTests(unittest.TestCase):
         self.assertEqual(self.files(), [MODELS["multiclasse"].filename])
         self.requests.clear()
         self.download("--tous")
-        self.assertEqual(len(self.files()), 5)
+        self.assertEqual(len(self.files()), 6)
         self.assertEqual(self.requests, [DOWNLOAD_MODELS[name].url
-                                         for name in ("paysage", "carre", "pose", "main")])
+                                         for name in ("paysage", "carre", "pose", "main", "corps")])
 
     def test_modele_pose(self):
         code, _output = self.download("pose")
@@ -121,6 +121,12 @@ class DownloadTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(self.files(), [DOWNLOAD_MODELS["main"].filename])
         self.assertEqual(self.requests, [DOWNLOAD_MODELS["main"].url])
+
+    def test_modele_corps(self):
+        code, _output = self.download("corps")
+        self.assertEqual(code, 0)
+        self.assertEqual(self.files(), [DOWNLOAD_MODELS["corps"].filename])
+        self.assertEqual(self.requests, [DOWNLOAD_MODELS["corps"].url])
 
     def test_deja_present_pas_retelecharge(self):
         self.download(); self.requests.clear()

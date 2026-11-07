@@ -2,8 +2,9 @@ r"""Télécharge les modèles de détourage et d'accessoires photo (une seule fo
 
     python tools\telecharger_modele.py                 # paysage + carre (petits fichiers)
     python tools\telecharger_modele.py multiclasse     # un modèle précis, par son nom
-    python tools\telecharger_modele.py pose            # requis pour le défi du sabre laser
-    python tools\telecharger_modele.py --tous          # les quatre modèles disponibles
+    python tools\telecharger_modele.py pose            # requis pour les accessoires mains
+    python tools\telecharger_modele.py corps           # requis pour le masquage de parties du corps
+    python tools\telecharger_modele.py --tous          # tous les modèles disponibles
     python tools\telecharger_modele.py --force         # retélécharge même si déjà présents
 
 Sans Python (PC de la fête) : photobooth-outils.exe --telecharger-modeles

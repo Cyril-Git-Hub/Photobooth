@@ -98,6 +98,39 @@ class SceneRendererTests(unittest.TestCase):
         self.assertEqual(tuple(renderer.render_preview(self.frame)[0, 0]), (200, 0, 0))   # partie : décor pur
         self.assertEqual(tuple(renderer.render_preview(self.frame)[0, 0]), (0, 200, 0))   # revenue : aucune rémanence
 
+    def test_modificateur_apercu_distinct_de_la_photo_finale(self):
+        calls = []
+
+        def preview_modifier(frame, mask):
+            calls.append("preview")
+            return np.zeros_like(mask)
+
+        def photo_modifier(frame, mask):
+            calls.append("photo")
+            return np.ones_like(mask)
+
+        renderer = SceneRenderer(
+            FixedSegmenter(self.left), self.background,
+            photo_modifier, preview_modifier)
+
+        preview = renderer.render_preview(self.frame)
+        photo = renderer.render_photo(self.frame)
+
+        self.assertEqual(calls, ["preview", "photo"])
+        self.assertEqual(tuple(preview[0, 0]), (200, 0, 0))
+        self.assertEqual(tuple(photo[0, 0]), (0, 200, 0))
+
+    def test_apercu_diagnostic_colore_les_pixels_retires(self):
+        renderer = SceneRenderer(
+            FixedSegmenter(self.left), self.background,
+            lambda frame, mask: np.zeros_like(mask),
+        )
+
+        diagnostic = renderer.render_mask_debug_preview(self.frame)
+
+        self.assertGreater(int(diagnostic[10, 5, 2]), int(diagnostic[10, 5, 1]))
+        np.testing.assert_array_equal(diagnostic[10, 60], self.frame[10, 60])
+
     def test_retouche_de_l_image_avant_melange(self):
         seg = FixedSegmenter(np.ones((36, 64), np.float32), despill_to=(7, 8, 9))
         out = SceneRenderer(seg, self.background).render_photo(self.frame)

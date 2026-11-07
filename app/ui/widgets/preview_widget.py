@@ -1,11 +1,12 @@
 """Zone d'affichage d'une image (aperçu webcam ou photo), avec barres noires si le format diffère."""
 from __future__ import annotations
 
-from PyQt6.QtCore import QRect, Qt
-from PyQt6.QtGui import QColor, QFont, QImage, QPainter, QPixmap
+from PyQt6.QtCore import QRect, QRectF, Qt
+from PyQt6.QtGui import QColor, QFont, QImage, QPainter, QPen, QPixmap
 from PyQt6.QtWidgets import QLabel, QSizePolicy, QWidget
 
 from .countdown_overlay import CountdownOverlay
+from .dance_pose import draw_dance_pose
 from ..scale import px
 
 
@@ -15,6 +16,9 @@ class PreviewWidget(QWidget):
         self._image: QImage | None = None
         self._message = ""
         self._colors: dict[str, str] = {}
+        self._dance_pose: int | None = None
+        self._dance_step = 0
+        self._dance_total = 0
         self.setMinimumSize(px(640), px(360))
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.overlay = CountdownOverlay(self)
@@ -29,6 +33,7 @@ class PreviewWidget(QWidget):
             self._reference_source = None
             self._reference.clear()
             self._reference.hide()
+            self.overlay.raise_()
             return
         self._reference_source = QPixmap.fromImage(image)
         palette = colors or {}
@@ -49,6 +54,12 @@ class PreviewWidget(QWidget):
 
     def set_colors(self, colors: dict[str, str] | None) -> None:
         self._colors = colors or {}
+        self.update()
+
+    def set_dance_pose(self, pose_index: int | None, step: int = 0, total: int = 0) -> None:
+        self._dance_pose = pose_index
+        self._dance_step = step
+        self._dance_total = total
         self.update()
 
     def set_message(self, text: str) -> None:
@@ -84,6 +95,27 @@ class PreviewWidget(QWidget):
         target_w, target_h = int(width * ratio), int(height * ratio)
         return QRect((self.width() - target_w) // 2, (self.height() - target_h) // 2, target_w, target_h)
 
+    def _paint_dance_pose(self, painter: QPainter) -> None:
+        if self._dance_pose is not None:
+            pose_rect = QRectF(
+                self.width() * 0.70, self.height() * 0.04,
+                self.width() * 0.27, self.height() * 0.38)
+            painter.setBrush(QColor(18, 16, 42, 190))
+            painter.setPen(QPen(QColor(255, 196, 77), 2))
+            painter.drawRoundedRect(pose_rect, 12, 12)
+            draw_dance_pose(
+                painter, pose_rect.adjusted(6, 6, -6, -30), self._dance_pose)
+            label_font = QFont(painter.font())
+            label_font.setBold(True)
+            label_font.setPixelSize(max(12, int(pose_rect.height() * 0.16)))
+            painter.setFont(label_font)
+            painter.setPen(QColor("#ffffff"))
+            painter.drawText(
+                pose_rect.adjusted(2, 0, -2, -2),
+                Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter,
+                f"Pose {self._dance_step}/{self._dance_total}",
+            )
+
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
         painter.fillRect(self.rect(), QColor(self._colors.get("mail_background", "#0b0a1a")))
@@ -97,4 +129,5 @@ class PreviewWidget(QWidget):
             painter.setPen(QColor(self._colors.get("muted", "#b8b2d9")))
             flags = Qt.AlignmentFlag.AlignCenter.value | Qt.TextFlag.TextWordWrap.value
             painter.drawText(self.rect().adjusted(40, 40, -40, -40), flags, self._message)
+        self._paint_dance_pose(painter)
         painter.end()
