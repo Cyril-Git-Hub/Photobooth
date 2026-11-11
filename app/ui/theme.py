@@ -13,6 +13,14 @@ QWidget {
 QLabel#title   { font-size: 56px; font-weight: 700; color: #ffd166; }
 QLabel#heading { font-size: 40px; font-weight: 700; color: #ffd166; }
 QLabel#note    { font-size: 24px; color: #b8b2d9; }
+QLabel#guestSelectPrompt {
+    background: #201d40;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 14px;
+    color: #ffd166;
+    font-size: 24px;
+    font-weight: 700;
+}
 QLabel#summary { font-size: 18px; color: #8f89b5; }
 QLabel#adminHeading { font-size: 30px; font-weight: 700; color: #ffd166; }
 QLabel#adminStatus {
@@ -77,6 +85,7 @@ QPushButton#adminAuthKey { border-radius: 14px; padding: 2px; font-size: 28px; }
 QPushButton#adminPatternSetting { border-radius: 14px; padding: 6px 12px; font-size: 18px; }
 QPushButton:hover { border-color: rgba(255, 255, 255, 0.42); }
 QPushButton#formatOptionButton { border-radius: 16px; padding: 10px 18px; font-size: 23px; }
+QPushButton#guestNameButton { border-radius: 14px; padding: 6px 10px; font-size: 22px; }
 QPushButton:disabled { color: rgba(244, 241, 255, 0.48); background: #2b2757; border-color: transparent; }
 QPushButton#guestWheelSpinButton {
     background: #2b2757;
