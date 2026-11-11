@@ -18,6 +18,7 @@ VALID_FORMATS = {"single", "strip", "gif"}
 VALID_BACKGROUNDS = {"none", "choose", "random"}
 VALID_STYLES = {"original", "cartoon", "sketch", "watercolor", "pop_art", "manga"}
 VALID_TYPES = {"photo", "guest_wheel", "dance"}
+IMAGE_EXTENSIONS = {".bmp", ".gif", ".jpeg", ".jpg", ".png", ".svg", ".tif", ".tiff", ".webp"}
 
 
 @dataclass(frozen=True)
@@ -74,13 +75,50 @@ def load_challenges(user_file: Path, allow_gif: bool = True) -> list[Challenge]:
                     if not isinstance(category, dict):
                         continue
                     category_id = str(category.get("id", "")).strip()
-                    images = category.get("images", [])
-                    if not category_id or not isinstance(images, list):
+                    image_directory = category.get("dossier_images")
+                    if not category_id:
                         log.warning("Catégorie de défis invalide dans %s", candidate)
                         continue
+                    if image_directory is not None:
+                        if "images" in category:
+                            log.warning(
+                                "La catégorie %s doit choisir entre « images » et « dossier_images »",
+                                category_id)
+                            continue
+                        if not isinstance(image_directory, str) or not image_directory.strip():
+                            log.warning("Dossier d'images invalide dans la catégorie %s", category_id)
+                            continue
+                        directory = Path(image_directory.strip())
+                        if not directory.is_absolute():
+                            directory = (candidate.parent / directory).resolve()
+                        try:
+                            if not directory.is_dir():
+                                log.warning(
+                                    "Dossier d'images introuvable pour la catégorie %s : %s",
+                                    category_id, directory)
+                                continue
+                            images = sorted(
+                                (path for path in directory.iterdir()
+                                 if path.is_file() and path.suffix.casefold() in IMAGE_EXTENSIONS),
+                                key=lambda path: path.name.casefold(),
+                            )
+                        except OSError as exc:
+                            log.warning("Impossible de lire le dossier d'images de la catégorie %s : %s",
+                                        category_id, exc)
+                            continue
+                        if not images:
+                            log.warning("Aucune image trouvée dans le dossier de la catégorie %s : %s",
+                                        category_id, directory)
+                            continue
+                        image_values = [str(path) for path in images]
+                    else:
+                        image_values = category.get("images", [])
+                        if not isinstance(image_values, list):
+                            log.warning("Catégorie de défis invalide dans %s", candidate)
+                            continue
                     shared = {key: value for key, value in category.items()
-                              if key not in {"id", "images"}}
-                    for index, image in enumerate(images, start=1):
+                              if key not in {"id", "images", "dossier_images"}}
+                    for index, image in enumerate(image_values, start=1):
                         if not isinstance(image, str) or not image.strip():
                             log.warning("Image vide ou invalide dans la catégorie %s", category_id)
                             continue

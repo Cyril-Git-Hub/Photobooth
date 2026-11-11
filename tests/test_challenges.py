@@ -65,6 +65,46 @@ class ChallengeTests(unittest.TestCase):
 
         self.assertEqual([item.id for item in loaded], ["on"])
 
+    def test_categorie_charge_automatiquement_les_images_du_dossier(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            image_directory = root / "defis" / "poses"
+            image_directory.mkdir(parents=True)
+            (image_directory / "B.jpg").write_bytes(b"image")
+            (image_directory / "a.webp").write_bytes(b"image")
+            (image_directory / "notes.txt").write_text("ignore", encoding="utf-8")
+            path = root / "defis.json"
+            path.write_text(json.dumps({
+                "categories": [{
+                    "id": "poses", "titre": "Copie cette pose",
+                    "consigne": "Imite la pose.", "dossier_images": "defis/poses",
+                }],
+            }), encoding="utf-8")
+
+            loaded = load_challenges(path)
+
+        self.assertEqual([challenge.id for challenge in loaded], ["poses-01", "poses-02"])
+        self.assertEqual([challenge.image.name for challenge in loaded], ["a.webp", "B.jpg"])
+
+    def test_categorie_ignore_un_dossier_images_absent_ou_vide(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "empty").mkdir()
+            path = root / "defis.json"
+            path.write_text(json.dumps({
+                "categories": [
+                    {"id": "missing", "titre": "Absent", "consigne": "Pose.",
+                     "dossier_images": "missing"},
+                    {"id": "empty", "titre": "Vide", "consigne": "Pose.",
+                     "dossier_images": "empty"},
+                ],
+            }), encoding="utf-8")
+
+            loaded = load_challenges(path)
+
+        self.assertFalse(any(challenge.id.startswith(("missing-", "empty-"))
+                             for challenge in loaded))
+
     def test_defi_de_disparition_accepte_un_fond_a_ajouter_plus_tard(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
