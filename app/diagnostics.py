@@ -38,6 +38,7 @@ _LIBRARIES = (   # (module, nom, attribut de version)
     ("xlrd", "xlrd (.xls)", "__version__"),
     ("odf", "odfpy (.ods)", "__version__"),
     ("mediapipe", "MediaPipe", "__version__"),
+    ("onnxruntime", "ONNX Runtime", "__version__"),
 )
 
 

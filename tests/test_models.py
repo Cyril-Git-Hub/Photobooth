@@ -1,6 +1,6 @@
 import unittest
 
-from app.core.models import DEFAULT_DOWNLOADS, MODEL_NAMES, MODELS
+from app.core.models import AUXILIARY_MODELS, DEFAULT_DOWNLOADS, DOWNLOAD_MODELS, MODEL_NAMES, MODELS
 
 
 class ModelsTests(unittest.TestCase):
@@ -21,6 +21,27 @@ class ModelsTests(unittest.TestCase):
     def test_telechargements_par_defaut(self):
         self.assertTrue(set(DEFAULT_DOWNLOADS) <= set(MODEL_NAMES))
         self.assertNotIn("multiclasse", DEFAULT_DOWNLOADS)   # le plus gros reste optionnel
+
+    def test_modele_pose_est_optionnel_et_telechargeable(self):
+        spec = AUXILIARY_MODELS["pose"]
+        self.assertIs(DOWNLOAD_MODELS["pose"], spec)
+        self.assertTrue(spec.url.startswith("https://") and spec.url.endswith(spec.filename))
+        self.assertEqual(spec.filename, "pose_landmarker_lite.task")
+        self.assertNotIn("pose", DEFAULT_DOWNLOADS)
+
+    def test_modele_main_est_optionnel_et_telechargeable(self):
+        spec = AUXILIARY_MODELS["main"]
+        self.assertIs(DOWNLOAD_MODELS["main"], spec)
+        self.assertTrue(spec.url.startswith("https://") and spec.url.endswith(spec.filename))
+        self.assertEqual(spec.filename, "hand_landmarker.task")
+        self.assertNotIn("main", DEFAULT_DOWNLOADS)
+
+    def test_modele_segmentation_corporelle_est_optionnel_et_telechargeable(self):
+        spec = AUXILIARY_MODELS["corps"]
+        self.assertIs(DOWNLOAD_MODELS["corps"], spec)
+        self.assertTrue(spec.url.startswith("https://") and spec.url.endswith("model_quantized.onnx"))
+        self.assertEqual(spec.filename, "human_parsing_segformer_b0.onnx")
+        self.assertNotIn("corps", DEFAULT_DOWNLOADS)
 
 
 if __name__ == "__main__":

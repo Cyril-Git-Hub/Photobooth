@@ -14,7 +14,7 @@ from ...core.text_buffer import TextBuffer
 from ..widgets.big_button import BigButton
 from ..widgets.virtual_keyboard import VirtualKeyboard
 from .base import BaseScreen
-from ..scale import px
+from ..scale import px, touch_px
 
 log = logging.getLogger(__name__)
 
@@ -44,11 +44,13 @@ class GuestSelectScreen(BaseScreen):
         self._grid.setContentsMargins(px(10), px(8), px(10), px(8))
         self._grid.setHorizontalSpacing(px(12))
         self._grid.setVerticalSpacing(px(10))
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setWidget(self._grid_host)
-        QScroller.grabGesture(scroll.viewport(), QScroller.ScrollerGestureType.LeftMouseButtonGesture)
+        self._grid_scroll = QScrollArea()
+        self._grid_scroll.setWidgetResizable(True)
+        self._grid_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self._grid_scroll.setWidget(self._grid_host)
+        QScroller.grabGesture(
+            self._grid_scroll.viewport(), QScroller.ScrollerGestureType.LeftMouseButtonGesture
+        )
 
         self._keyboard = VirtualKeyboard(SEARCH_ROWS)
         self._keyboard.setVisible(False)
@@ -74,7 +76,7 @@ class GuestSelectScreen(BaseScreen):
         layout.setSpacing(px(8))
         layout.addWidget(heading)
         layout.addWidget(self._search_label)
-        layout.addWidget(scroll, 1)
+        layout.addWidget(self._grid_scroll, 1)
         layout.addWidget(self._keyboard)
         layout.addLayout(buttons)
 
@@ -127,14 +129,26 @@ class GuestSelectScreen(BaseScreen):
             message.setWordWrap(True)
             self._grid.addWidget(message, 0, 0)
             return
-        # On utilise la largeur disponible pour afficher davantage de noms par rangée.
-        # La hauteur reste confortable au doigt et le défilement est conservé pour les longues listes.
-        viewport_width = max(px(600), self.width() - px(80))
-        min_tile_width = px(220)
-        columns = max(3, min(6, viewport_width // min_tile_width))
+        margins = self._grid.contentsMargins()
+        viewport_width = self._grid_scroll.viewport().width() or self.width() - px(80)
+        available_width = max(1, viewport_width - margins.left() - margins.right())
+        min_tile_width = px(180)
+        columns = max(1, min(10, available_width // min_tile_width))
+        prompt = QLabel("Sélectionner votre nom")
+        prompt.setObjectName("guestSelectPrompt")
+        prompt.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        prompt.setFixedHeight(px(56))
+        self._grid.addWidget(prompt, 0, 0, 1, columns)
+
         rows = (len(matches) + columns - 1) // columns
-        viewport_height = max(px(300), self.height() - px(210))
-        tile_height = max(px(58), min(px(78), viewport_height // max(1, min(rows, 8))))
+        viewport_height = (
+            self._grid_scroll.viewport().height() or max(px(300), self.height() - px(210))
+        )
+        available_height = (
+            viewport_height - prompt.height() - margins.top() - margins.bottom()
+            - self._grid.verticalSpacing() * rows
+        )
+        tile_height = max(touch_px(48), min(px(68), available_height // max(1, rows)))
         for index, guest in enumerate(matches):
             variant = {"M": "man", "F": "woman"}.get(guest.sex, "secondary")
             tile = BigButton(guest.display_name, variant)
@@ -142,7 +156,7 @@ class GuestSelectScreen(BaseScreen):
             tile.setMinimumSize(min_tile_width, tile_height)
             tile.setMaximumHeight(tile_height)
             tile.clicked.connect(lambda _checked=False, g=guest: self._choose(g))
-            self._grid.addWidget(tile, index // columns, index % columns)
+            self._grid.addWidget(tile, 1 + index // columns, index % columns)
 
     # ---------- recherche ----------
 

@@ -127,11 +127,14 @@ class ReviewScreen(BaseScreen):
 
         redo = BigButton("Recommencer", "secondary")
         redo.clicked.connect(self._redo)
+        self._cancel = BigButton("Annuler", "secondary")
+        self._cancel.clicked.connect(self._cancel_result)
         validate = BigButton("Valider la photo")
         validate.clicked.connect(self._validate)
         actions = QHBoxLayout()
         actions.setSpacing(px(24))
         actions.addStretch(1)
+        actions.addWidget(self._cancel)
         actions.addWidget(redo)
         actions.addWidget(validate)
         actions.addStretch(1)
@@ -190,6 +193,7 @@ class ReviewScreen(BaseScreen):
 
         path = self.session.photos[-1]
         is_gif = path.suffix.lower() == ".gif"
+        self._cancel.setVisible(is_gif)
         self._gallery_panel.setVisible(not is_gif)
         self._person_only.setVisible(not is_gif)
         if is_gif:
@@ -409,3 +413,17 @@ class ReviewScreen(BaseScreen):
             except OSError:
                 log.exception("Suppression impossible : %s", path)
         self.nav.go_to("capture")
+
+    def _cancel_result(self) -> None:
+        """Supprime le GIF non validé et retourne au choix du défi ou du format."""
+        rejected = self.session.photos.pop() if self.session.photos else None
+        if rejected is not None:
+            try:
+                rejected.unlink(missing_ok=True)
+            except OSError:
+                log.exception("Suppression impossible : %s", rejected)
+        self.session.poses = []
+        self.session.photo_source_frame = None
+        self.session.photo_style = "original"
+        self.session.photo_style_person_only = False
+        self.nav.go_to("challenge" if self.session.challenge_id else "format_select")

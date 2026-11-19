@@ -31,7 +31,8 @@ from .screens.base import BaseScreen
 
 log = logging.getLogger(__name__)
 
-FLOW = [name for name in SCREENS if name not in {"gif_options", "challenge", "guestbook"}]  # écrans hors parcours linéaire
+FLOW = [name for name in SCREENS
+        if name not in {"gif_options", "challenge", "guestbook"}]  # écrans hors parcours linéaire
 ADMIN_TAPS = 5                             # 5 appuis distincts dans le coin...
 ADMIN_WINDOW_S = 5.0                       # ...en moins de 5 secondes
 ADMIN_TAP_DEBOUNCE_S = 0.15                # ignore l'événement souris synthétisé après un toucher

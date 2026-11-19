@@ -55,6 +55,7 @@ def _encode(frames: list[np.ndarray], width: int, colors: int, durations: list[i
 
 def save_gif(config: Config, frames: list[np.ndarray], guest_name: str = "", *,
              effect: str = "loop", hold_last: bool = False,
+             frame_duration_ms: int | None = None,
              now: datetime | None = None,
              event_started_at: datetime | None = None) -> Path:
     """Encode et enregistre le GIF, en réduisant résolution puis palette jusqu'à la limite configurée."""
@@ -63,7 +64,9 @@ def save_gif(config: Config, frames: list[np.ndarray], guest_name: str = "", *,
     sequence = _ordered_frames(frames, effect)
     width = min(960, max(frame.shape[1] for frame in sequence))
     multiplier = {"fast": 0.5, "slow": 2.0}.get(effect, 1.0)
-    normal_duration = max(20, round(config.gif_duree_image_ms * multiplier / 10) * 10)
+    requested_duration = (frame_duration_ms if frame_duration_ms is not None
+                          else config.gif_duree_image_ms * multiplier)
+    normal_duration = max(20, round(requested_duration / 10) * 10)
     durations = [normal_duration] * len(sequence)
     if hold_last:
         durations[-1] = max(normal_duration, config.gif_pause_derniere_image_ms)

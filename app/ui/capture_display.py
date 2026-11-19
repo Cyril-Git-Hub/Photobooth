@@ -4,12 +4,13 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from PyQt6.QtCore import QSize, Qt, QTimer
+from PyQt6.QtCore import QRect, QSize, Qt, QTimer
 from PyQt6.QtGui import QColor, QImage, QImageReader, QPainter
 from PyQt6.QtWidgets import QApplication, QWidget
 
 from ..core.playlist import Playlist
 from ..core.screens import pick_third_screen
+from .widgets.dance_pose import draw_dance_pose
 
 log = logging.getLogger(__name__)
 
@@ -26,6 +27,9 @@ class CaptureDisplayWindow(QWidget):
         self._colors = colors or {}
         self._image: QImage | None = None
         self._countdown = ""
+        self._dance_pose: int | None = None
+        self._dance_step = 0
+        self._dance_total = 0
 
     def show_on(self, screen) -> None:
         self.setScreen(screen)
@@ -55,6 +59,12 @@ class CaptureDisplayWindow(QWidget):
         self._countdown = text
         self.update()
 
+    def set_dance_pose(self, pose_index: int | None, step: int = 0, total: int = 0) -> None:
+        self._dance_pose = pose_index
+        self._dance_step = step
+        self._dance_total = total
+        self.update()
+
     def paintEvent(self, _event) -> None:
         painter = QPainter(self)
         painter.fillRect(self.rect(), QColor(self._colors.get("mail_background", "#0b0a1a")))
@@ -78,6 +88,24 @@ class CaptureDisplayWindow(QWidget):
                              self._countdown)
             painter.setPen(QColor(self._colors.get("accent", "#ffd166")))
             painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, self._countdown)
+        if self._dance_pose is not None:
+            side = int(min(self.width(), self.height()) * 0.3)
+            pose_rect = QRect(self.width() - side - 24, 24, side, side)
+            painter.setBrush(QColor(18, 16, 42, 205))
+            painter.setPen(QColor(self._colors.get("reference_border", "#ffc44d")))
+            painter.drawRoundedRect(pose_rect, 16, 16)
+            draw_dance_pose(
+                painter, pose_rect.adjusted(8, 8, -8, -48), self._dance_pose)
+            font = painter.font()
+            font.setBold(True)
+            font.setPixelSize(max(16, int(side * 0.09)))
+            painter.setFont(font)
+            painter.setPen(QColor("#ffffff"))
+            painter.drawText(
+                pose_rect.adjusted(4, 0, -4, -4),
+                Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter,
+                f"Pose {self._dance_step}/{self._dance_total}",
+            )
         painter.end()
 
 
@@ -115,6 +143,11 @@ class CaptureDisplayController:
     def clear_countdown(self) -> None:
         if self._window is not None:
             self._window.set_countdown("")
+            self._window.set_dance_pose(None)
+
+    def set_dance_pose(self, pose_index: int | None, step: int = 0, total: int = 0) -> None:
+        if self._window is not None:
+            self._window.set_dance_pose(pose_index, step, total)
 
     def reload_theme(self, theme) -> None:
         self._theme = theme

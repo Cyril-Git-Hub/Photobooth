@@ -5,11 +5,8 @@ Elles tournent sans Python grâce à photobooth-outils.exe (même programme que 
 from __future__ import annotations
 
 import argparse
-import os
-import shutil
 import sys
 import tempfile
-import urllib.request
 from pathlib import Path
 
 import cv2
@@ -20,7 +17,8 @@ from .config import Config
 from .core.emails import is_valid_email, normalize_email
 from .core.mail_queue import GUEST, MailJob
 from .core.mailer import MailSettings, NetworkError, PermanentMailError, SmtpSender, TemporaryMailError
-from .core.models import DEFAULT_DOWNLOADS, MODEL_NAMES, MODELS
+from .core.model_downloads import download_models as download_models_to_folder
+from .core.models import DEFAULT_DOWNLOADS, DOWNLOAD_MODELS
 
 MIN_MODEL_SIZE = 20_000  # un fichier plus petit est forcément une page d'erreur, pas un modèle
 
@@ -41,7 +39,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--cleanup-drive-links", action="store_true",
                         help=argparse.SUPPRESS)
     parser.add_argument("--telecharger-modeles", nargs="*", default=None, metavar="MODELE",
-                        help=f"télécharge les modèles de détourage ({', '.join(MODEL_NAMES)} ; par défaut {' + '.join(DEFAULT_DOWNLOADS)})")
+                        help=f"télécharge les modèles ({', '.join(DOWNLOAD_MODELS)} ; par défaut {' + '.join(DEFAULT_DOWNLOADS)})")
     parser.add_argument("--tous", action="store_true", help="avec --telecharger-modeles : les télécharge tous")
     parser.add_argument("--force", action="store_true", help="avec --telecharger-modeles : retélécharge même si présents")
     return parser
@@ -134,41 +132,6 @@ def test_mail(argv: list[str] | None = None, sender_factory=SmtpSender) -> int:
     return 0
 
 
-# ---------------------------------------------------------------- téléchargement des modèles
-
-def _download_one(name: str, folder: Path, force: bool) -> bool:
-    spec = MODELS[name]
-    dest = folder / spec.filename
-    if dest.exists() and not force:
-        print(f"[{name}] déjà présent : {dest.name}")
-        return True
-    folder.mkdir(parents=True, exist_ok=True)
-    tmp = dest.with_suffix(".tmp")
-    print(f"[{name}] téléchargement ({spec.description})…")
-    try:
-        with urllib.request.urlopen(spec.url, timeout=60) as response, open(tmp, "wb") as out:
-            shutil.copyfileobj(response, out)
-    except OSError as exc:
-        print(f"[{name}] échec : {exc}\nVérifie ta connexion internet (ou ton proxy / pare-feu).")
-        tmp.unlink(missing_ok=True)
-        return False
-    if tmp.stat().st_size < MIN_MODEL_SIZE:
-        print(f"[{name}] le fichier téléchargé est trop petit : ce n'est pas le modèle attendu.")
-        tmp.unlink(missing_ok=True)
-        return False
-    os.replace(tmp, dest)
-    print(f"[{name}] OK : {dest.name} ({dest.stat().st_size // 1024} Ko)")
-    return True
-
-
 def download_models(argv: list[str] | None = None) -> int:
     """Télécharge les modèles dans le dossier `dossier_modeles` de config.ini (models/ par défaut)."""
-    args = argv or []
-    names = [a for a in args if not a.startswith("--")]
-    unknown = [n for n in names if n not in MODEL_NAMES]
-    if unknown:
-        print(f"Modèle inconnu : {', '.join(unknown)}. Choix possibles : {', '.join(MODEL_NAMES)}")
-        return 2
-    selected = list(MODEL_NAMES) if "--tous" in args else (names or list(DEFAULT_DOWNLOADS))
-    folder = Config.load().dossier_modeles
-    return 0 if all([_download_one(name, folder, "--force" in args) for name in selected]) else 1
+    return download_models_to_folder(argv, Config.load().dossier_modeles)
