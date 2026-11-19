@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 import threading
 import time
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -18,7 +19,9 @@ DETECTION_WIDTH = 480
 MAX_SLOW_PREVIEWS = 3
 MAX_PREVIEW_SECONDS = 0.22
 PREVIEW_DETECTION_INTERVAL = 0.10
-MAX_TRACK_MISSES = 2
+MAX_TRACK_MISSES = 1
+TRACK_PREVIOUS_WEIGHT = 0.25
+VERTICAL_MASK_OFFSET = 0.025
 
 
 @dataclass(frozen=True)
@@ -76,30 +79,38 @@ def load_mask(path: Path) -> np.ndarray | None:
 
 
 def _describe(path: Path, image: np.ndarray) -> MaskAsset:
-    key = path.stem.casefold()
-    prefix = key.split("_", 1)[0].split("-", 1)[0]
-    if prefix == "yeux":
+    raw_key = path.stem.casefold().replace("-", "_").replace(" ", "_")
+    key = "".join(char for char in unicodedata.normalize("NFKD", raw_key)
+                  if not unicodedata.combining(char))
+    prefix = key.split("_", 1)[0]
+    if key.startswith(("dessustete", "dessus_tete", "tophead", "top_head")):
+        return MaskAsset(path, _display_name(path), image, "above", 1.0, 0.08)
+    if prefix in {"cheveux", "hair", "wig"}:
+        return MaskAsset(path, _display_name(path), image, "hair", 1.08, 0.32)
+    if prefix in {"front", "forehead"}:
+        return MaskAsset(path, _display_name(path), image, "forehead", 0.88, 0.23)
+    if prefix in {"yeux", "eye", "eyes"} or any(word in key for word in ("lunette", "glasses", "goggle")):
         return MaskAsset(path, _display_name(path), image, "eyes", 1.12, 0.40)
-    if prefix == "bouche":
-        return MaskAsset(path, _display_name(path), image, "mouth", 0.72, 0.70)
-    if prefix == "nez":
-        return MaskAsset(path, _display_name(path), image, "nose", 0.34, 0.56)
-    if prefix == "oreille":
-        # Le PNG représente une seule oreille ; le rendu en crée une paire miroir.
-        return MaskAsset(path, _display_name(path), image, "ears", 0.25, 0.58)
-    if prefix == "cheveux":
-        return MaskAsset(path, _display_name(path), image, "top", 1.20, 0.08)
-    if any(word in key for word in ("lunette", "glasses", "goggle")):
-        return MaskAsset(path, _display_name(path), image, "eyes", 1.12, 0.40)
-    if any(word in key for word in ("moustache", "mustache", "moust")):
-        return MaskAsset(path, _display_name(path), image, "mouth", 0.72, 0.70)
+    if prefix in {"nez", "nose"}:
+        return MaskAsset(path, _display_name(path), image, "nose", 0.42, 0.54)
+    if prefix in {"moustache", "mustache", "moust"} or any(
+            word in key for word in ("moustache", "mustache", "moust")):
+        return MaskAsset(path, _display_name(path), image, "mustache", 0.72, 0.74)
+    if prefix in {"bouche", "mouth"}:
+        return MaskAsset(path, _display_name(path), image, "mouth", 0.68, 0.77)
+    if prefix in {"menton", "chin"}:
+        return MaskAsset(path, _display_name(path), image, "chin", 0.70, 0.93)
+    if prefix in {"joue", "joues", "cheek", "cheeks"}:
+        return MaskAsset(path, _display_name(path), image, "cheeks", 0.30, 0.62)
+    if prefix in {"oreille", "ear"}:
+        # Le fichier represente une oreille ; le rendu la duplique en miroir.
+        return MaskAsset(path, _display_name(path), image, "ears", 0.25, 0.56)
     if any(word in key for word in ("couronne", "crown", "chapeau", "hat")):
-        return MaskAsset(path, _display_name(path), image, "top", 1.0, 0.08)
-    # Anciens fichiers de paire d'oreilles, dont le PNG fourni avec l'application.
+        return MaskAsset(path, _display_name(path), image, "above", 1.0, 0.08)
+    # Anciennes paires d'oreilles fournies avec l'application : elles restent au-dessus de la tete.
     if any(word in key for word in ("oreilles", "ears", "lapin", "bunny")):
-        return MaskAsset(path, _display_name(path), image, "top", 0.92, 0.12)
+        return MaskAsset(path, _display_name(path), image, "above", 0.92, 0.12)
     return MaskAsset(path, _display_name(path), image, "center", 1.08, 0.50)
-
 
 def _display_name(path: Path) -> str:
     return path.stem.replace("_", " ").replace("-", " ").strip().capitalize()
@@ -186,7 +197,7 @@ class FaceMaskRenderer:
                            interpolation=cv2.INTER_AREA) if scale < 1.0 else image
         gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
         detections = self._detector.detectMultiScale(
-            gray, scaleFactor=1.12, minNeighbors=5, minSize=(36, 36),
+            gray, scaleFactor=1.12, minNeighbors=5, minSize=(24, 24),
             flags=cv2.CASCADE_SCALE_IMAGE,
         )
         factor = 1.0 / scale
@@ -205,9 +216,9 @@ class FaceMaskRenderer:
                          for index, (old, missed) in enumerate(old_tracks) if index not in used),
                         default=(0.0, -1, None, 0), key=lambda item: item[0])
             overlap, index, previous, _missed = match
-            if index >= 0 and overlap >= 0.12:
+            if index >= 0 and overlap >= 0.06:
                 used.add(index)
-                current = previous * 0.62 + current * 0.38
+                current = previous * TRACK_PREVIOUS_WEIGHT + current * (1.0 - TRACK_PREVIOUS_WEIGHT)
             new_tracks.append((current, 0))
             output.append(tuple(int(round(value)) for value in current))
         for index, (previous, missed) in enumerate(old_tracks):
@@ -252,30 +263,31 @@ def _apply_mask_in_place(result: np.ndarray, asset: MaskAsset,
             continue
         target_w = max(1, round(face_w * asset.width_ratio))
         target_h = max(1, round(target_w * mask_h / mask_w))
+        anchor_y = asset.anchor_y + VERTICAL_MASK_OFFSET
         if asset.anchor == "ears":
-            center_y = y + round(face_h * asset.anchor_y)
+            center_y = y + round(face_h * anchor_y)
             left = x - round(face_w * 0.025) - target_w // 2
             right = x + face_w + round(face_w * 0.025) - target_w // 2
             _blend_bgra(result, asset.image, left, center_y - target_h // 2, target_w, target_h)
-            mirrored = cv2.flip(asset.image, 1)
-            _blend_bgra(result, mirrored, right, center_y - target_h // 2, target_w, target_h)
+            _blend_bgra(result, cv2.flip(asset.image, 1), right,
+                        center_y - target_h // 2, target_w, target_h)
             continue
-        if asset.anchor == "eyes":
-            center_y = y + round(face_h * asset.anchor_y)
-            top = center_y - target_h // 2
-        elif asset.anchor == "mouth":
-            center_y = y + round(face_h * asset.anchor_y)
-            top = center_y - target_h // 2
-        elif asset.anchor == "nose":
-            center_y = y + round(face_h * asset.anchor_y)
-            top = center_y - target_h // 2
-        elif asset.anchor == "top":
-            top = y - target_h + round(face_h * asset.anchor_y)
+        if asset.anchor == "cheeks":
+            center_y = y + round(face_h * anchor_y)
+            left_center = x + round(face_w * 0.22)
+            right_center = x + round(face_w * 0.78)
+            _blend_bgra(result, asset.image, left_center - target_w // 2,
+                        center_y - target_h // 2, target_w, target_h)
+            _blend_bgra(result, cv2.flip(asset.image, 1), right_center - target_w // 2,
+                        center_y - target_h // 2, target_w, target_h)
+            continue
+        center_y = y + round(face_h * anchor_y)
+        if asset.anchor == "above":
+            top = y - target_h + round(face_h * anchor_y)
         else:
-            top = y + round(face_h * asset.anchor_y) - target_h // 2
+            top = center_y - target_h // 2
         left = x + face_w // 2 - target_w // 2
         _blend_bgra(result, asset.image, left, top, target_w, target_h)
-
 
 def _blend_bgra(canvas: np.ndarray, overlay: np.ndarray, x: int, y: int,
                 width: int, height: int) -> None:

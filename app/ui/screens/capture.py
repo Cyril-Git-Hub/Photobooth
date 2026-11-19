@@ -19,14 +19,17 @@ from PyQt6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QScrollArea, QScroller, QStyle, QToolButton, QVBoxLayout, QWidget,
 )
 
-from ...core import backgrounds, frames, gif_builder, storage, strip_builder, virtual_masks
-from ...core.challenge_stamp import stamp_challenge_title
+from ...core import (
+    accessories, backgrounds, body_cutouts, frames, gif_builder, storage, strip_builder, virtual_masks,
+)
+from ...core.challenge_stamp import stamp_challenge_reference, stamp_challenge_title
 from ...core.compositor import SceneRenderer
 from ...core.qt_image import bgr_to_qimage
 from ...core.segmentation import SegmentationError
 from ...core.webcam import shrink
 from ...paths import resource_path
 from ..widgets.big_button import BigButton
+from ..widgets.dance_pose import stamp_dance_pose
 from ..widgets.preview_widget import PreviewWidget
 from .base import BaseScreen
 from ..scale import px
@@ -37,7 +40,6 @@ SAVE_ERROR = "Impossible d'enregistrer la photo.\nVérifie le dossier des photos
 NO_FRAME_ERROR = "La caméra n'a pas fourni d'image."
 BACKGROUND_ERROR = "Impossible de charger le décor choisi.\nReviens en arrière et choisis-en un autre, ou prends la photo sans décor."
 PROCESS_ERROR = "Le détourage a échoué.\nRéessaie, ou reviens en arrière et prends la photo sans décor."
-NO_FRAMES_ERROR = "Aucun cadre utilisable trouvé.\nAjoute des images PNG/WebP transparentes dans le dossier configuré, puis reviens ici."
 FRAME_ERROR = "Impossible de charger ce cadre.\nChoisis-en un autre ou reviens à l'écran précédent."
 FLASH_PAUSE_MS = 700        # on laisse le flash se voir avant de passer à l'aperçu du résultat
 POSE_REVIEW_MS = 1600       # photomaton : durée d'affichage de la pose qui vient d'être prise
@@ -65,11 +67,17 @@ class CaptureScreen(BaseScreen):
         self._last_source_frame: np.ndarray | None = None
         self._background_cache: tuple | None = None   # (chemin, image) : évite de relire le décor à chaque reprise
         self._frame_overlay: np.ndarray | None = None
+        self._frame_gallery_open = False
+        self._mask_gallery_open = False
         self._frame_buttons: dict[Path, QToolButton] = {}
         self._mask_assets: dict[Path, virtual_masks.MaskAsset] = {}
         self._mask_buttons: dict[Path | None, QToolButton] = {}
         self._mask_processor: virtual_masks.FaceMaskRenderer | None = None
         self._mask_error = ""
+        self._accessory_processor: accessories.AccessoryRenderer | None = None
+        self._body_cutout_processor: body_cutouts.BodyCutoutRenderer | None = None
+        self._body_mask_debug_mode = 0
+        self._dance_auto_started = False
 
         self._preview = PreviewWidget()
         self._frame_panel = QWidget()
@@ -119,7 +127,32 @@ class CaptureScreen(BaseScreen):
         self._status.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._back = BigButton("Retour", "secondary")
         self._back.clicked.connect(self._go_back)
-        self._action = BigButton("Prendre la photo")
+        self._frame_option = QToolButton()
+        self._frame_option.setObjectName("captureChoiceButton")
+        self._frame_option.setText("Cadre")
+        self._frame_option.setToolTip("Afficher les cadres à ajouter à la photo")
+        self._frame_option.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        self._frame_option.setCheckable(True)
+        self._frame_option.setFixedSize(px(120), px(60))
+        self._frame_option.clicked.connect(self._toggle_frame_gallery)
+        self._mask_option = QToolButton()
+        self._mask_option.setObjectName("captureChoiceButton")
+        self._mask_option.setText("Masque")
+        self._mask_option.setToolTip("Afficher les masques à ajouter à la photo")
+        self._mask_option.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        self._mask_option.setCheckable(True)
+        self._mask_option.setFixedSize(px(120), px(60))
+        self._mask_option.clicked.connect(self._toggle_mask_gallery)
+        self._body_mask_option = QToolButton()
+        self._body_mask_option.setObjectName("captureChoiceButton")
+        self._body_mask_option.setText("Diagnostic : aucun")
+        self._body_mask_option.setToolTip(
+            "Cliquer pour alterner entre le masque final et les catégories détectées")
+        self._body_mask_option.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        self._body_mask_option.setFixedSize(px(190), px(60))
+        self._body_mask_option.setVisible(False)
+        self._body_mask_option.clicked.connect(self._cycle_body_mask_debug)
+        self._action = BigButton("Prendre la photo", "notListed")
         self._action.clicked.connect(lambda: self._on_action())
 
         layout = QVBoxLayout(self)
@@ -133,6 +166,9 @@ class CaptureScreen(BaseScreen):
         row.setSpacing(px(30))
         row.addStretch(1)
         row.addWidget(self._back)
+        row.addWidget(self._frame_option)
+        row.addWidget(self._mask_option)
+        row.addWidget(self._body_mask_option)
         row.addWidget(self._action)
         row.addStretch(1)
         layout.addLayout(row)
@@ -157,19 +193,40 @@ class CaptureScreen(BaseScreen):
 
     def on_leave(self) -> None:
         self._active = False
+        self._frame_gallery_open = self._mask_gallery_open = False
+        self._frame_panel.hide()
+        self._mask_panel.hide()
+        for option in (self._frame_option, self._mask_option):
+            blocked = option.blockSignals(True)
+            option.setChecked(False)
+            option.blockSignals(blocked)
+        self.nav.capture_display.clear_countdown()
         self._timer.stop()
         self._poses = []
         self._frame_overlay = None
+        self._body_mask_debug_mode = 0
+        self._body_mask_option.setText("Diagnostic : aucun")
         self._preview.overlay.clear()
+        self._preview.set_dance_pose(None)
         camera = self.nav.camera
         camera.set_preview_processor(None)
         camera.set_preview_enabled(False)
         self._renderer = None
         self._mask_processor = None
+        self._close_body_cutout_processor()
+        if self._accessory_processor is not None:
+            self._accessory_processor.close()
+            self._accessory_processor = None
 
     def _begin(self) -> None:
         """Prépare le décor puis démarre (ou reprend) l'aperçu. Appelé à l'arrivée et par « Réessayer »."""
         self._poses = []
+        self._dance_auto_started = False
+        reference = (QImage.fromData(self.session.challenge_reference_png, "PNG")
+                     if self.session.challenge_reference_png else None)
+        self._preview.set_colors(self.nav.theme.colors if self.nav.theme else None)
+        self._preview.set_reference_image(reference, self.nav.theme.colors if self.nav.theme else None)
+        self._preview.set_dance_pose(None)
         if not self._prepare_scene():
             return
         camera = self.nav.camera
@@ -184,18 +241,45 @@ class CaptureScreen(BaseScreen):
         self._frame_overlay = None
         self._mask_processor = None
         self._mask_error = ""
-        self._prepare_mask_gallery()
+        self._close_body_cutout_processor()
+        self._body_mask_debug_mode = 0
+        self._body_mask_option.setText("Diagnostic : aucun")
+        self._body_mask_option.setVisible(bool(self.session.challenge_body_cutouts))
+        if self._accessory_processor is not None:
+            self._accessory_processor.close()
+            self._accessory_processor = None
+        is_dance = self.session.challenge_type == "dance"
+        self._frame_option.setVisible(
+            self.session.photo_format == "single" and not is_dance)
+        self._mask_option.setVisible(not is_dance)
+        if is_dance:
+            self.session.clear_virtual_masks()
+            self._mask_panel.hide()
+        else:
+            self._prepare_mask_gallery()
         if self.session.frame_mode:
+            self._frame_panel.setVisible(self._frame_gallery_open)
+            if not self._prepare_frame():
+                return False
+        elif self._frame_gallery_open:
             self._frame_panel.setVisible(True)
-            return self._prepare_frame()
-        self._frame_panel.setVisible(False)
+            if not self._prepare_frame():
+                return False
+        else:
+            self._frame_panel.setVisible(False)
         path = self.session.background_path
         if path is None:                       # « Sans décor » : photo normale
+            if self.session.challenge_body_cutouts:
+                self._fail("Ce défi nécessite un décor pour remplacer les parties masquées.")
+                return False
             self._update_preview_processor()
             return True
         background = self._load_background(path)
         if background is None:
-            self._fail(BACKGROUND_ERROR)
+            message = (f"Le décor de ce défi est introuvable :\n{path}\n"
+                       "Ajoute l’image dans le dossier du thème, puis réessaie."
+                       if self.session.challenge_body_cutouts else BACKGROUND_ERROR)
+            self._fail(message)
             return False
         try:
             segmenter = self.nav.get_segmenter()
@@ -203,7 +287,23 @@ class CaptureScreen(BaseScreen):
             log.error("Détourage indisponible : %s", exc.args[0])
             self._fail(exc.args[0])
             return False
-        self._renderer = SceneRenderer(segmenter, background)
+        mask_modifier = None
+        if self.session.challenge_body_cutouts:
+            try:
+                self._body_cutout_processor = body_cutouts.BodyCutoutRenderer(
+                    self.config.dossier_modeles / body_cutouts.BODY_PARTS_MODEL_FILENAME,
+                    self.session.challenge_body_cutouts,
+                    self.config.dossier_modeles / body_cutouts.POSE_MODEL_FILENAME)
+            except body_cutouts.BodyCutoutError as exc:
+                self._fail(str(exc))
+                return False
+            mask_modifier = self._body_cutout_processor.apply_to_mask
+        preview_mask_modifier = (
+            self._body_cutout_processor.apply_to_mask_preview
+            if self._body_cutout_processor is not None else None
+        )
+        self._renderer = SceneRenderer(
+            segmenter, background, mask_modifier, preview_mask_modifier)
         self._update_preview_processor()
         return True
 
@@ -214,13 +314,19 @@ class CaptureScreen(BaseScreen):
             if widget is not None:
                 widget.deleteLater()
         self._mask_buttons.clear()
-        defaults = resource_path("assets/masques")
-        assets = virtual_masks.scan_masks([defaults, self.config.dossier_masques])
+        theme_masks = self.config.dossier_theme / "masques"
+        assets = virtual_masks.scan_masks([theme_masks])
+        if assets:
+            log.info("%d masque(s) charge(s) depuis le theme %s", len(assets), theme_masks)
+        else:
+            defaults = resource_path("assets/masques")
+            assets = virtual_masks.scan_masks([defaults, self.config.dossier_masques])
+            log.info("%d masque(s) charge(s) depuis les ressources par defaut", len(assets))
         self._mask_assets = {asset.path: asset for asset in assets}
-        self._mask_panel.setVisible(bool(assets))
+        self._mask_option.setVisible(bool(assets))
+        self._mask_panel.setVisible(bool(assets) and self._mask_gallery_open)
         if not assets:
-            self.session.virtual_mask_path = None
-            self.session.virtual_mask_paths.clear()
+            self.session.clear_virtual_masks()
             return
 
         none = QToolButton()
@@ -285,8 +391,7 @@ class CaptureScreen(BaseScreen):
             except Exception as exc:
                 log.warning("Détection des visages indisponible : %s", exc)
                 self._mask_error = "Détection visage indisponible : masque désactivé."
-                self.session.virtual_mask_paths = []
-                self.session.virtual_mask_path = None
+                self.session.clear_virtual_masks()
                 paths = []
         for button_path, button in self._mask_buttons.items():
             button.setChecked((button_path is None and not paths) or button_path in paths)
@@ -294,9 +399,20 @@ class CaptureScreen(BaseScreen):
         if self._state is State.READY:
             self._update_mask_status()
 
+    def _toggle_mask_gallery(self, checked: bool) -> None:
+        self._mask_gallery_open = checked
+        self._mask_panel.setVisible(checked and bool(self._mask_assets))
+
+    def _toggle_frame_gallery(self, checked: bool) -> None:
+        self._frame_gallery_open = checked
+        self._frame_panel.setVisible(checked)
+        if checked:
+            self._prepare_frame()
+
     def _update_preview_processor(self) -> None:
         """Compose décor/cadre et masque dans cet ordre, pour l'aperçu webcam."""
-        scene_processor = self._renderer.render_preview if self._renderer and self.config.apercu_incruste else None
+        scene_processor = self._renderer.render_preview if self._renderer and (
+            self.config.apercu_incruste or self.session.challenge_body_cutouts) else None
         frame_overlay = self._frame_overlay if self.session.frame_mode else None
         mask_processor = self._mask_processor
         if scene_processor is None and frame_overlay is None and mask_processor is None:
@@ -304,6 +420,10 @@ class CaptureScreen(BaseScreen):
             return
 
         def process(frame: np.ndarray) -> np.ndarray:
+            if self._body_mask_debug_mode == 2 and self._body_cutout_processor is not None:
+                return self._body_cutout_processor.render_parsing_debug_preview(frame)
+            if self._body_mask_debug_mode == 1 and self._renderer is not None:
+                return self._renderer.render_mask_debug_preview(frame)
             rendered = scene_processor(frame) if scene_processor is not None else frame
             if frame_overlay is not None:
                 rendered = frames.apply_frame(rendered, frame_overlay)
@@ -312,6 +432,17 @@ class CaptureScreen(BaseScreen):
             return rendered
 
         self.nav.camera.set_preview_processor(process)
+
+    def _cycle_body_mask_debug(self, _checked: bool = False) -> None:
+        self._body_mask_debug_mode = (self._body_mask_debug_mode + 1) % 3
+        labels = ("Diagnostic : aucun", "Diagnostic : masque", "Diagnostic : catégories")
+        self._body_mask_option.setText(labels[self._body_mask_debug_mode])
+        self._update_preview_processor()
+
+    def _close_body_cutout_processor(self) -> None:
+        if self._body_cutout_processor is not None:
+            self._body_cutout_processor.close()
+            self._body_cutout_processor = None
 
     def _update_mask_status(self) -> None:
         if self._state is not State.READY:
@@ -343,12 +474,21 @@ class CaptureScreen(BaseScreen):
         return message
 
     def _prepare_frame(self) -> bool:
-        """Construit le choix de cadres et démarre l'aperçu avec le cadre sélectionné."""
+        """Construit la galerie des cadres sans en imposer un au premier affichage."""
         while self._frame_row.count():
             widget = self._frame_row.takeAt(0).widget()
             if widget is not None:
                 widget.deleteLater()
         self._frame_buttons.clear()
+        none = QToolButton()
+        none.setObjectName("captureChoiceButton")
+        none.setText("Sans cadre")
+        none.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        none.setCheckable(True)
+        none.setFixedHeight(px(52))
+        none.clicked.connect(self._select_no_frame)
+        self._no_frame_button = none
+        self._frame_row.addWidget(none)
         icon_size = QSize(px(40), px(40))
         frame_folder = self.nav.theme.frames if self.nav.theme and self.nav.theme.frames.exists() else self.config.dossier_cadres
         available_frames = [(path, frames.load_frame(path)) for path in frames.scan_frames(frame_folder)]
@@ -376,11 +516,30 @@ class CaptureScreen(BaseScreen):
             self._frame_row.addWidget(button)
             self._frame_buttons[path] = button
         if not self._frame_buttons:
-            self._fail(f"{NO_FRAMES_ERROR}\n({frame_folder})")
-            return False
+            none.setChecked(True)
+            self.session.frame_mode = False
+            self.session.frame_path = None
+            self._frame_overlay = None
+            self._status.setText("Aucun cadre disponible.")
+            self._update_preview_processor()
+            return True
 
-        selected = self.session.frame_path if self.session.frame_path in self._frame_buttons else next(iter(self._frame_buttons))
-        return self._select_frame(selected)
+        if self.session.frame_mode:
+            selected = self.session.frame_path if self.session.frame_path in self._frame_buttons else next(iter(self._frame_buttons))
+            return self._select_frame(selected)
+        none.setChecked(True)
+        return True
+
+    def _select_no_frame(self) -> None:
+        self.session.frame_mode = False
+        self.session.frame_path = None
+        self._frame_overlay = None
+        self._no_frame_button.setChecked(True)
+        for button in self._frame_buttons.values():
+            button.setChecked(False)
+        self._update_preview_processor()
+        if self._state is State.ERROR:
+            self._set_state(State.READY if self.nav.camera.has_frame() else State.STARTING)
 
     def _select_frame(self, path: Path) -> bool:
         overlay = frames.load_frame(path)
@@ -389,7 +548,9 @@ class CaptureScreen(BaseScreen):
             self._fail(FRAME_ERROR)
             return False
         self._frame_overlay = overlay
+        self.session.frame_mode = True
         self.session.frame_path = path
+        self._no_frame_button.setChecked(False)
         self._update_preview_processor()
         for button_path, button in self._frame_buttons.items():
             button.setChecked(button_path == path)
@@ -420,13 +581,25 @@ class CaptureScreen(BaseScreen):
         self._state = state
         busy = state in (State.COUNTING, State.POSE_REVIEW, State.SAVING)
         planned = self._planned_poses()
-        self._back.setEnabled(not busy)
+        can_cancel_dance = self.session.challenge_type == "dance"
+        self._back.setEnabled(not busy or can_cancel_dance)
+        self._back.setText("Annuler le défi" if can_cancel_dance else "Retour")
+        self._frame_option.setEnabled(not busy)
+        self._mask_option.setEnabled(not busy)
         for button in self._frame_buttons.values():
             button.setEnabled(not busy)
+        if hasattr(self, "_no_frame_button"):
+            self._no_frame_button.setEnabled(not busy)
         for button in self._mask_buttons.values():
             button.setEnabled(not busy)
         frame_ready = not self.session.frame_mode or self._frame_overlay is not None
         self._action.setEnabled(state in (State.READY, State.ERROR) and frame_ready)
+        self._action.setVisible(self.session.challenge_type != "dance" or state is State.ERROR)
+        if self.session.challenge_type == "dance":
+            self._frame_option.hide()
+            self._mask_option.hide()
+            self._frame_panel.hide()
+            self._mask_panel.hide()
         action_text = "Lancer le GIF" if self.session.photo_format == "gif" else "Lancer le photomaton"
         self._action.setText("Réessayer" if state is State.ERROR
                              else "Prendre la photo" if planned == 1 else action_text)
@@ -436,6 +609,9 @@ class CaptureScreen(BaseScreen):
         elif state is State.READY:
             self._status.setText(self._ready_status_text())
             self._update_mask_status()
+            if self.session.challenge_type == "dance" and not self._dance_auto_started:
+                self._dance_auto_started = True
+                QTimer.singleShot(0, self._start_sequence)
         elif state is State.ERROR:
             self._preview.set_message(self._error_text)
 
@@ -447,8 +623,10 @@ class CaptureScreen(BaseScreen):
 
     def _fail(self, text: str) -> None:
         self._timer.stop()
+        self.nav.capture_display.clear_countdown()
         self._poses = []
         self._preview.overlay.clear()
+        self._preview.set_dance_pose(None)
         self._error_text = text
         self._set_state(State.ERROR)
 
@@ -480,10 +658,13 @@ class CaptureScreen(BaseScreen):
             self._begin()   # recharge le décor si besoin, relance la caméra si elle est perdue
 
     def _start_sequence(self) -> None:
+        if not self._active:
+            return
         self._total = self._planned_poses()
         self._poses = []
         active_event = self.nav.events.active_event()
         self.session.event_id = active_event.id if active_event is not None else ""
+        self.session.event_started_at = active_event.started_at if active_event is not None else 0.0
         self._start_countdown(self.config.duree_decompte)
 
     def _start_countdown(self, seconds: int) -> None:
@@ -492,7 +673,18 @@ class CaptureScreen(BaseScreen):
         self.nav.sounds.play("countdown")
         if self._total > 1:
             self._status.setText(f"Pose {len(self._poses) + 1}/{self._total}")
+        pose_index = len(self._poses)
+        if (self.session.challenge_type == "dance"
+                and pose_index < len(self.session.dance_pose_ids)):
+            self._preview.set_dance_pose(
+                self.session.dance_pose_ids[pose_index], pose_index + 1, self._total)
+            self.nav.capture_display.set_dance_pose(
+                self.session.dance_pose_ids[pose_index], pose_index + 1, self._total)
+        else:
+            self._preview.set_dance_pose(None)
+            self.nav.capture_display.set_dance_pose(None)
         self._preview.overlay.show_number(str(self._remaining))
+        self.nav.capture_display.set_countdown(str(self._remaining))
         self._timer.start()
 
     def _tick(self) -> None:
@@ -500,8 +692,10 @@ class CaptureScreen(BaseScreen):
         if self._remaining > 0:
             self.nav.sounds.play("countdown")
             self._preview.overlay.show_number(str(self._remaining))
+            self.nav.capture_display.set_countdown(str(self._remaining))
         else:
             self._timer.stop()
+            self.nav.capture_display.clear_countdown()
             self._capture_pose()
 
     def _grab_final_frame(self) -> np.ndarray | None:
@@ -521,7 +715,9 @@ class CaptureScreen(BaseScreen):
                 log.exception("Échec du détourage de la photo")
                 self._fail(PROCESS_ERROR)
                 return None
-        elif self.session.frame_mode and self._frame_overlay is not None:
+        # Le cadre est superposé après le décor, comme dans l'aperçu en direct.
+        # Il doit aussi être appliqué lorsque le détourage/décor est actif.
+        if self.session.frame_mode and self._frame_overlay is not None:
             try:
                 frame = frames.apply_frame(frame, self._frame_overlay)
             except Exception:
@@ -530,12 +726,27 @@ class CaptureScreen(BaseScreen):
                 return None
         if self._mask_processor is not None:
             frame = self._mask_processor.apply_photo(self._last_source_frame, frame)
+        if self.session.challenge_accessory is not None:
+            try:
+                if self._accessory_processor is None:
+                    self._accessory_processor = accessories.AccessoryRenderer(
+                        self.config.dossier_modeles / accessories.POSE_MODEL_FILENAME,
+                        self.config.dossier_modeles / accessories.HAND_MODEL_FILENAME,
+                        self.session.challenge_accessory,
+                        image_is_mirrored=self.config.miroir,
+                    )
+                frame, _applied = self._accessory_processor.apply_photo(
+                    self._last_source_frame, frame)
+            except accessories.AccessoryError as exc:
+                log.error("Accessoire de défi indisponible : %s", exc)
         return frame
 
     def _capture_pose(self) -> None:
         self._set_state(State.SAVING)
+        self.nav.capture_display.clear_countdown()
         self.nav.sounds.play("shutter")
         self._preview.overlay.clear()
+        self._preview.set_dance_pose(None)
         self._preview.overlay.flash()
         frame = self._grab_final_frame()
         if frame is None:
@@ -568,20 +779,39 @@ class CaptureScreen(BaseScreen):
     def _save_and_finish(self) -> None:
         guest = self.session.display_name
         challenge_title = self.session.challenge_title.strip()
+        challenge_instruction = self.session.challenge_instruction.strip()
+        challenge_reference = self.session.challenge_reference_png
+        challenge_colors = self.nav.theme.colors if self.nav.theme else None
+        stamp_result = lambda frame: stamp_challenge_reference(
+            stamp_challenge_title(frame, challenge_title, challenge_instruction, challenge_colors),
+            challenge_reference, challenge_colors)
+        event_started_at = (datetime.fromtimestamp(self.session.event_started_at)
+                            if self.session.event_started_at else None)
         try:
             if self.session.photo_format == "gif":
-                gif_frames = [stamp_challenge_title(frame, challenge_title) for frame in self._poses]
+                if self.session.challenge_type == "dance":
+                    dance_frames = [
+                        stamp_dance_pose(frame, pose_id, index + 1, len(self._poses))
+                        for index, (frame, pose_id) in enumerate(
+                            zip(self._poses, self.session.dance_pose_ids))
+                    ]
+                    gif_frames = [stamp_result(frame) for frame in dance_frames]
+                else:
+                    gif_frames = [stamp_result(frame) for frame in self._poses]
                 path = gif_builder.save_gif(
                     self.config, gif_frames, guest,
-                    effect=self.session.gif_effect, hold_last=self.session.gif_hold_last,
+                    effect="loop" if self.session.challenge_type == "dance" else self.session.gif_effect,
+                    hold_last=False if self.session.challenge_type == "dance" else self.session.gif_hold_last,
+                    frame_duration_ms=2000 if self.session.challenge_type == "dance" else None,
+                    event_started_at=event_started_at,
                 )
                 self.session.photos.append(path)
                 self.session.photo_source_frame = None
                 self.session.photo_style = "original"
                 self.session.photo_style_person_only = False
             elif self._total == 1:
-                photo = stamp_challenge_title(self._poses[0], challenge_title)
-                path = storage.save_photo(self.config, photo, guest)
+                photo = stamp_result(self._poses[0])
+                path = storage.save_photo(self.config, photo, guest, event_started_at=event_started_at)
                 self.session.photos.append(path)
                 self.session.photo_source_frame = self._last_source_frame
                 self.session.photo_style = "original"
@@ -591,8 +821,9 @@ class CaptureScreen(BaseScreen):
                     title=self.config.pm_titre, date_text=datetime.now().strftime("%d/%m/%Y"),
                     background=self.config.pm_couleur_fond, text_color=self.config.pm_couleur_texte)
                 strip = strip_builder.build_strip(self._poses, style)
-                strip = stamp_challenge_title(strip, challenge_title)
-                path, pose_paths = storage.save_strip(self.config, strip, self._poses, guest)
+                strip = stamp_result(strip)
+                path, pose_paths = storage.save_strip(
+                    self.config, strip, self._poses, guest, event_started_at=event_started_at)
                 self.session.photos.append(path)
                 self.session.poses = pose_paths
                 self.session.photo_source_frame = None

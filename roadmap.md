@@ -135,6 +135,13 @@ Les fonctions optionnelles devront pouvoir être activées ou désactivées dans
 - Le menu **Gérer les activations** regroupe l'envoi mail, la sauvegarde configurée, le GIF, Casting/Audition, le QR code, le livre d'or, le diaporama secondaire et les effets sonores ; les changements sont persistés et appliqués immédiatement. Les mails déjà en file restent suspendus tant que l'envoi est désactivé.
 - Ouvrir le mode administrateur avec cinq appuis rapides dans le coin supérieur gauche, puis saisir le code.
 
+### Étape 26 — Aperçu de prise de vue sur un troisième écran *(développée)*
+
+- Détecter automatiquement le troisième écran étendu, sans réglage supplémentaire dans l'administration.
+- Conserver le deuxième écran pour le diaporama ; afficher l'aperçu caméra sur le troisième uniquement pendant le parcours de capture.
+- Garder les commandes tactiles et la navigation sur l'écran principal ; les modes à un ou deux écrans restent inchangés.
+- Masquer l'aperçu lorsque l'invité quitte la capture et le rétablir si un troisième écran est branché pendant l'utilisation.
+
 ## Points de vigilance transverses
 
 - Tester l’application graphique et l’exécutable sur le portable cible avant d’ajouter plusieurs traitements en direct.

@@ -101,6 +101,12 @@ class PxTests(ScaleTestCase):
         scale.set_scale(0.75)
         self.assertEqual(scale.get_scale(), 0.75)
 
+    def test_taille_tactile_garde_une_cible_minimale(self):
+        scale.set_scale(0.5)
+        self.assertEqual(scale.touch_px(56), 48)
+        scale.set_scale(1.0)
+        self.assertEqual(scale.touch_px(56), 56)
+
 
 class WindowedSizeTests(unittest.TestCase):
     class Screen:

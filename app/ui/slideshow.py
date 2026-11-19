@@ -62,6 +62,8 @@ class SlideshowController:
     def reload(self) -> None:
         """Après « Recharger la configuration »."""
         self.playlist.set_order(self.config.dp_ordre)
+        if self._window is not None and hasattr(self._window, "reload_theme"):
+            self._window.reload_theme(getattr(self.config, "active_theme", None))
         self.refresh()
 
     def _on_screens_changed(self, *_args) -> None:
@@ -133,6 +135,10 @@ class SlideshowController:
             self._advance()
         else:                                                    # la photo en cours finit son temps minimal
             self._timer.start(int((MIN_SHOW_SECONDS - elapsed) * 1000) + 50)
+
+    def photos(self) -> list[Path]:
+        """Photos validées connues du diaporama, même lorsque celui-ci n'a pas d'écran dédié."""
+        return self._log.load()
 
     def clear(self) -> None:
         """Nouvelle soirée : le diaporama repart de zéro (les photos, elles, restent sur le disque)."""

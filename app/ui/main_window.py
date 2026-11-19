@@ -24,13 +24,15 @@ from ..session import Session
 from . import scale
 from .admin_dialog import open_admin_dialog
 from .slideshow import SlideshowController
+from .capture_display import CaptureDisplayController
 from .screensaver import ScreensaverOverlay
 from .screens import SCREENS
 from .screens.base import BaseScreen
 
 log = logging.getLogger(__name__)
 
-FLOW = [name for name in SCREENS if name not in {"gif_options", "challenge", "guestbook"}]  # écrans hors parcours linéaire
+FLOW = [name for name in SCREENS
+        if name not in {"gif_options", "challenge", "guestbook"}]  # écrans hors parcours linéaire
 ADMIN_TAPS = 5                             # 5 appuis distincts dans le coin...
 ADMIN_WINDOW_S = 5.0                       # ...en moins de 5 secondes
 ADMIN_TAP_DEBOUNCE_S = 0.15                # ignore l'événement souris synthétisé après un toucher
@@ -42,9 +44,11 @@ _ACTIVITY_EVENTS = {
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, config: Config, fullscreen: bool = True, slideshow_windowed: bool = False) -> None:
+    def __init__(self, config: Config, fullscreen: bool = True, slideshow_windowed: bool = False,
+                 main_screen=None) -> None:
         super().__init__()
         self.config = config
+        self._main_screen = main_screen
         self.theme = getattr(config, "active_theme", None)
         self.sounds = SoundManager(config, self)
         self.events = EventStore(config)
@@ -62,10 +66,12 @@ class MainWindow(QMainWindow):
         self.drive_executor = None
         self.ensure_drive_service()
         self.slideshow = SlideshowController(config, self, windowed_preview=slideshow_windowed)
+        self.capture_display = CaptureDisplayController(self)
+        self.camera.preview_ready.connect(self.capture_display.set_image)
         self._segmenter: Segmenter | None = None
         self._segmenter_key: tuple | None = None
 
-        self.setWindowTitle(self.theme.app_title if self.theme else "Photo Booth")
+        self.setWindowTitle(self.theme.app_title if self.theme else "Photobooth")
         self._stack = QStackedWidget()
         self._booth_frame = QFrame()
         self._booth_frame.setObjectName("boothFrame")
@@ -99,7 +105,7 @@ class MainWindow(QMainWindow):
         self._frame_overlay.raise_()
         self._frame_pixmap: QPixmap | None = None
         self._load_screen_frame()
-        self._screensaver = ScreensaverOverlay(self.theme, self._start_from_screensaver)
+        self._screensaver = ScreensaverOverlay(self.theme, self._start_from_screensaver, self._booth_frame)
         self._screensaver.setGeometry(self._booth_frame.rect())
         self._screensaver.hide()
         self._badge_timer = QTimer(self)
@@ -120,15 +126,27 @@ class MainWindow(QMainWindow):
         QApplication.instance().aboutToQuit.connect(self.mail.stop)
         QApplication.instance().aboutToQuit.connect(self.backup.stop)
         QApplication.instance().aboutToQuit.connect(self.slideshow.close)
+        QApplication.instance().aboutToQuit.connect(self.capture_display.close)
         # Raccourci de développement (les invités n'ont pas de clavier)
         QShortcut(QKeySequence("Ctrl+Shift+Q"), self).activated.connect(self.open_admin)
 
         self.go_to("home")
         if fullscreen:
             self.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
+        if self._main_screen is not None:
+            self.winId()
+            handle = self.windowHandle()
+            if handle is not None:
+                handle.setScreen(self._main_screen)
+        if fullscreen:
+            if self._main_screen is not None:
+                self.setGeometry(self._main_screen.geometry())
             self.showFullScreen()
         else:
-            self.resize(*scale.windowed_size(1280, 720, QApplication.primaryScreen()))   # sans dépasser l'écran
+            screen = self._main_screen or QApplication.primaryScreen()
+            self.resize(*scale.windowed_size(1280, 720, screen))   # sans dépasser l'écran
+            if screen is not None:
+                self.move(screen.availableGeometry().center() - self.rect().center())
             self.show()
         # Charger le modèle IA prend 1 à 2 secondes : on le fait au démarrage, pas devant le premier invité
         QTimer.singleShot(500, self._warm_up)
@@ -158,18 +176,22 @@ class MainWindow(QMainWindow):
         from .theme import build_stylesheet
         self.theme = load_theme(self.config)
         self.config.active_theme = self.theme
+        self.capture_display.reload_theme(self.theme)
         self.sounds.reload()
         self.setWindowTitle(self.theme.app_title)
         QApplication.instance().setApplicationName(self.theme.app_title)
         QApplication.instance().setStyleSheet(build_stylesheet(theme=self.theme))
         self._screensaver.deleteLater()
-        self._screensaver = ScreensaverOverlay(self.theme, self._start_from_screensaver)
+        self._screensaver = ScreensaverOverlay(self.theme, self._start_from_screensaver, self._booth_frame)
         self._screensaver.setGeometry(self._booth_frame.rect())
         self._screensaver.hide()
         self._load_screen_frame()
         home = self._screens.get("home")
         if home is not None and hasattr(home, "apply_theme"):
             home.apply_theme(self.theme)
+        guestbook = self._screens.get("guestbook")
+        if guestbook is not None and hasattr(guestbook, "apply_theme"):
+            guestbook.apply_theme(self.theme)
 
     def ensure_drive_service(self) -> bool:
         """Prépare le service QR lorsqu'il vient d'être activé dans l'administration."""
@@ -232,6 +254,7 @@ class MainWindow(QMainWindow):
             self.session.reset()  # un nouvel invité repart toujours de zéro
             self.camera.stop_camera()
         self.current_name = name
+        self.capture_display.refresh()
         screen = self._screens[name]
         self._stack.setCurrentWidget(self._wrappers[name])
         screen.on_enter()
@@ -281,6 +304,7 @@ class MainWindow(QMainWindow):
         self._screensaver_timer.stop()
         log.info("Inactivité sur l'accueil : affichage de l'écran de veille")
         self._frame_overlay.hide()
+        self._screensaver.set_photos(self.slideshow.photos(), self.config.nb_photos_veille)
         self._screensaver.setGeometry(self._booth_frame.rect())
         self._screensaver.show()
         self._screensaver.raise_()

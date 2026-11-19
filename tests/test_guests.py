@@ -130,7 +130,7 @@ class TemplateTests(unittest.TestCase):
             self.assertEqual(load_guests(path), [])                                       # titres reconnus, aucun invité
             from openpyxl import load_workbook
             sheet = load_workbook(path).active
-            self.assertEqual([c.value for c in sheet[1]], ["nom", "prénom", "mail"])
+            self.assertEqual([c.value for c in sheet[1]], ["nom", "prénom", "pseudo", "mail"])
 
     def test_fichier_existant_jamais_ecrase(self):
         with tempfile.TemporaryDirectory() as tmp:

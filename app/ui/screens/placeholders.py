@@ -61,13 +61,34 @@ class PlaceholderScreen(BaseScreen):
         row.addWidget(forward)
 
 class HomeScreen(PlaceholderScreen):
-    title = "Photo Booth"
-    note = "Prêt à créer un souvenir ?"
+    title = "Photobooth"
+    note = "Silence, ça tourne ! À vous de jouer !"
     show_back = False
     next_label = "Commencer"
 
     def __init__(self, nav) -> None:
         super().__init__(nav)
+        self._forward.setProperty("variant", "notListed")
+        self._forward.style().unpolish(self._forward)
+        self._forward.style().polish(self._forward)
+        note_font = self._note.font()
+        note_font.setBold(True)
+        self._note.setFont(note_font)
+        self._tagline = self._label(
+            "",
+            "note",
+        )
+        self._tagline.setWordWrap(False)
+        tagline_font = self._tagline.font()
+        tagline_font.setBold(False)
+        self._tagline.setFont(tagline_font)
+
+        self._camera_icon = self._label("\U0001f3a5", "homeCameraIcon")
+        # La feuille de style globale remplace setFont() : fixer la taille en QSS.
+        self._camera_icon.setStyleSheet(f"QLabel#homeCameraIcon {{ font-size: {px(44)}px; }}")
+        self._camera_icon.setFixedSize(px(56), px(56))
+        self._layout.insertWidget(3, self._camera_icon, alignment=Qt.AlignmentFlag.AlignHCenter)
+        self._layout.insertWidget(4, self._tagline, alignment=Qt.AlignmentFlag.AlignHCenter)
         self.apply_theme(nav.theme)
 
     def apply_theme(self, theme) -> None:
@@ -75,6 +96,7 @@ class HomeScreen(PlaceholderScreen):
             return
         self._title.setText(theme.welcome_title)
         self._note.setText(theme.welcome_message)
+        self._tagline.setText(theme.welcome_tagline)
         self._forward.setText(theme.start_button)
         image_path = theme.welcome_image or theme.logo
         existing = getattr(self, "_welcome_visual", None)

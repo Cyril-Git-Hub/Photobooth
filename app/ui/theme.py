@@ -13,7 +13,65 @@ QWidget {
 QLabel#title   { font-size: 56px; font-weight: 700; color: #ffd166; }
 QLabel#heading { font-size: 40px; font-weight: 700; color: #ffd166; }
 QLabel#note    { font-size: 24px; color: #b8b2d9; }
+QLabel#guestSelectPrompt {
+    background: #201d40;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 14px;
+    color: #ffd166;
+    font-size: 24px;
+    font-weight: 700;
+}
 QLabel#summary { font-size: 18px; color: #8f89b5; }
+QLabel#adminHeading { font-size: 30px; font-weight: 700; color: #ffd166; }
+QLabel#adminStatus {
+    background: #201d40;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 16px;
+}
+QDialog#adminDialog QLabel { font-size: 16px; }
+QDialog#adminDialog QLabel#adminHeading { font-size: 30px; }
+QDialog#adminDialog QLabel#adminStatus { font-size: 16px; }
+QDialog#adminDialog QGroupBox {
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 12px;
+    margin-top: 12px;
+    padding-top: 8px;
+    font-size: 18px;
+    font-weight: 600;
+    color: #ffd166;
+}
+QDialog#adminDialog QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 14px;
+    padding: 0 6px;
+}
+QDialog#adminDialog QTabWidget::pane {
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 12px;
+    background: #17152f;
+}
+QDialog#adminDialog QTabBar::tab {
+    background: #201d40;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    padding: 8px 18px;
+    min-height: 34px;
+    font-size: 17px;
+}
+QDialog#adminDialog QTabBar::tab:selected {
+    background: #3b3680;
+    color: #ffd166;
+}
+QDialog#adminDialog QPushButton {
+    border-radius: 12px;
+    padding: 7px 12px;
+    font-size: 17px;
+}
+QDialog#adminDialog QPushButton#adminPatternSetting { font-size: 17px; }
+QDialog#adminDialog QComboBox, QDialog#adminDialog QCheckBox { font-size: 16px; }
 
 QPushButton {
     border: 2px solid rgba(255, 255, 255, 0.12);
@@ -22,12 +80,36 @@ QPushButton {
     font-size: 30px;
     font-weight: 600;
 }
+QPushButton#adminAuthButton { border-radius: 14px; padding: 6px 12px; font-size: 19px; }
+QPushButton#adminAuthKey { border-radius: 14px; padding: 2px; font-size: 28px; }
+QPushButton#adminPatternSetting { border-radius: 14px; padding: 6px 12px; font-size: 18px; }
 QPushButton:hover { border-color: rgba(255, 255, 255, 0.42); }
 QPushButton#formatOptionButton { border-radius: 16px; padding: 10px 18px; font-size: 23px; }
+QPushButton#guestNameButton { border-radius: 14px; padding: 6px 10px; font-size: 22px; }
 QPushButton:disabled { color: rgba(244, 241, 255, 0.48); background: #2b2757; border-color: transparent; }
+QPushButton#guestWheelSpinButton {
+    background: #2b2757;
+    color: #ffd166;
+    border: 1px solid rgba(255, 209, 102, 0.48);
+    border-radius: 18px;
+    padding: 8px 24px;
+    font-size: 19px;
+    font-weight: 600;
+}
+QPushButton#guestWheelSpinButton:hover { background: #3b3680; border-color: #ffd166; }
+QPushButton#guestWheelSpinButton:disabled { color: #8f89b5; border-color: rgba(255, 255, 255, 0.08); }
+QLabel#challengeGateHint {
+    background: #30243c;
+    border: 1px solid rgba(255, 209, 102, 0.6);
+    border-radius: 12px;
+    color: #ffd166;
+    padding: 10px 14px;
+    font-size: 18px;
+    font-weight: 600;
+}
 QPushButton[variant="primary"] {
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ff4d8d, stop:1 #d93a75);
-    color: white; border-color: rgba(255, 255, 255, 0.24);
+    color: #ffffff; border-color: rgba(255, 255, 255, 0.24);
 }
 QPushButton[variant="primary"]:pressed { background: #d93a75; }
 QPushButton[variant="secondary"] {
@@ -35,17 +117,37 @@ QPushButton[variant="secondary"] {
     color: #f4f1ff;
 }
 QPushButton[variant="secondary"]:pressed { background: #3b3680; }
+QPushButton[variant="man"] {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3988e8, stop:1 #2465b8);
+    color: #ffffff; border-color: rgba(255, 255, 255, 0.24);
+}
+QPushButton[variant="man"]:pressed { background: #2465b8; }
+QPushButton[variant="woman"] {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #f36da8, stop:1 #cf477f);
+    color: #ffffff; border-color: rgba(255, 255, 255, 0.24);
+}
+QPushButton[variant="woman"]:pressed { background: #cf477f; }
+QPushButton[variant="notListed"] {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #39a96b, stop:1 #247a4b);
+    color: #ffffff; border-color: rgba(255, 255, 255, 0.24);
+}
+QPushButton[variant="notListed"]:pressed { background: #247a4b; }
+QPushButton[variant="surprise"] {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8b5cf6, stop:1 #6336c9);
+    color: #ffffff; border-color: rgba(255, 255, 255, 0.24);
+}
+QPushButton[variant="surprise"]:pressed { background: #6336c9; }
 QPushButton[variant="danger"] {
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #b3261e, stop:1 #8c1d18);
-    color: white; border-color: rgba(255, 255, 255, 0.2);
+    color: #ffffff; border-color: rgba(255, 255, 255, 0.2);
 }
 QPushButton[variant="danger"]:pressed { background: #8c1d18; }
 QPushButton[variant="guestbook"] {
-    background: #ffd166;
+    background: @guestbook_color@;
     color: #0b0a1a;
     border-color: rgba(255, 209, 102, 0.7);
 }
-QPushButton[variant="guestbook"]:pressed { background: #ffb347; }
+QPushButton[variant="guestbook"]:pressed { background: @guestbook_pressed_color@; }
 
 QPushButton[variant="key"]         { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3b3680, stop:1 #2b2757); color: #f4f1ff; border-radius: 14px; padding: 6px 4px; font-size: 30px; font-weight: 600; }
 QPushButton[variant="key"]:pressed { background: #ff4d8d; }
@@ -55,7 +157,7 @@ QLabel#mailfield { font-size: 44px; font-weight: 600; color: #ffd166; background
 QLabel#search    { font-size: 34px; color: #ffd166; }
 QLabel#error     { font-size: 26px; color: #ff6b6b; }
 QLabel#badge     { font-size: 18px; font-weight: 600; padding: 6px 16px; border-radius: 14px; color: #14122b; background-color: #ffb347; }
-QLabel#badge[level="error"] { color: white; background-color: #e5484d; }
+QLabel#badge[level="error"] { color: #ffffff; background-color: #e5484d; }
 QLabel#challengeReference { background-color: #201d40; border: 2px solid rgba(255, 255, 255, 0.16); border-radius: 24px; color: #b8b2d9; font-size: 24px; padding: 12px; }
 
 QToolButton { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3b3680, stop:1 #2b2757); border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 16px; padding: 10px; font-size: 18px; }
@@ -100,7 +202,20 @@ def build_stylesheet(scale: float | None = None, theme=None) -> str:
             "#3b3680": colors["secondary_pressed"], "#0b0a1a": colors["mail_background"],
             "#ff6b6b": colors["error"], "#ffb347": colors["warning"], "#b3261e": colors["danger"],
             "#8c1d18": colors["danger_pressed"], "#e5484d": colors["badge_error"],
+            "#3988e8": colors["man"], "#2465b8": colors["man_pressed"],
+            "#f36da8": colors["woman"], "#cf477f": colors["woman_pressed"],
+            "#39a96b": colors["green"], "#247a4b": colors["green_pressed"],
+            "#8b5cf6": colors["surprise"], "#6336c9": colors["surprise_pressed"],
+            "#201d40": colors["panel"], "#29264f": colors["panel_hover"],
+            "#302b5d": colors["panel_selected"],
+            "#ffc44d": colors["reference_border"], "#ffcd5f": colors["challenge_title"],
+            "#12102a": colors["challenge_panel"], "#ffffff": colors["white"],
         }
         pattern = re.compile("|".join(re.escape(color) for color in replacements))
         stylesheet = pattern.sub(lambda match: replacements[match.group(0)], stylesheet)
+    palette = theme.colors if theme is not None else {
+        "guestbook": "#ffd166", "guestbook_pressed": "#ffb347",
+    }
+    stylesheet = stylesheet.replace("@guestbook_color@", palette["guestbook"])
+    stylesheet = stylesheet.replace("@guestbook_pressed_color@", palette["guestbook_pressed"])
     return scale_stylesheet(stylesheet, scale)

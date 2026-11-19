@@ -1,4 +1,4 @@
-# Photo Booth (développement)
+# Photobooth (développement)
 
 ## Installation (Windows)
 
@@ -26,6 +26,7 @@ Commandes disponibles (avec `python main.py` en développement, ou `photobooth-o
 ```
 python tools\telecharger_modele.py                (paysage + carre, petits fichiers)
 python tools\telecharger_modele.py multiclasse    (optionnel : plus précis sur les vêtements, plus lent)
+python tools\telecharger_modele.py pose main      (requis pour les accessoires sur les mains)
 ```
 
 Les fichiers sont placés dans `models/`. Le modèle utilisé se règle dans `config.ini` : `ia_modele = paysage` (défaut), `carre` ou `multiclasse`.
@@ -42,7 +43,7 @@ le masque et le temps de calcul.
 
 ## Liste d'invités
 
-Le fichier de la liste d'invités, configuré par `[chemins] fichier_invites`, peut être `.xlsx`, `.xls` ou `.ods` (par défaut `invites.xlsx`). La première ligne contient les titres `nom`, `prénom`, `mail`,
+Le fichier de la liste d'invités, configuré par `[chemins] fichier_invites`, peut être `.xlsx`, `.xls` ou `.ods` (par défaut `invites.xlsx`). La première ligne contient les titres `nom`, `prénom`, `pseudo` (obligatoire et unique), `mail`,
 puis une ligne par invité (le mail peut rester vide : l'invité le saisira). Le fichier est relu à chaque passage sur l'écran « Qui es-tu ? »
 s'il a changé ; ferme-le dans ton tableur avant de lancer le logiciel. L'invité peut chercher son nom au clavier tactile, ou choisir
 « Je ne suis pas dans la liste ». Réglage `obligatoire` de `[mail]` : `true` supprime le bouton « Passer » de l'écran du mail.
@@ -57,8 +58,71 @@ par exemple `cadre_interface = visuels/cadre-film.png`. Le cadre complet reste a
 Le thème classique reprend les couleurs actuelles. Les anciennes ressources `fonds/`
 et `cadres/` à la racine restent utilisées si les dossiers du thème ne contiennent aucune image.
 
+Les autocollants d’un thème se placent dans `themes/<nom>/autocollants/`. Si ce dossier contient au moins un fichier valide, l’application n’affiche que ces autocollants ; sinon, elle reprend les autocollants intégrés et ceux de `autocollants/` à la racine.
+Les masques d'un theme se placent au format PNG transparent dans `themes/<nom>/masques/`. Prefixes reconnus : `cheveux_`, `dessusTete_`, `front_`, `yeux_`, `nez_`, `moustache_`, `bouche_`, `menton_`, `joues_` et `oreille_`. Joues et oreilles sont dupliquees en miroir. Si le dossier contient un masque valide, seuls ceux du theme sont proposes ; sinon, les masques integres et ceux de `masques/` a la racine sont utilises.
 Pour créer un thème, copie `themes/classique/`, renomme le dossier, modifie son `theme.ini`, puis sélectionne son nom dans `config.ini`.
 Les modifications sont prises en compte au démarrage ou avec **Recharger la configuration** dans le mode administrateur.
+
+`theme.ini` à la racine contient les couleurs et textes par défaut. Le fichier `themes/<nom>/theme.ini` surcharge ces valeurs pour le thème actif ; les options absentes héritent du fichier racine. Les textes éditoriaux réglables sont regroupés dans `[textes]` : titre de l’application et de l’accueil, phrases d’accueil, livre d’or, veille et diaporama. Les libellés de navigation restent fixes. Les couleurs de l’interface sont regroupées dans `[couleurs]` ; une couleur se note au format `#RRGGBB`. Les défis sont définis dans `themes/<nom>/defis.json` ; sans défi valide dans le thème, les défis intégrés sont utilisés.
+
+## Défis personnalisés
+
+Le thème classique fournit un modèle vide dans `themes/classique/defis.json`. Un fichier peut combiner des catégories, des défis individuels et des profils réutilisables dans `profils_accessoires`. Les chemins d’images sont relatifs au fichier `defis.json`. Un défi photo unique peut référencer un profil et donner son PNG transparent ; il est ajouté après la prise à partir des repères du bras et des 21 repères du modèle MediaPipe Hand Landmarker. Télécharge les modèles nécessaires avec `python tools\telecharger_modele.py pose main` avant la soirée.
+
+Une catégorie définit une fois les réglages communs, puis fournit une liste `images` ou un `dossier_images`. L’application crée un défi par image et génère son identifiant à partir du préfixe `id` (`imite-01`, `imite-02`, etc.). Avec `dossier_images`, les images prises en charge (`bmp`, `gif`, `jpeg`, `jpg`, `png`, `svg`, `tif`, `tiff`, `webp`) sont détectées automatiquement à la racine du dossier et triées par nom ; il suffit d’y copier les nouveaux fichiers. Les catégories utilisent le tirage aléatoire habituel des défis. Pour un défi aux réglages particuliers, ajoute un objet dans `defis`. Chaque défi a besoin d’un identifiant unique, d’un titre et d’une consigne. `actif` active ou masque le défi (`true` par défaut) ; dans une catégorie, cette option s’applique à tous les défis générés. `format` accepte `single`, `strip` ou `gif`. `decor` accepte `none`, `choose` ou `random`. Le champ facultatif `fond` impose un décor précis et remplace `decor`. Les images modèles sont fournies par `image` pour un défi individuel, ou par les sources d’une catégorie. `masque` et `style` sont facultatifs ; les styles disponibles sont `original`, `cartoon`, `sketch`, `watercolor`, `pop_art` et `manga`. Un profil d’accessoire définit une fois l’ancrage, l’orientation, l’échelle et les décalages ; chaque défi ne fournit ensuite que le nom du profil et l’image. `ancrage_corps` accepte `main` ou `poignet`, `orientation` accepte `axe_main`, `axe_avant_bras`, `verticale` ou `horizontale`, et `taille.repere` accepte `avant_bras` ou `main`. `rotation_deg` ajoute une rotation en degrés dans le sens horaire à l’orientation détectée ; `90` tourne ainsi l’objet d’un quart de tour. Les valeurs de `decalage` sont des fractions du repère de taille choisi : `0.5` décale donc l’objet de la moitié de la longueur mesurée. Dans un défi, `placement` peut remplacer ponctuellement des réglages du profil. Ainsi un sabre, une épée, un fleuret et un katana peuvent partager le même profil et n’avoir que leur image qui change. Le champ facultatif `type: "guest_wheel"` permet de tirer au sort un autre invité du fichier configuré dans `[invites]` ; il exige le format `single`. `type: "dance"` crée un défi Just Dance au format GIF : la séquence de poses apparaît sur l’écran du défi et chaque pose de référence est incrustée sur l’image correspondante du GIF, affichée deux secondes. Ce défi démarre directement en mode espacé et boucle, sans réglages GIF ni choix d’accessoires. Les champs `_commentaire` sont ignorés par l’application. Si aucun défi valide n’est défini pour le thème, les défis intégrés restent disponibles.
+
+Le paramètre `couche` d’un profil vaut `devant` (défaut) ou `derriere`. `derriere` réincruste la main par-dessus l’accessoire à partir de ses 21 repères ; l’objet reste devant le bras et le corps.
+
+Le paramètre `sens` vaut `libre` (défaut) ou `vers_le_haut`. Pour `vers_le_haut`, l’accessoire est retourné de 180° si nécessaire afin que la lame pointe vers le haut de la photo, même si l’axe détecté de la main s’inverse.
+
+Pour équiper les deux mains différemment, `accessoire.images` accepte une paire `gauche`/`droite`, ou des paires distinctes sous `paume` et `dos`. Avec les deux vues, MediaPipe choisit l’image selon l’orientation détectée de la main ; une vue de tranche ou ambiguë utilise celle de la paume. Le réglage miroir de la caméra est pris en compte pour la latéralité et l’orientation.
+
+Pour faire apparaître le décor à la place de certaines parties du corps, ajoute `corps_masquer` au défi et fournis un `fond` ou choisis un décor. Les choix sont `jambe_gauche`, `jambe_droite`, `bras_gauche`, `bras_droit`, `sous_taille`, `tete` et `haut_corps`. La segmentation corporelle reconnaît notamment pantalon, chaussures, visage, bras et jambes ; `"sous_taille"` utilise aussi les repères de pose des hanches et des jambes pour rester utilisable lorsque le pantalon est mal classé, sans effacer les bras ni toute la zone sous une ligne horizontale. Les robes et jupes sont conservées pour éviter de supprimer aussi le haut du vêtement. Télécharge les modèles requis avec `python tools\telecharger_modele.py corps pose` ; le modèle de segmentation est [SegFormer-B0 human parsing](https://huggingface.co/mattmdjaga/segformer_b0_clothes), distribué sous licence MIT.
+
+```json
+"images": {
+  "paume": {"gauche": "defis/gant-paume-gauche.png", "droite": "defis/gant-paume-droit.png"},
+  "dos": {"gauche": "defis/gant-dos-gauche.png", "droite": "defis/gant-dos-droit.png"}
+}
+```
+
+```json
+{
+  "profils_accessoires": {
+    "arme_tenue_en_main": {
+      "ancrage_corps": "main",
+      "orientation": "axe_main",
+      "ancrage_image": {"x": 0.5, "y": 0.82},
+      "taille": {"repere": "avant_bras", "ratio": 2.7},
+      "rotation_deg": 0,
+      "decalage": {"x": 0, "y": 0}
+    }
+  },
+  "categories": [{
+    "id": "imite",
+    "titre": "Copie cette pose",
+    "consigne": "Imite la pose de l’image modèle.",
+    "format": "single",
+    "decor": "none",
+    "fond": "",
+    "masque": "",
+    "style": "",
+    "images": ["defis/pose1.jpg", "defis/pose2.jpg"]
+  }],
+  "defis": [{
+    "id": "katana",
+    "titre": "Samouraï",
+    "consigne": "Prends la pose d'un samouraï.",
+    "format": "single",
+    "decor": "none",
+    "accessoire": {
+      "profil": "arme_tenue_en_main",
+      "image": "defis/katana.png",
+      "placement": {"taille": {"ratio": 2.2}}
+    }
+  }]
+}
+```
 
 ## Cadres photo
 
@@ -83,7 +147,7 @@ Sans second écran, rien ne s'affiche et il n'y a aucune erreur. Réglages dans 
   essais d'un envoi (ils attendent le retour du réseau, avec 2 minutes au plus entre deux essais).
 - Voyant en haut à droite (`indicateur_organisateur` dans `[general]`), caché pendant la prise de vue et quand tout va bien.
 - Mode admin : « Réessayer maintenant » et « Exporter les envois non partis » (dossier `exports/envois-AAAAMMJJ-HHMMSS/` : photos + `envois.csv` + `LISEZMOI.txt`).
-- Section `[sauvegarde]` : `dossier = ...` recopie chaque photo validée (et ses poses) en gardant l'arborescence `AAAA-MM-JJ/`.
+- Section `[sauvegarde]` : `dossier = ...` recopie chaque photo validée (et ses poses) en gardant l'arborescence `soiree_DATE/` ou `hors-soiree_DATE/`.
   Destination débranchée : les photos restent à copier, et partent dès qu'elle revient. Journal : `data/sauvegarde.jsonl`.
 
 ## Envoi des photos par mail
@@ -103,7 +167,7 @@ Le mode administrateur affiche l'état des envois et permet de renvoyer ceux en 
 
 ## Mode photomaton
 
-L'invité choisit « Une seule photo » ou « Photomaton » : `nb_poses` photos (4 par défaut) prises à la suite, avec un décompte avant chacune (`duree_decompte` pour la première, `decompte_entre_poses` ensuite), puis assemblées en une bande verticale avec un titre et la date (section `[photomaton]` de `config.ini` : titre, couleurs). La bande est enregistrée dans `photos/AAAA-MM-JJ/` et les poses individuelles dans `photos/AAAA-MM-JJ/poses/`.
+L'invité choisit « Une seule photo » ou « Photomaton » : `nb_poses` photos (4 par défaut) prises à la suite, avec un décompte avant chacune (`duree_decompte` pour la première, `decompte_entre_poses` ensuite), puis assemblées en une bande verticale avec un titre et la date (section `[photomaton]` de `config.ini` : titre, couleurs). La bande est enregistrée dans `photos/soiree_DATE/` ou `photos/hors-soiree_DATE/` selon qu'une soir&eacute;e est active ; les poses individuelles sont dans le sous-dossier `poses/`.
 
 ## Styles photo
 
@@ -126,7 +190,7 @@ Dépose tes images (jpg, png, webp) dans les sous-dossiers de `fonds/` : un sous
 
 ## Lancer
 
-En développement sous Windows, lance `lancer-dev.bat` depuis la racine du dépôt. Il utilise `.venv` et ouvre l'application dans une fenêtre. Dans VS Code, tu peux aussi choisir **Run and Debug > Photo Booth (interface)** (F5).
+En développement sous Windows, lance `lancer-dev.bat` depuis la racine du dépôt. Il utilise `.venv` et ouvre l'application dans une fenêtre. Dans VS Code, tu peux aussi choisir **Run and Debug > Photobooth (interface)** (F5).
 
 ```
 python main.py --windowed     (développement, fenêtre normale)
@@ -135,7 +199,7 @@ python main.py                (plein écran, mode soirée)
 
 Au premier lancement, `config.ini`, `photos/`, `fonds/` (avec les 4 thèmes) et `logs/` sont créés.
 
-Les photos sont enregistrées dans `photos/AAAA-MM-JJ/HHMMSS.jpg`.
+Les photos sont enregistrées dans `photos/soiree_YYYY-MM-DD/` ou `photos/hors-soiree_YYYY-MM-DD/`, avec les fichiers nomm&eacute;s `HHMMSS.jpg`.
 
 ## Tests (sans PyQt6)
 
@@ -145,5 +209,5 @@ python -m unittest discover -s tests -t .
 
 ## Accès administrateur
 
-- Dans l'appli : 3 appuis rapides dans le coin haut gauche de l'écran, puis le code (`code_admin`, 1234 par défaut).
+- Dans l'appli : 5 appuis rapides dans le coin haut gauche de l'écran, puis le schéma tactile par défaut (1-2-3-6-9) ou le code (`code_admin`, 1234 par défaut). Le menu admin permet de définir un nouveau schéma et de choisir la méthode proposée par défaut.
 - En développement : `Ctrl+Maj+Q`.

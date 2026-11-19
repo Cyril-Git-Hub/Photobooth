@@ -90,7 +90,8 @@ class StickerPreview(PreviewWidget):
                 rect = QRectF(-sticker_width / 2, -sticker_height / 2, sticker_width, sticker_height)
                 painter.drawPixmap(rect, pixmap, QRectF(pixmap.rect()))
                 if index == self.selected_index:
-                    painter.setPen(QPen(QColor("#ffd166"), 2, Qt.PenStyle.DashLine))
+                    painter.setPen(QPen(QColor(self._colors.get("accent", "#ffd166")),
+                                        2, Qt.PenStyle.DashLine))
                     painter.drawRect(rect)
                 painter.restore()
         finally:

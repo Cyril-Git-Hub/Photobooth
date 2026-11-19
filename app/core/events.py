@@ -107,6 +107,17 @@ class EventStore:
         log.info("Nouvelle soirée démarrée : %s (%s)", name, event_id)
         return event
 
+    def end_event(self) -> Event | None:
+        """Cloture la soiree active sans supprimer son historique ni ses photos."""
+        with closing(self._connect()) as connection, connection:
+            row = connection.execute("SELECT * FROM events WHERE active = 1").fetchone()
+            if row is None:
+                return None
+            connection.execute("UPDATE events SET active = 0 WHERE id = ?", (row["id"],))
+        event = Event(row["id"], row["name"], row["started_at"], False)
+        log.info("Soiree terminee : %s (%s)", event.name, event.id)
+        return event
+
     def record_photo(self, event_id: str, email: str, first_name: str, last_name: str,
                      path: Path, media_type: str, now: datetime | None = None) -> None:
         email = email.strip().casefold()

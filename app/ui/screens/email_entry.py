@@ -1,16 +1,21 @@
 """Adresse mail : confirmation ou correction de celle de la liste, ou saisie, au clavier virtuel."""
 from __future__ import annotations
 
+import logging
+
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QMessageBox, QVBoxLayout
 
 from ...core.emails import MSG_INVALID, is_valid_email, normalize_email
+from ...core.guests import GuestListError, update_guest_emails
 from ...core.keyboards import EMAIL_ROWS
 from ...core.text_buffer import TextBuffer
 from ..widgets.big_button import BigButton
 from ..widgets.virtual_keyboard import VirtualKeyboard
 from .base import BaseScreen
 from ..scale import px
+
+log = logging.getLogger(__name__)
 
 
 class EmailEntryScreen(BaseScreen):
@@ -41,7 +46,7 @@ class EmailEntryScreen(BaseScreen):
         self._skip = BigButton("Passer", "secondary")
         self._skip.clicked.connect(lambda: self._on_skip())
         validate = BigButton("Valider")
-        validate.clicked.connect(lambda: self._on_validate())
+        validate.clicked.connect(self._on_validate)
         for button in (back, self._skip, validate):
             button.setObjectName("emailNavButton")
             button.setMinimumSize(px(180), px(60))
@@ -64,7 +69,7 @@ class EmailEntryScreen(BaseScreen):
         layout.addLayout(buttons)
 
     def on_enter(self) -> None:
-        first_name = self.session.guest_first_name
+        first_name = self.session.guest_pseudo or self.session.guest_first_name
         known = bool(self.session.email)
         self._buffer.set(self.session.email)
         self._heading.setText(f"Salut {first_name} !" if first_name else "Ton adresse mail")
@@ -93,10 +98,33 @@ class EmailEntryScreen(BaseScreen):
         self._refresh()
 
     def _on_validate(self) -> None:
+        log.info("Validation du mail demandée")
         if not is_valid_email(self._buffer.value):
-            self._error.setText(MSG_INVALID)
+            QMessageBox.warning(self, "Adresse mail invalide", MSG_INVALID)
             return
-        self.session.email = normalize_email(self._buffer.value)
+        email = normalize_email(self._buffer.value)
+        if self.session.guest_from_list:
+            try:
+                update_guest_emails(
+                    self.config.fichier_invites,
+                    {self.session.guest_pseudo: email},
+                )
+            except GuestListError as exc:
+                # Une erreur d'accès/format de la liste ne doit pas bloquer la séance.
+                # L'adresse reste disponible pour cette photo, même si elle ne peut
+                # pas être mémorisée pour les prochaines visites.
+                QMessageBox.warning(
+                    self, "Adresse non mémorisée",
+                    f"{exc}\n\nLa séance continue avec cette adresse, mais elle ne sera pas conservée dans la liste.",
+                )
+            except Exception as exc:
+                log.exception("Erreur inattendue pendant l'enregistrement du mail invité")
+                QMessageBox.warning(
+                    self, "Adresse non mémorisée",
+                    f"Impossible d'enregistrer cette adresse dans la liste ({exc}).\n\n"
+                    "La séance continue avec cette adresse, mais elle ne sera pas conservée dans la liste.",
+                )
+        self.session.email = email
         self.nav.go_next()
 
     def _on_skip(self) -> None:

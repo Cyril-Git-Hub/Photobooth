@@ -12,6 +12,16 @@ def write_ini(base: Path, content: str, encoding: str = "utf-8") -> None:
 
 
 class ConfigTests(unittest.TestCase):
+    def test_efface_tous_les_masques_virtuels_de_la_session(self):
+        session = Session()
+        session.virtual_mask_path = Path("ancien.png")
+        session.virtual_mask_paths = [Path("ancien.png"), Path("autre.png")]
+
+        session.clear_virtual_masks()
+
+        self.assertIsNone(session.virtual_mask_path)
+        self.assertEqual(session.virtual_mask_paths, [])
+
     def test_fichier_par_defaut_cree(self):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
@@ -21,6 +31,46 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(cfg.nb_poses, 4)
             self.assertEqual(cfg.dossier_photos, base.resolve() / "photos")
             self.assertEqual(cfg.fichier_invites, base.resolve() / "invites.xlsx")
+            self.assertEqual(cfg.ecran_principal, "auto")
+            self.assertEqual(cfg.nb_photos_veille, 15)
+
+    def test_enregistre_nombre_photos_de_veille_sans_ecraser_le_reste(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            write_ini(base, "[general]\nplein_ecran = true\n[mail]\nsmtp_hote = mail.example\n")
+            cfg = Config.load(base_dir=base)
+
+            cfg.save_screensaver_photo_count(20)
+
+            self.assertEqual(cfg.nb_photos_veille, 20)
+            content = cfg.config_path.read_text(encoding="utf-8")
+            self.assertIn("nb_photos_veille = 20", content)
+            self.assertIn("smtp_hote = mail.example", content)
+            self.assertTrue(cfg.config_path.with_suffix(".ini.bak").exists())
+            with self.assertRaises(ValueError):
+                cfg.save_screensaver_photo_count(21)
+
+    def test_nombre_photos_veille_invalide_revient_au_defaut(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            write_ini(base, "[general]\nnb_photos_veille = 21\n")
+
+            with self.assertLogs("app.config", level="WARNING"):
+                cfg = Config.load(base_dir=base)
+
+            self.assertEqual(cfg.nb_photos_veille, 15)
+
+    def test_enregistre_lecran_principal_sans_ecraser_le_reste(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            write_ini(base, "[general]\nplein_ecran = true\n[mail]\nsmtp_hote = mail.example\n")
+            cfg = Config.load(base_dir=base)
+            cfg.save_main_screen(r"\\.\DISPLAY2")
+            self.assertEqual(cfg.ecran_principal, r"\\.\DISPLAY2")
+            content = cfg.config_path.read_text(encoding="utf-8")
+            self.assertIn("ecran_principal = \\\\.\\DISPLAY2", content)
+            self.assertIn("smtp_hote = mail.example", content)
+            self.assertTrue(cfg.config_path.with_suffix(".ini.bak").exists())
 
     def test_option_miroir_unique(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -58,6 +108,23 @@ class ConfigTests(unittest.TestCase):
             self.assertFalse(cfg.apercu_incruste)
             self.assertEqual((cfg.fv_teinte_min, cfg.fv_teinte_max, cfg.fv_adoucissement), (40, 80, 5))
             self.assertFalse(cfg.fv_despill)
+
+    def test_enregistrement_seuils_fond_vert_preserve_le_reste(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            write_ini(base, "[general]\nmode_detourage = fond_vert\n"
+                            "[fond_vert]\nteinte_min = 35\nteinte_max = 85\n"
+                            "saturation_min = 25\nvaleur_min = 20\ndespill = false\n"
+                            "[mail]\nsmtp_hote = exemple.test\n")
+            cfg = Config.load(base_dir=base)
+            cfg.save_chroma_settings(72, 108, 18, 12)
+            self.assertEqual((cfg.fv_teinte_min, cfg.fv_teinte_max,
+                              cfg.fv_saturation_min, cfg.fv_valeur_min), (72, 108, 18, 12))
+            self.assertFalse(cfg.fv_despill)
+            parser = Config._new_parser()
+            parser.read(cfg.config_path, encoding="utf-8")
+            self.assertEqual(parser["mail"]["smtp_hote"], "exemple.test")
+            self.assertTrue(cfg.config_path.with_suffix(".ini.bak").exists())
 
     def test_choix_du_modele_ia(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -131,7 +198,7 @@ class ConfigTests(unittest.TestCase):
     def test_reglages_du_mail_par_defaut(self):
         with tempfile.TemporaryDirectory() as tmp:
             cfg = Config.load(base_dir=Path(tmp))
-            self.assertEqual((cfg.mail_securite, cfg.mail_utilisateur, cfg.mail_nom_expediteur), ("auto", "", "Photo Booth"))
+            self.assertEqual((cfg.mail_securite, cfg.mail_utilisateur, cfg.mail_nom_expediteur), ("auto", "", "Photobooth"))
             self.assertEqual(cfg.mail_objet, "Ta photo du photobooth est prête !")
             self.assertTrue(cfg.mail_message.startswith("{salutation}\n\nTa photo"))     # vrais retours à la ligne
             self.assertEqual(cfg.fichier_envois, Path(tmp).resolve() / "data" / "envois.sqlite3")
@@ -155,7 +222,7 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(cfg.mail_securite, "auto")
             self.assertEqual(cfg.mail_objet, "Ta photo du photobooth est prête !")      # valeurs par défaut conservées
             self.assertIn("{salutation}", cfg.mail_message)
-            self.assertEqual(cfg.mail_nom_expediteur, "Photo Booth")
+            self.assertEqual(cfg.mail_nom_expediteur, "Photobooth")
 
     def test_le_fichier_genere_contient_le_message_sur_une_ligne(self):
         with tempfile.TemporaryDirectory() as tmp:

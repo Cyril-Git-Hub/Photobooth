@@ -58,7 +58,7 @@ class BackgroundSelectScreen(BaseScreen):
         self._back.clicked.connect(self._go_back)
         self._none = BigButton("Sans décor", "secondary")
         self._none.clicked.connect(lambda: self._no_background())
-        surprise = BigButton("Surprends-moi !")
+        surprise = BigButton("Surprends-moi !", "surprise")
         surprise.clicked.connect(lambda: self._surprise())
         buttons = QHBoxLayout()
         buttons.setSpacing(px(30))
@@ -104,7 +104,7 @@ class BackgroundSelectScreen(BaseScreen):
         self._clear(self._tabs)
         self._tabs.addStretch(1)
         for index, theme in enumerate(self._themes):
-            tab = BigButton(theme.name, "primary" if index == self._current else "secondary")
+            tab = BigButton(theme.name, "notListed" if index == self._current else "secondary")
             tab.setMinimumSize(px(160), px(64))
             tab.clicked.connect(lambda _checked=False, i=index: self._select_theme(i))
             self._tabs.addWidget(tab)

@@ -102,7 +102,7 @@ class BackupService:
 
     def _target(self, path: Path, destination: Path) -> Path:
         try:
-            relative = path.relative_to(self._config.dossier_photos)     # garde l'arborescence AAAA-MM-JJ/ et poses/
+            relative = path.relative_to(self._config.dossier_photos)     # conserve soiree_DATE/hors-soiree_DATE et poses/
         except ValueError:
             relative = Path(path.name)
         return destination / relative

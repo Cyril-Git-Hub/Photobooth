@@ -3,13 +3,13 @@ from __future__ import annotations
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QPushButton
-from ..scale import px
+from ..scale import px, touch_px
 
 
 class BigButton(QPushButton):
     def __init__(self, text: str, variant: str = "primary", parent=None) -> None:
         super().__init__(text, parent)
         self.setProperty("variant", variant)
-        self.setMinimumSize(px(260), px(90))
+        self.setMinimumSize(px(260), touch_px(90))
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)  # pas de cadre de focus au doigt

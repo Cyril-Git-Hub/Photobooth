@@ -1,4 +1,4 @@
-"""État d'un passage devant le photo booth : remis à zéro à chaque retour à l'accueil."""
+"""État d'un passage devant le Photobooth : remis à zéro à chaque retour à l'accueil."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -6,11 +6,15 @@ from pathlib import Path
 
 import numpy as np
 
+from .core.accessory_config import AccessorySpec
+
 
 @dataclass
 class Session:
     guest_last_name: str = ""
     guest_first_name: str = ""
+    guest_pseudo: str = ""
+    guest_from_list: bool = False
     email: str = ""
     photo_format: str = "single"        # "single" (photo), "strip" (photomaton), "gif"
     gif_capture_mode: str = "spaced"     # "spaced" ou "burst"
@@ -26,8 +30,15 @@ class Session:
     challenge_instruction: str = ""
     challenge_background_required: bool = False
     challenge_mask: str = ""
+    challenge_accessory: AccessorySpec | None = None
+    challenge_body_cutouts: frozenset[str] = frozenset()
     challenge_style: str = ""
+    challenge_reference_png: bytes | None = None
+    challenge_guest_name: str = ""
+    challenge_type: str = "photo"
+    dance_pose_ids: list[int] = field(default_factory=list)
     event_id: str = ""
+    event_started_at: float = 0.0
     photo_source_frame: np.ndarray | None = None  # image caméra sans décor, gardée pour segmenter le sujet au résultat
     photo_style: str = "original"
     photo_style_person_only: bool = False
@@ -36,7 +47,11 @@ class Session:
 
     @property
     def display_name(self) -> str:
-        return f"{self.guest_first_name} {self.guest_last_name}".strip()
+        return self.guest_pseudo or f"{self.guest_first_name} {self.guest_last_name}".strip()
+
+    def clear_virtual_masks(self) -> None:
+        self.virtual_mask_path = None
+        self.virtual_mask_paths.clear()
 
     def reset(self) -> None:
         self.__dict__.update(vars(Session()))

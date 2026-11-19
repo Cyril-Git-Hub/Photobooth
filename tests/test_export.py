@@ -12,7 +12,7 @@ NOW = datetime(2026, 10, 17, 22, 5, 9)
 
 class ExportTests(unittest.TestCase):
     def setUp(self):
-        self._tmp = tempfile.TemporaryDirectory(prefix="Photo Booth é ")
+        self._tmp = tempfile.TemporaryDirectory(prefix="Photobooth é ")
         self.addCleanup(self._tmp.cleanup)
         self.base = Path(self._tmp.name)
         self.queue = MailQueue(self.base / "data" / "envois.sqlite3")

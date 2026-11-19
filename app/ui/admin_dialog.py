@@ -1,38 +1,99 @@
-"""Accès administrateur : protégé par un code, caché derrière un geste (voir main_window.py)."""
+"""Accès administrateur : schéma ou code tactile, derrière un geste (voir main_window.py)."""
 from __future__ import annotations
 
+import hmac
 import logging
+from datetime import datetime
 from typing import TYPE_CHECKING
 
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import QSize, Qt, QTimer
+from PyQt6.QtGui import QScreen
 from PyQt6.QtWidgets import (
-    QApplication, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QGridLayout, QHBoxLayout, QInputDialog,
-    QLabel, QLineEdit, QMessageBox, QScrollArea, QSlider, QVBoxLayout, QWidget,
+    QApplication, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QGridLayout, QGroupBox, QHBoxLayout,
+    QHeaderView, QLabel, QListView, QMessageBox, QScrollArea, QSlider, QTabWidget, QTableWidget,
+    QScroller, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
 from ..core.contact_sheets import create_contact_sheets
+from ..core.emails import is_valid_email, normalize_email
+from ..core.guests import Guest, GuestListError, load_guests, update_guest_emails
+from ..core.keyboards import EMAIL_ROWS
+from ..core.text_buffer import TextBuffer
 from ..core.video_guestbook import delete_recordings, event_folder, list_recordings
 from .files import open_folder
+from .green_screen_dialog import GreenScreenCalibrationDialog
+from .admin_auth import PatternDialog, PinDialog
 from .widgets.big_button import BigButton
-from .scale import px
+from .widgets.virtual_keyboard import VirtualKeyboard
+from .scale import px, touch_px
 
 if TYPE_CHECKING:
     from .main_window import MainWindow
 
 log = logging.getLogger(__name__)
 
-BUTTON_HEIGHT = 64    # plus bas que les boutons des invités : la boîte doit tenir sur un petit écran
+BUTTON_HEIGHT = 56
+
+
+def _configure_admin_combo(combo: QComboBox) -> None:
+    combo.setMinimumHeight(touch_px(56))
+    combo.setMaxVisibleItems(8)
+    view = QListView(combo)
+    view.setUniformItemSizes(True)
+    view.setSpacing(0)
+    view.setWordWrap(False)
+    view.setTextElideMode(Qt.TextElideMode.ElideRight)
+    view.setStyleSheet(
+        f"QListView {{ font-size: {px(18)}px; background: #201d40; color: #f4f1ff; outline: none; }}"
+        "QListView::item { padding: 0px; margin: 0px; }"
+        "QListView::item:hover, QListView::item:selected { background: #3b3680; color: #ffd166; }"
+    )
+    combo.setView(view)
+
+
+def _set_admin_combo_item_size(combo: QComboBox, index: int) -> None:
+    combo.setItemData(
+        index, QSize(combo.width(), touch_px(48)), Qt.ItemDataRole.SizeHintRole
+    )
+
+
+def _show_fullscreen_on_screen(dialog: QDialog, screen: QScreen | None) -> None:
+    if screen is not None:
+        dialog.winId()
+        handle = dialog.windowHandle()
+        if handle is not None:
+            handle.setScreen(screen)
+        dialog.setGeometry(screen.geometry())
+    dialog.setWindowState(dialog.windowState() | Qt.WindowState.WindowFullScreen)
+
+
+class _AdminComboBox(QComboBox):
+    def showPopup(self) -> None:
+        for index in range(self.count()):
+            _set_admin_combo_item_size(self, index)
+        super().showPopup()
 
 
 def open_admin_dialog(window: "MainWindow") -> None:
-    code, ok = QInputDialog.getText(
-        window, "Accès administrateur", "Code :", QLineEdit.EchoMode.Password)
-    if not ok:
-        return
-    if code != window.config.code_admin:
-        log.warning("Code administrateur incorrect")
-        QMessageBox.warning(window, "Accès refusé", "Code incorrect.")
-        return
+    mode = window.config.admin_auth_mode
+    while True:
+        if mode == "code":
+            dialog = PinDialog(window)
+            expected = window.config.code_admin
+        else:
+            dialog = PatternDialog(window)
+            expected = window.config.admin_pattern
+        result = dialog.exec()
+        if dialog.switch_to:
+            mode = dialog.switch_to
+            continue
+        if result != QDialog.DialogCode.Accepted:
+            return
+        if not hmac.compare_digest(dialog.value or "", expected):
+            log.warning("Code administrateur incorrect")
+            QMessageBox.warning(window, "Accès refusé", "Code ou schéma incorrect.")
+            return
+        break
     log.info("Accès administrateur ouvert")
     AdminDialog(window).exec()
 
@@ -41,63 +102,200 @@ class AdminDialog(QDialog):
     def __init__(self, window: "MainWindow") -> None:
         super().__init__(window)
         self._window = window
+        self.setObjectName("adminDialog")
         self.setWindowTitle("Administration")
-        self.setMinimumWidth(px(760))
+        screen = window.screen() or getattr(window, "_main_screen", None) or QApplication.primaryScreen()
+        available = screen.availableGeometry() if screen else None
+        available_width = available.width() if available else px(1280)
+        available_height = available.height() if available else px(800)
+        self.setMinimumSize(min(px(760), max(320, available_width - px(32))),
+                            min(px(480), max(300, available_height - px(32))))
 
-        layout = QVBoxLayout(self)
-        layout.setSpacing(px(10))
+        outer_layout = QVBoxLayout(self)
+        outer_layout.setContentsMargins(px(20), px(16), px(20), px(16))
+        outer_layout.setSpacing(px(12))
+        heading = QLabel("Administration")
+        heading.setObjectName("adminHeading")
+        outer_layout.addWidget(heading)
+        tabs = QTabWidget()
+        tabs.tabBar().setMinimumHeight(touch_px(56))
+        outer_layout.addWidget(tabs, 1)
+
+        settings_page = QWidget()
+        settings_layout = QVBoxLayout(settings_page)
+        settings_layout.setContentsMargins(px(8), px(12), px(8), px(8))
+        settings_layout.setSpacing(px(12))
         self._info = QLabel()
         self._mail_info = QLabel()
         self._backup_info = QLabel()
         self._slideshow_info = QLabel()
         for label in (self._info, self._mail_info, self._backup_info, self._slideshow_info):
             label.setWordWrap(True)
-            layout.addWidget(label)
+            label.setObjectName("adminStatus")
+        status_grid = QGridLayout()
+        status_grid.setHorizontalSpacing(px(18))
+        status_grid.setVerticalSpacing(px(6))
+        status_grid.addWidget(self._info, 0, 0, 1, 2)
+        settings_layout.addLayout(status_grid)
+
+        settings_columns = QHBoxLayout()
+        settings_columns.setSpacing(px(14))
+        settings_layout.addLayout(settings_columns, 1)
+        booth_group = QGroupBox("Réglages de la borne")
+        booth_layout = QVBoxLayout(booth_group)
+        booth_layout.setContentsMargins(px(14), px(18), px(14), px(12))
+        booth_layout.setSpacing(px(10))
+        settings_columns.addWidget(booth_group, 1)
+        account_group = QGroupBox("Accès et invités")
+        account_layout = QVBoxLayout(account_group)
+        account_layout.setContentsMargins(px(14), px(18), px(14), px(12))
+        account_layout.setSpacing(px(10))
+        settings_columns.addWidget(account_group, 1)
+
+        booth_layout.addWidget(QLabel("Écran tactile de la borne (appliqué au prochain lancement)"))
+        self._main_screen = _AdminComboBox()
+        _configure_admin_combo(self._main_screen)
+        self._main_screen.addItem("Automatique — écran principal Windows", "auto")
+        qapp = QApplication.instance()
+        available_screens = qapp.screens() if qapp is not None else []
+        screen_names = {screen.name() for screen in available_screens}
+        configured_screen = window.config.ecran_principal
+        if configured_screen != "auto" and configured_screen not in screen_names:
+            self._main_screen.addItem(f"Écran mémorisé indisponible — {configured_screen}", configured_screen)
+        for index, screen in enumerate(available_screens, start=1):
+            geometry = screen.geometry()
+            details = " ".join(part for part in (screen.manufacturer(), screen.model(), screen.name()) if part)
+            primary = " — principal Windows" if screen is qapp.primaryScreen() else ""
+            self._main_screen.addItem(
+                f"Écran {index} — {details} — {geometry.width()} × {geometry.height()}{primary}",
+                screen.name(),
+            )
+        self._main_screen.setCurrentIndex(self._main_screen.findData(configured_screen))
+        self._main_screen.currentIndexChanged.connect(self._on_main_screen_changed)
+        booth_layout.addWidget(self._main_screen)
 
         sound_row = QHBoxLayout()
         self._sound_active = QCheckBox("Effets sonores activés")
+        self._sound_active.setMinimumHeight(touch_px(56))
         self._sound_active.setChecked(window.config.son_active)
         self._sound_active.toggled.connect(self._on_sound_active_changed)
         sound_row.addWidget(self._sound_active)
         sound_row.addWidget(QLabel("Volume"))
         self._sound_volume = QSlider(Qt.Orientation.Horizontal)
         self._sound_volume.setRange(0, 100)
+        self._sound_volume.setMinimumHeight(touch_px(56))
+        self._sound_volume.setStyleSheet(
+            f"QSlider::groove:horizontal {{ height: {px(6)}px; }} "
+            f"QSlider::handle:horizontal {{ width: {touch_px(32)}px; margin: -{px(12)}px 0; }}"
+        )
         self._sound_volume.setValue(window.config.son_volume)
         self._sound_volume.valueChanged.connect(self._on_sound_volume_changed)
         self._sound_volume.sliderReleased.connect(self._persist_sound_settings)
         sound_row.addWidget(self._sound_volume, 1)
         self._sound_volume_label = QLabel(f"{window.config.son_volume} %")
         sound_row.addWidget(self._sound_volume_label)
-        layout.addLayout(sound_row)
+        booth_layout.addLayout(sound_row)
+        booth_layout.addWidget(QLabel("Décompte avant la prise de vue"))
+        self._countdown = _AdminComboBox()
+        _configure_admin_combo(self._countdown)
+        for seconds in range(1, 11):
+            self._countdown.addItem(f"{seconds} seconde" + ("s" if seconds != 1 else ""), seconds)
+        self._countdown.setCurrentIndex(self._countdown.findData(window.config.duree_decompte))
+        self._countdown.currentIndexChanged.connect(self._on_countdown_changed)
+        booth_layout.addWidget(self._countdown)
+        booth_layout.addWidget(QLabel("Photos animées sur l’écran de veille"))
+        self._screensaver_photo_count = _AdminComboBox()
+        _configure_admin_combo(self._screensaver_photo_count)
+        for count in range(1, 21):
+            self._screensaver_photo_count.addItem(f"{count} photo" + ("s" if count != 1 else ""), count)
+        self._screensaver_photo_count.setCurrentIndex(
+            self._screensaver_photo_count.findData(window.config.nb_photos_veille))
+        self._screensaver_photo_count.currentIndexChanged.connect(
+            self._on_screensaver_photo_count_changed)
+        booth_layout.addWidget(self._screensaver_photo_count)
+        account_layout.addWidget(QLabel("Déverrouillage administrateur"))
+        self._admin_auth_mode = _AdminComboBox()
+        _configure_admin_combo(self._admin_auth_mode)
+        self._admin_auth_mode.addItem("Schéma tactile", "pattern")
+        self._admin_auth_mode.addItem("Code numérique", "code")
+        self._admin_auth_mode.setCurrentIndex(
+            self._admin_auth_mode.findData(window.config.admin_auth_mode))
+        self._admin_auth_mode.currentIndexChanged.connect(self._on_admin_auth_mode_changed)
+        account_layout.addWidget(self._admin_auth_mode)
+        self._pattern_button = BigButton("Définir le schéma", "secondary")
+        self._pattern_button.setObjectName("adminPatternSetting")
+        self._pattern_button.setMinimumSize(px(220), px(BUTTON_HEIGHT))
+        self._pattern_button.clicked.connect(self._define_admin_pattern)
+        account_layout.addWidget(self._pattern_button)
         self._sound_save_timer = QTimer(self)
         self._sound_save_timer.setSingleShot(True)
         self._sound_save_timer.setInterval(500)
         self._sound_save_timer.timeout.connect(self._persist_sound_settings)
         self.finished.connect(lambda _result: self._persist_sound_settings())
 
+        booth_layout.addWidget(QLabel("Mode de détourage"))
+        self._detourage_mode = _AdminComboBox()
+        _configure_admin_combo(self._detourage_mode)
+        self._detourage_mode.addItem("Intelligence artificielle", "ia")
+        self._detourage_mode.addItem("Fond vert", "fond_vert")
+        self._detourage_mode.setCurrentIndex(self._detourage_mode.findData(window.config.mode_detourage))
+        self._detourage_mode.currentIndexChanged.connect(self._on_detourage_mode_changed)
+        booth_layout.addWidget(self._detourage_mode)
+
+        self._chroma_button = BigButton("Régler le fond vert avec la webcam", "secondary")
+        self._chroma_button.setMinimumSize(px(260), px(BUTTON_HEIGHT))
+        self._chroma_button.clicked.connect(self._calibrate_green_screen)
+        booth_layout.addWidget(self._chroma_button)
+        self._update_chroma_controls()
+
         activation_button = BigButton("Gérer les activations", "secondary")
         activation_button.clicked.connect(self._manage_activations)
-        layout.addWidget(activation_button)
+        account_layout.addWidget(activation_button)
 
-        event_label = QLabel("Soirée et planches-contact")
-        event_label.setStyleSheet("font-weight: bold")
-        layout.addWidget(event_label)
+        guest_email_button = BigButton("Corriger les mails des invités", "secondary")
+        guest_email_button.setMinimumSize(px(260), px(BUTTON_HEIGHT))
+        guest_email_button.clicked.connect(self._edit_guest_emails)
+        account_layout.addWidget(guest_email_button)
+        account_layout.addStretch(1)
+
+        event_page = QWidget()
+        event_layout = QVBoxLayout(event_page)
+        event_layout.setContentsMargins(px(8), px(12), px(8), px(8))
+        event_layout.setSpacing(px(14))
+        event_group = QGroupBox("Soirée et planches-contact")
+        event_group_layout = QVBoxLayout(event_group)
+        event_group_layout.setContentsMargins(px(14), px(18), px(14), px(12))
+        event_group_layout.setSpacing(px(10))
+        event_layout.addWidget(event_group)
         event_row = QHBoxLayout()
-        self._event_combo = QComboBox()
-        self._event_combo.setMinimumHeight(px(48))
+        self._event_combo = _AdminComboBox()
+        _configure_admin_combo(self._event_combo)
         event_row.addWidget(self._event_combo, 1)
         start_event = BigButton("Démarrer une nouvelle soirée", "secondary")
-        start_event.setMinimumSize(px(280), px(BUTTON_HEIGHT))
+        start_event.setMinimumSize(px(250), px(BUTTON_HEIGHT))
         start_event.clicked.connect(self._start_event)
         event_row.addWidget(start_event)
         create_sheets = BigButton("Créer les planches-contact", "primary")
-        create_sheets.setMinimumSize(px(280), px(BUTTON_HEIGHT))
+        create_sheets.setMinimumSize(px(250), px(BUTTON_HEIGHT))
         create_sheets.clicked.connect(self._generate_contact_sheets)
-        event_row.addWidget(create_sheets)
-        layout.addLayout(event_row)
+        event_group_layout.addLayout(event_row)
+        event_actions = QHBoxLayout()
+        self._end_event_button = BigButton("Terminer la soir\u00e9e", "danger")
+        self._end_event_button.setMinimumSize(px(250), px(BUTTON_HEIGHT))
+        self._end_event_button.clicked.connect(self._end_event)
+        event_actions.addStretch(1)
+        event_actions.addWidget(self._end_event_button)
+        event_actions.addWidget(create_sheets)
+        event_actions.addStretch(1)
+        event_group_layout.addLayout(event_actions)
         self._event_status = QLabel()
         self._event_status.setWordWrap(True)
-        layout.addWidget(self._event_status)
+        event_group_layout.addWidget(self._event_status)
+        guestbook_group = QGroupBox("Livre d'or vidéo")
+        guestbook_layout = QHBoxLayout(guestbook_group)
+        guestbook_layout.setContentsMargins(px(14), px(18), px(14), px(12))
+        guestbook_layout.setSpacing(px(12))
+        event_layout.addWidget(guestbook_group)
         guestbook_row = QHBoxLayout()
         open_guestbook = BigButton("Ouvrir les vidéos du livre d'or", "secondary")
         open_guestbook.clicked.connect(self._open_guestbook)
@@ -105,26 +303,60 @@ class AdminDialog(QDialog):
         delete_guestbook = BigButton("Supprimer les vidéos de la soirée", "danger")
         delete_guestbook.clicked.connect(self._delete_guestbook)
         guestbook_row.addWidget(delete_guestbook)
-        layout.addLayout(guestbook_row)
+        guestbook_layout.addLayout(guestbook_row)
+        event_layout.addStretch(1)
 
-        grid = QGridLayout()
-        grid.setSpacing(px(12))
+        tools_page = QWidget()
+        tools_layout = QVBoxLayout(tools_page)
+        tools_layout.setContentsMargins(px(8), px(12), px(8), px(8))
+        tools_layout.setSpacing(px(12))
+        tools_status = QGroupBox("État des services")
+        tools_status_layout = QVBoxLayout(tools_status)
+        tools_status_layout.setContentsMargins(px(14), px(18), px(14), px(12))
+        tools_status_layout.setSpacing(px(6))
+        for label in (self._mail_info, self._backup_info, self._slideshow_info):
+            tools_status_layout.addWidget(label)
+        tools_layout.addWidget(tools_status)
+        maintenance = QGroupBox("Maintenance")
+        maintenance_layout = QGridLayout(maintenance)
+        maintenance_layout.setContentsMargins(px(14), px(18), px(14), px(12))
+        maintenance_layout.setHorizontalSpacing(px(12))
+        maintenance_layout.setVerticalSpacing(px(10))
         for index, (text, variant, action) in enumerate([
             ("Réessayer maintenant (mails et sauvegarde)", "secondary", self._retry_now),
             ("Exporter les envois non partis", "secondary", self._export),
             ("Vider le diaporama", "secondary", self._clear_slideshow),
             ("Recharger la configuration", "secondary", self._reload),
-            ("Quitter l'application", "danger", lambda: QApplication.quit()),
-            ("Fermer", "primary", lambda: self.accept()),
         ]):
             button = BigButton(text, variant)
-            button.setMinimumSize(px(260), px(BUTTON_HEIGHT))
+            button.setMinimumSize(px(250), px(BUTTON_HEIGHT))
             button.clicked.connect(lambda _checked=False, f=action: f())
-            grid.addWidget(button, index // 2, index % 2)
-        layout.addLayout(grid)
+            maintenance_layout.addWidget(button, index // 2, index % 2)
+        tools_layout.addWidget(maintenance)
+        tools_layout.addStretch(1)
+
+        tabs.addTab(settings_page, "Réglages")
+        tabs.addTab(event_page, "Soirées")
+        tabs.addTab(tools_page, "Outils")
+
+        footer = QHBoxLayout()
+        footer.addStretch(1)
+        quit_button = BigButton("Quitter l'application", "danger")
+        quit_button.setMinimumSize(px(240), px(BUTTON_HEIGHT))
+        quit_button.clicked.connect(QApplication.quit)
+        footer.addWidget(quit_button)
+        close_button = BigButton("Fermer", "primary")
+        close_button.setMinimumSize(px(180), px(BUTTON_HEIGHT))
+        close_button.clicked.connect(self.accept)
+        footer.addWidget(close_button)
+        outer_layout.addLayout(footer)
+
+        for button in self.findChildren(BigButton):
+            button.setMinimumHeight(touch_px(BUTTON_HEIGHT))
 
         self._refresh_info()
         self._refresh_events()
+        _show_fullscreen_on_screen(self, screen)
 
     def _refresh_events(self) -> None:
         events = self._window.events.list_events()
@@ -143,14 +375,38 @@ class AdminDialog(QDialog):
             if index >= 0:
                 self._event_combo.setCurrentIndex(index)
         self._event_combo.blockSignals(False)
+        self._end_event_button.setEnabled(active is not None)
         if active:
+            folder_date = datetime.fromtimestamp(active.started_at).strftime("%Y-%m-%d")
             self._event_status.setText(
-                f"Soirée active : {active.name}. Les prochaines photos validées avec une adresse mail y seront associées."
+                f"Soir\u00e9e active : {active.name}. Les prochaines photos iront dans soiree_{folder_date}."
             )
         else:
             self._event_status.setText(
-                "Aucune soirée active. Démarre-en une avant la séance pour inclure les prochaines photos aux planches-contact."
+                "Aucune soir\u00e9e active. Les prochaines photos iront dans hors-soiree_YYYY-MM-DD. "
+                "D\u00e9marre une soir\u00e9e pour les associer aux planches-contact."
             )
+
+    def _end_event(self) -> None:
+        active = self._window.events.active_event()
+        if active is None:
+            self._refresh_events()
+            return
+        answer = QMessageBox.question(
+            self, "Terminer la soir\u00e9e",
+            f"Terminer la soir\u00e9e \u00ab {active.name} \u00bb ? Les prochaines photos iront hors soir\u00e9e.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            self._window.events.end_event()
+        except Exception as exc:
+            log.exception("Fin de soiree impossible")
+            QMessageBox.warning(self, "Soir\u00e9e", f"Impossible de terminer la soir\u00e9e :\n{exc}")
+            return
+        self._refresh_events()
 
     def _start_event(self) -> None:
         active = self._window.events.active_event()
@@ -261,6 +517,77 @@ class AdminDialog(QDialog):
         self._window.sounds.update_settings(self._sound_active.isChecked(), volume)
         self._sound_save_timer.start()
 
+    def _on_countdown_changed(self, _index: int) -> None:
+        seconds = self._countdown.currentData()
+        if seconds is None:
+            return
+        try:
+            self._window.config.save_countdown_settings(seconds)
+        except (OSError, ValueError) as exc:
+            log.exception("Enregistrement du décompte impossible")
+            QMessageBox.warning(self, "Décompte", f"Le réglage n'a pas été enregistré :\n{exc}")
+            self._countdown.blockSignals(True)
+            self._countdown.setCurrentIndex(self._countdown.findData(self._window.config.duree_decompte))
+            self._countdown.blockSignals(False)
+
+    def _on_screensaver_photo_count_changed(self, _index: int) -> None:
+        count = self._screensaver_photo_count.currentData()
+        if count is None or count == self._window.config.nb_photos_veille:
+            return
+        try:
+            self._window.config.save_screensaver_photo_count(count)
+        except (OSError, ValueError) as exc:
+            log.exception("Enregistrement du nombre de photos de veille impossible")
+            QMessageBox.warning(
+                self, "Écran de veille", f"Le réglage n'a pas été enregistré :\n{exc}")
+            self._screensaver_photo_count.blockSignals(True)
+            self._screensaver_photo_count.setCurrentIndex(
+                self._screensaver_photo_count.findData(self._window.config.nb_photos_veille))
+            self._screensaver_photo_count.blockSignals(False)
+
+    def _on_main_screen_changed(self, _index: int) -> None:
+        screen_name = self._main_screen.currentData()
+        if not screen_name or screen_name == self._window.config.ecran_principal:
+            return
+        try:
+            self._window.config.save_main_screen(screen_name)
+        except (OSError, ValueError) as exc:
+            log.exception("Enregistrement de l'écran principal impossible")
+            QMessageBox.warning(self, "Écran de la borne", f"Le réglage n'a pas été enregistré :\n{exc}")
+            self._main_screen.blockSignals(True)
+            self._main_screen.setCurrentIndex(
+                self._main_screen.findData(self._window.config.ecran_principal))
+            self._main_screen.blockSignals(False)
+            return
+        log.info("Écran principal de la borne défini sur %s ; application au prochain lancement", screen_name)
+
+    def _on_admin_auth_mode_changed(self, _index: int) -> None:
+        mode = self._admin_auth_mode.currentData()
+        if mode == self._window.config.admin_auth_mode:
+            return
+        try:
+            self._window.config.save_admin_auth_settings(mode, self._window.config.admin_pattern)
+        except (OSError, ValueError) as exc:
+            log.exception("Enregistrement du mode d'accès administrateur impossible")
+            QMessageBox.warning(self, "Accès administrateur", f"Le réglage n'a pas été enregistré :\n{exc}")
+            self._admin_auth_mode.blockSignals(True)
+            self._admin_auth_mode.setCurrentIndex(
+                self._admin_auth_mode.findData(self._window.config.admin_auth_mode))
+            self._admin_auth_mode.blockSignals(False)
+
+    def _define_admin_pattern(self) -> None:
+        dialog = PatternDialog(self, confirm=True)
+        if dialog.exec() != QDialog.DialogCode.Accepted or not dialog.value:
+            return
+        try:
+            self._window.config.save_admin_auth_settings(
+                self._window.config.admin_auth_mode, dialog.value)
+        except (OSError, ValueError) as exc:
+            log.exception("Enregistrement du schéma administrateur impossible")
+            QMessageBox.warning(self, "Schéma administrateur", f"Le schéma n'a pas été enregistré :\n{exc}")
+            return
+        log.info("Schéma d'accès administrateur modifié")
+
     def _persist_sound_settings(self) -> None:
         try:
             self._window.config.save_sound_settings(
@@ -297,6 +624,17 @@ class AdminDialog(QDialog):
         self._sound_volume.setValue(self._window.config.son_volume)
         self._sound_volume.blockSignals(False)
         self._sound_volume_label.setText(f"{self._window.config.son_volume} %")
+        self._detourage_mode.blockSignals(True)
+        self._detourage_mode.setCurrentIndex(self._detourage_mode.findData(self._window.config.mode_detourage))
+        self._detourage_mode.blockSignals(False)
+        self._countdown.blockSignals(True)
+        self._countdown.setCurrentIndex(self._countdown.findData(self._window.config.duree_decompte))
+        self._countdown.blockSignals(False)
+        self._admin_auth_mode.blockSignals(True)
+        self._admin_auth_mode.setCurrentIndex(
+            self._admin_auth_mode.findData(self._window.config.admin_auth_mode))
+        self._admin_auth_mode.blockSignals(False)
+        self._update_chroma_controls()
         self._refresh_info()
         log.info("Configuration rechargée")
 
@@ -347,11 +685,188 @@ class AdminDialog(QDialog):
                                 f"{result.exported} photo(s) exportée(s) dans :\n{result.folder}{extra}")
         open_folder(result.folder)
 
+    def _edit_guest_emails(self) -> None:
+        path = self._window.config.fichier_invites
+        try:
+            guests = load_guests(path)
+        except GuestListError as exc:
+            QMessageBox.warning(self, "Liste d'invités illisible", str(exc))
+            return
+        if not guests:
+            QMessageBox.information(self, "Liste vide", "Aucun invité à modifier.")
+            return
+        GuestEmailDialog(path, guests, self).exec()
+
+    def _calibrate_green_screen(self) -> None:
+        if self._window.config.mode_detourage != "fond_vert":
+            return
+        if self._window.camera.is_active():
+            QMessageBox.information(
+                self, "Calibration du fond vert",
+                "Retourne d’abord à l’accueil pour libérer la caméra, puis relance la calibration."
+            )
+            return
+        GreenScreenCalibrationDialog(self._window, self).exec()
+
+    def _on_detourage_mode_changed(self, _index: int) -> None:
+        mode = self._detourage_mode.currentData()
+        if mode == self._window.config.mode_detourage:
+            self._update_chroma_controls()
+            return
+        if self._window.camera.is_active():
+            self._detourage_mode.blockSignals(True)
+            self._detourage_mode.setCurrentIndex(self._detourage_mode.findData(self._window.config.mode_detourage))
+            self._detourage_mode.blockSignals(False)
+            QMessageBox.information(
+                self, "Mode de détourage",
+                "Retourne d’abord à l’accueil pour libérer la caméra, puis change le mode de détourage."
+            )
+            return
+        try:
+            self._window.config.save_detourage_mode(mode)
+            self._window.close_segmenter()
+        except (OSError, ValueError) as exc:
+            log.exception("Enregistrement du mode de détourage impossible")
+            self._detourage_mode.blockSignals(True)
+            self._detourage_mode.setCurrentIndex(self._detourage_mode.findData(self._window.config.mode_detourage))
+            self._detourage_mode.blockSignals(False)
+            QMessageBox.warning(self, "Mode non enregistré", f"Le mode n’a pas été modifié :\n{exc}")
+            return
+        log.info("Mode de détourage modifié : %s", mode)
+        self._update_chroma_controls()
+        self._refresh_info()
+
+    def _update_chroma_controls(self) -> None:
+        active = self._window.config.mode_detourage == "fond_vert"
+        self._chroma_button.setVisible(active)
+        self._chroma_button.setEnabled(active and not self._window.camera.is_active())
+
     def _clear_slideshow(self) -> None:
         self._window.slideshow.clear()
+        self._window.capture_display.refresh()
         log.info("Diaporama vidé")
         self._refresh_info()
 
+
+
+class GuestEmailDialog(QDialog):
+    """Permet de corriger les adresses mail enregistrées dans la liste d'invités."""
+
+    def __init__(self, path, guests: list[Guest], parent=None) -> None:
+        super().__init__(parent)
+        self._path = path
+        self._guests = guests
+        self.setWindowTitle("Adresses mail des invités")
+        screen = parent.screen() if parent else QApplication.primaryScreen()
+        available = screen.availableGeometry() if screen else None
+        available_width = available.width() if available else px(1100)
+        available_height = available.height() if available else px(800)
+        self.setMinimumSize(min(px(600), max(320, available_width - px(24))),
+                            min(px(420), max(300, available_height - px(24))))
+        self.resize(min(px(900), int(available_width * 0.94)),
+                    min(px(680), int(available_height * 0.92)))
+        outer_layout = QVBoxLayout(self)
+        outer_layout.setContentsMargins(px(8), px(8), px(8), px(8))
+        scroll = QScrollArea(self)
+        scroll.setWidgetResizable(True)
+        QScroller.grabGesture(scroll.viewport(), QScroller.ScrollerGestureType.LeftMouseButtonGesture)
+        content = QWidget()
+        scroll.setWidget(content)
+        outer_layout.addWidget(scroll)
+        layout = QVBoxLayout(content)
+        note = QLabel("Sélectionne un invité, saisis son adresse avec le clavier tactile, puis valide. "
+                      "La touche Effacer vide l'adresse.")
+        note.setWordWrap(True)
+        layout.addWidget(note)
+
+        self._table = QTableWidget(len(guests), 3)
+        self._table.setHorizontalHeaderLabels(["Nom affiché", "Pseudo (identifiant)", "Adresse mail"])
+        self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._table.setSortingEnabled(False)
+        self._table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self._table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        self._table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        for row, guest in enumerate(guests):
+            name = QTableWidgetItem(guest.display_name)
+            pseudo = QTableWidgetItem(guest.pseudo)
+            name.setFlags(name.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            pseudo.setFlags(pseudo.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self._table.setItem(row, 0, name)
+            self._table.setItem(row, 1, pseudo)
+            self._table.setItem(row, 2, QTableWidgetItem(guest.email))
+        self._email_buffer = TextBuffer(max_length=80, allow_space=False)
+        self._selected_guest = QLabel("")
+        self._selected_guest.setObjectName("note")
+        self._email_field = QLabel("")
+        self._email_field.setObjectName("mailfield")
+        self._email_field.setMinimumHeight(px(58))
+        self._keyboard = VirtualKeyboard(EMAIL_ROWS, compact=True)
+        self._keyboard.text_typed.connect(self._email_text)
+        self._keyboard.backspace_pressed.connect(self._email_backspace)
+        self._keyboard.clear_pressed.connect(self._email_clear)
+        self._table.currentCellChanged.connect(self._select_guest)
+        layout.addWidget(self._table, 1)
+        layout.addWidget(self._selected_guest)
+        layout.addWidget(self._email_field)
+        layout.addWidget(self._keyboard)
+        if guests:
+            self._table.setCurrentCell(0, 2)
+            self._select_guest(0, 2, -1, -1)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save
+                                   | QDialogButtonBox.StandardButton.Cancel)
+        buttons.button(QDialogButtonBox.StandardButton.Save).setMinimumSize(px(140), px(56))
+        buttons.button(QDialogButtonBox.StandardButton.Cancel).setMinimumSize(px(140), px(56))
+        buttons.accepted.connect(self._save)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def _select_guest(self, row: int, _column: int, _previous_row: int, _previous_column: int) -> None:
+        if not 0 <= row < len(self._guests):
+            return
+        self._email_buffer.set(self._table.item(row, 2).text())
+        self._selected_guest.setText(f"Adresse mail de {self._guests[row].display_name} :")
+        self._refresh_email()
+
+    def _refresh_email(self) -> None:
+        row = self._table.currentRow()
+        if row >= 0:
+            self._table.item(row, 2).setText(self._email_buffer.value)
+        self._email_field.setText(self._email_buffer.value + "|")
+
+    def _email_text(self, text: str) -> None:
+        self._email_buffer.insert(text)
+        self._refresh_email()
+
+    def _email_backspace(self) -> None:
+        self._email_buffer.backspace()
+        self._refresh_email()
+
+    def _email_clear(self) -> None:
+        self._email_buffer.clear()
+        self._refresh_email()
+
+    def _save(self) -> None:
+        updates: dict[str, str] = {}
+        for row, guest in enumerate(self._guests):
+            item = self._table.item(row, 2)
+            email = normalize_email(item.text() if item is not None else "")
+            if email and not is_valid_email(email):
+                QMessageBox.warning(
+                    self, "Adresse invalide",
+                    f"L'adresse indiquée pour {guest.display_name} n'est pas valide.",
+                )
+                self._table.setCurrentCell(row, 2)
+                return
+            if email != guest.email:
+                updates[guest.pseudo] = email
+        try:
+            update_guest_emails(self._path, updates)
+        except GuestListError as exc:
+            QMessageBox.warning(self, "Enregistrement impossible", str(exc))
+            return
+        self.accept()
 
 
 class ActivationDialog(QDialog):
@@ -362,8 +877,14 @@ class ActivationDialog(QDialog):
         self._window = window
         cfg = window.config
         self.setWindowTitle("Gérer les activations")
-        self.setMinimumWidth(px(560))
-        self.setMinimumHeight(px(460))
+        screen = window.screen()
+        available = screen.availableGeometry() if screen else None
+        available_width = available.width() if available else px(1000)
+        available_height = available.height() if available else px(760)
+        self.setMinimumSize(min(px(560), max(320, available_width - px(24))),
+                            min(px(420), max(300, available_height - px(24))))
+        self.resize(min(px(700), int(available_width * 0.92)),
+                    min(px(720), int(available_height * 0.92)))
         layout = QVBoxLayout(self)
         layout.addWidget(QLabel("Active ou désactive les fonctions proposées aux invités."))
 
@@ -384,6 +905,7 @@ class ActivationDialog(QDialog):
         self._sounds = self._option(options, "Effets sonores", cfg.son_active)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        QScroller.grabGesture(scroll.viewport(), QScroller.ScrollerGestureType.LeftMouseButtonGesture)
         scroll.setWidget(content)
         layout.addWidget(scroll, 1)
 
@@ -391,6 +913,8 @@ class ActivationDialog(QDialog):
         note.setWordWrap(True)
         layout.addWidget(note)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
+        buttons.button(QDialogButtonBox.StandardButton.Save).setMinimumSize(px(140), px(56))
+        buttons.button(QDialogButtonBox.StandardButton.Cancel).setMinimumSize(px(140), px(56))
         buttons.accepted.connect(self._save)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
@@ -398,7 +922,7 @@ class ActivationDialog(QDialog):
     @staticmethod
     def _option(layout: QVBoxLayout, text: str, checked: bool) -> QCheckBox:
         checkbox = QCheckBox(text)
-        checkbox.setMinimumHeight(px(42))
+        checkbox.setMinimumHeight(px(56))
         checkbox.setChecked(checked)
         layout.addWidget(checkbox)
         return checkbox

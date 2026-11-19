@@ -1,4 +1,4 @@
-# Photo Booth : mode d'emploi
+# Photobooth : mode d'emploi
 
 ## Ce qu'il y a dans le dossier
 
@@ -7,39 +7,47 @@
 | `lancer.bat` | **Lance la borne** (la relance toute seule si elle plante) |
 | `photobooth-outils.exe` | Les mêmes outils avec une console : diagnostic, test des mails, téléchargement des modèles |
 | `config.ini` | Tous les réglages (créé au premier lancement, se complète tout seul) |
-| `invites.xlsx` | La liste des invités : `.xlsx`, `.xls` ou `.ods`, avec les colonnes `nom`, `prénom`, `mail` (le mail peut rester vide) |
+| `invites.xlsx` | La liste des invités : `.xlsx`, `.xls` ou `.ods`, avec les colonnes `nom`, `prénom`, `pseudo` (obligatoire et unique), `mail` (facultatif) |
 | `fonds\` | Les décors : une image 16/9 par fichier, un sous-dossier par thème |
 | `cadres\` | Les cadres pour les photos uniques : PNG ou WebP avec transparence |
-| `masques\` | Les masques PNG ajoutés par l'utilisateur (lunettes, moustache, etc.) |
-| `defis.json` | Liste facultative des défis personnalisés (le jeu de base est fourni dans `assets\defis.json`) |
+| `masques\` | Masques PNG generiques ; utilises si le theme ne fournit pas ses propres masques |
+| `themes\<nom>\defis.json` | Défis propres à ce thème ; sans défi valide, les défis intégrés dans `assets\defis.json` sont utilisés |
 | `photos\` | Les photos de la soirée, un dossier par jour (les poses du photomaton sont dans `poses\`) |
-| `models\` | Les modèles de détourage IA |
+| `models\` | Les modèles de détourage IA et de détection de pose |
 | `logs\` | Le journal de bord (`photobooth.log`) et le dernier diagnostic |
 | `exports\` | Les exports de secours des mails non partis (créés à la demande) |
 
 ## Avant la fête (une seule fois)
 
 1. **Modèles de détourage** (internet requis) : dans une console, `photobooth-outils.exe --telecharger-modeles`.
+   Pour activer les accessoires sur les mains : `photobooth-outils.exe --telecharger-modeles pose main` (une seule fois, internet requis).
 2. **Décors** : dépose tes images (jpg, png) dans `fonds\films`, `fonds\series`, etc.
-3. **Invités** : remplis `invites.xlsx` (ou un fichier `.xls`/`.ods`) avec les colonnes `nom`, `prénom`, `mail`. Si le fichier a un autre nom ou emplacement, indique-le dans `[chemins]` avec `fichier_invites = ...`. Ferme-le dans ton tableur avant de lancer la borne.
+3. **Invités** : remplis `invites.xlsx` (ou un fichier `.xls`/`.ods`) avec les colonnes `nom`, `prénom`, `pseudo` (obligatoire et unique), `mail`. Le pseudo est affiché à la place du prénom et du nom lorsqu'il est renseigné. Si le fichier a un autre nom ou emplacement, indique-le dans `[chemins]` avec `fichier_invites = ...`. Ferme-le dans ton tableur avant de lancer la borne.
 4. **Cadres photo** (facultatif) : dépose des PNG ou WebP transparents dans `cadres\`. Ils seront proposés avec « Photo avec cadre ». Une image au format de la photo (par défaut 16:9) donnera le rendu le plus ajusté.
-5. **Masques virtuels** (facultatif) : des lunettes, une couronne, une moustache et des oreilles de lapin sont inclus. Sur l'écran caméra, touche plusieurs icônes pour cumuler les masques ; retouche une icône pour la désactiver, ou « Aucun masque » pour tout retirer. Ajoute tes PNG transparents dans `masques\` et commence leur nom par `yeux_`, `bouche_`, `nez_`, `oreille_` ou `cheveux_` pour choisir leur placement. Pour `oreille_`, dessine une seule oreille : elle sera affichée deux fois, en miroir, de chaque côté du visage. Les anciens noms comme `lunettes`, `moustache`, `couronne` et `oreilles_lapin` restent reconnus. Les masques sont appliqués à chaque photo, pose photomaton ou image du GIF.
-6. **Défis** (facultatif) : le bouton « Défi surprise » propose dix défis de départ : poses à imiter, photomaton, GIF et défis avec décor. Le nom du défi est inscrit en haut du résultat photo, du GIF ou de la bande photomaton. Pour modifier les défis, copie `assets\defis.json` sous le nom `defis.json` à côté de l'application et édite ses consignes/formats. Les champs `decor` acceptent `none`, `choose` ou `random`; `masque` (nom sans extension) et `style` (`cartoon`, `sketch`, `watercolor`, `pop_art`, `manga`) sont facultatifs et proposés au participant. Les images personnalisées sont référencées par chemin relatif. `actif = false` dans `[defis]` masque le bouton ; les défis GIF disparaissent si le GIF est désactivé.
+5. **Masques virtuels** (facultatif) : des lunettes, une couronne, une moustache et des oreilles de lapin sont inclus. Sur l'ecran camera, touche plusieurs icones pour cumuler les masques ; retouche une icone pour la desactiver, ou Aucun masque pour tout retirer. Pour un theme, depose ses PNG transparents dans `themes/<nom-du-theme>/masques/` : s'il contient au moins un masque valide, seuls ceux du theme seront proposes. Sinon, les masques integres et ceux de `masques\` a cote de `config.ini` restent disponibles. Le debut du nom choisit la zone : `cheveux_` (haut du visage), `dessusTete_` (au-dessus de la tete), `front_`, `yeux_`, `nez_`, `moustache_`, `bouche_`, `menton_`, `joues_` (dupliquees en miroir) ou `oreille_` (dupliquee en miroir). Pour `oreille_`, dessine une seule oreille. Les anciens noms comme `lunettes`, `couronne` et `oreilles_lapin` restent reconnus. Les masques sont appliques a chaque photo, pose photomaton ou image du GIF.
+6. **Défis** (facultatif) : configure-les dans `themes/<nom-du-thème>/defis.json`. `themes/classique/defis.json` fournit un modèle vide ; sans défi valide pour le thème, les défis intégrés restent disponibles. Les chemins d'images sont relatifs au fichier `defis.json`. Dans `categories`, définis une fois les réglages communs puis utilise `images` pour lister les références ou `dossier_images` pour charger automatiquement toutes les images d'un dossier (bmp, gif, jpeg, jpg, png, svg, tif, tiff ou webp) ; chaque image crée un défi, avec un identifiant généré depuis le préfixe de la catégorie (`imite-01`, `imite-02`, etc.). Les fichiers du dossier sont triés par nom ; copie simplement les nouvelles images à sa racine. Le défi est tiré au hasard comme les autres. Dans `defis`, ajoute les défis individuels dont les options diffèrent. Chaque défi doit avoir un identifiant unique, un titre et une consigne. `format` accepte `single`, `strip` ou `gif` ; `decor` accepte `none`, `choose` ou `random`. Le champ `fond` impose un décor et remplace `decor`. `image` ou les chemins de `images` indiquent les images modèles. `masque` et `style` sont facultatifs ; les styles disponibles sont `original`, `cartoon`, `sketch`, `watercolor`, `pop_art` et `manga`. `"accessoire"` peut pointer vers un PNG transparent à placer sur une main en photo unique ; les modèles de pose et de main se téléchargent avec `photobooth-outils.exe --telecharger-modeles pose main`. Le champ facultatif `type: "guest_wheel"` ajoute une roue tirant au sort un autre invité depuis le fichier configuré dans `[invites]` ; ce défi doit être au format `single`. Le champ `type: "dance"` crée un défi Just Dance au format GIF : la séquence de poses s'affiche sur l'écran du défi, puis chaque pose de référence est incrustée sur son image du GIF, affichée deux secondes. Les prises utilisent le mode espacé et la boucle, sans écran de réglages GIF ni accessoires de prise de vue. Les champs `_commentaire` sont ignorés par l'application. `actif = false` dans `[defis]` masque le bouton ; les défis GIF disparaissent si le GIF est désactivé.
+   Les profils `profils_accessoires` permettent de partager les réglages de placement entre plusieurs objets. Un défi utilise `accessoire: {"profil": "arme_main", "image": "defis/sabre.png"}` ; les paramètres locaux de `placement` peuvent ajuster un seul objet sans modifier son profil commun. Pour équiper les deux mains, `accessoire.images` accepte une paire `gauche`/`droite`, ou des paires distinctes sous `paume` et `dos`. Dans ce dernier cas, l’application choisit le PNG selon l’orientation détectée, en tenant compte du réglage miroir de la caméra ; une main vue de tranche utilise l’image de paume. Le réglage `couche` vaut `derriere` pour replacer la main devant l’objet (sabre) ou `devant` pour le dessiner au-dessus (gants).
+   Dans `defis.json`, le champ `actif` de chaque défi ou catégorie vaut `true` par défaut. Mets-le à `false` pour le masquer temporairement ; pour une catégorie, il désactive tous les défis générés à partir de ses images.
+   Pour faire apparaître le décor à la place d’une partie du corps, ajoute `corps_masquer` à un défi avec un décor (`fond`, `decor: "choose"` ou `"random"`). Valeurs : `jambe_gauche`, `jambe_droite`, `bras_gauche`, `bras_droit`, `sous_taille`, `tete` et `haut_corps`. La segmentation corporelle reconnaît notamment pantalons, chaussures, visage, bras et jambes ; `sous_taille` masque pantalons, jambes et chaussures sans effacer les bras ni toute la zone sous une ligne horizontale. Les robes et jupes sont conservées pour éviter de supprimer aussi le haut du vêtement. Télécharge le modèle requis avec `photobooth-outils.exe --telecharger-modeles corps`. Le modèle [SegFormer-B0 human parsing](https://huggingface.co/mattmdjaga/segformer_b0_clothes) est distribué sous licence MIT. Les vêtements amples, membres croisés ou cachés peuvent rendre le contour moins précis.
+   Exemple de catégorie (les images doivent exister dans le dossier du thème) :
+   ```json
+   {"id":"imite","titre":"Copie cette pose","consigne":"Imite la pose modele.","format":"single","decor":"none","fond":"","images":["defis/pose1.jpg","defis/pose2.jpg"]}
+   ```
 7. **Mails** : dans `config.ini`, section `[mail]`, renseigne `expediteur`, `mot_de_passe_application` et `adresse_organisateur` (tu reçois une copie de chaque photo).
    Avec Gmail : active la validation en 2 étapes, puis crée un « mot de passe d'application » (Compte Google > Sécurité). Gmail limite à environ 500 mails par jour.
    Ne partage jamais `config.ini` : le mot de passe y est en clair.
 8. **Titre de la bande photomaton** : section `[photomaton]`, ligne `titre = ...` (et les couleurs si tu veux).
 9. **Sauvegarde (conseillé)** : section `[sauvegarde]`, ligne `dossier = E:/sauvegarde-photos` (clé USB, disque externe...). Chaque photo validée y est recopiée toute seule.
-10. **Thème** (facultatif) : choisis `theme = classique` dans `[general]`. Les thèmes sont dans `themes/<nom>/`; copie le dossier `classique` pour en créer un et modifier ses couleurs, textes, mail et ressources. Un cadre PNG/WebP transparent déclaré avec `cadre_interface` dans `[ressources]` s'affiche au premier plan sur les écrans du parcours, sauf pendant la prise de vue. Remplace les effets sonores en déposant des WAV portant les noms `compte_a_rebours.wav`, `declencheur.wav` ou `reussite.wav` dans `sons/`.
+10. **Theme** (facultatif) : choisis `theme = classique` dans `[general]`. Les themes sont dans `themes/<nom>/`; copie `classique` pour en creer un et personnaliser couleurs, textes, mail et ressources. Ajoute les autocollants dans `autocollants/` et les masques PNG transparents dans `masques/` dans le dossier du theme. Chaque dossier remplace separement les ressources par defaut lorsqu'il contient au moins un fichier valide ; sinon, les ressources integrees et celles a la racine restent utilisees. Un cadre PNG/WebP transparent declare avec `cadre_interface` dans `[ressources]` s'affiche au premier plan sur les ecrans du parcours, sauf pendant la prise de vue. Les effets sonores WAV se deposent dans `sons/`.
 11. **GIF animé** (facultatif) : le bouton apparaît dans le choix du format. Réglages de disponibilité, nombre d'images, rythme et limite de poids dans la section `[gif]` de `config.ini`.
-12. **Code administrateur** : change `code_admin` dans `config.ini` (1234 par défaut).
-13. **Sons** : ouvre le mode administrateur (3 appuis rapides dans le coin supérieur gauche) pour couper les effets ou régler leur volume. Les réglages sont conservés dans `config.ini`.
+12. **Accès administrateur** : le schéma tactile est utilisé par défaut (relier 1-2-3-6-9 sur la grille 3×3). L'écran d'accès permet aussi de basculer vers le pavé numérique du code (`code_admin`, 1234 par défaut). Depuis le menu admin, choisis le mode proposé par défaut et **Définir le schéma** pour enregistrer un nouveau tracé ; il faut le dessiner deux fois.
+13. **Sons** : ouvre le mode administrateur (5 appuis rapides dans le coin supérieur gauche) pour couper les effets ou régler leur volume. Le menu est organisé en onglets **Réglages**, **Soirées** et **Outils** ; les commandes **Quitter** et **Fermer** restent accessibles en bas. Les réglages sont conservés dans `config.ini`.
 14. **Vérifie tout** : `photobooth-outils.exe --autotest` (caméra, modèle, décors, invités, mails, écrans) puis `photobooth-outils.exe --test-mail` (envoie un vrai mail de test).
 
 ## Le jour J
 
 1. Branche le PC **sur secteur** (la veille et l'écran éteint sont désactivés pendant la soirée).
-2. **Second écran** (diaporama) : branche-le, puis Windows + P > **Étendre**. Il se met en route tout seul, même branché après le lancement.
+2. **Écrans supplémentaires** : branche-les, puis Windows + P > **Étendre**. Dans le menu admin, choisis l'écran tactile du portable comme écran de la borne si Windows a désigné un écran externe comme principal ; ce choix s'applique au prochain lancement. L'écran de veille animé reste sur l'écran de la borne. Le deuxième écran affiche le diaporama et le troisième fait défiler les photos aléatoirement lorsqu'il n'affiche pas l'aperçu caméra pendant une prise de vue. La détection des écrans secondaires est automatique, y compris si tu les branches après le lancement.
 3. Lance **`lancer.bat`**.
 4. Place la caméra à hauteur de visage, avec la lumière **devant** les invités et un mur uni derrière eux : c'est ce qui améliore le plus le détourage.
 5. Vérifie internet (Wi-Fi) : sans réseau, les photos sont quand même prises, et les mails partent dès son retour.
@@ -60,8 +68,12 @@ Touche **5 fois rapidement le coin en haut à gauche** de l'écran, puis tape le
 - ouvrir **Gérer les activations** pour couper/rétablir les mails, la sauvegarde (si un dossier est configuré), le GIF, Casting/Audition, le QR code, le livre d'or, le diaporama secondaire et les effets sonores. Les messages mail déjà en attente sont suspendus pendant la désactivation et reprendront si tu réactives l'envoi ;
 - **réessayer maintenant** les mails et la sauvegarde, ou **exporter** les envois non partis (voir ci-dessus) ;
 - voir l'état du diaporama et le **vider** pour une nouvelle soirée (les photos restent dans `photos\`) ;
+- choisir le **mode de détourage** entre l’intelligence artificielle et le fond vert. Les réglages du fond vert apparaissent uniquement quand ce mode est sélectionné ;
 - **recharger la configuration** après avoir modifié `config.ini` ;
 - régler le volume des effets sonores ;
+- **calibrer le fond vert** : retourne d’abord à l’accueil pour libérer la webcam, puis ouvre cette option. Clique sur plusieurs zones du tissu dans l’aperçu, notamment dans les plis, les ombres et les zones éclairées. Ajuste les seuils pour que le fond soit blanc dans le masque et les personnes noires. L’aperçu magenta montre les zones retirées. **Enregistrer** conserve les valeurs dans `config.ini` ; **Annuler** les laisse inchangées. Ces seuils sont utilisés quand `mode_detourage = fond_vert` dans `[general]` ;
+- régler le **décompte avant la prise de vue** entre 1 et 10 secondes (5 par défaut) ; le choix est enregistré immédiatement ;
+- choisir le mode proposé par défaut pour le déverrouillage admin et définir le schéma tactile ; l'écran d'accès permet de basculer ponctuellement entre le schéma et le pavé de code ;
 - **quitter** la borne.
 
 Avec un clavier : `Ctrl + Maj + Q`.
@@ -105,12 +117,12 @@ En dernier recours, un écran de la borne plus haut que l'écran du PC reste uti
 
 ## Après la fête
 
-- Les photos sont dans `photos\AAAA-MM-JJ\` (la bande, ou la photo unique) et `photos\AAAA-MM-JJ\poses\` (chaque pose du photomaton).
+- Les photos sont dans `photos\soiree_YYYY-MM-DD\` pendant une soir&eacute;e ou `photos\hors-soiree_YYYY-MM-DD\` hors soir&eacute;e ; les poses du photomaton sont rang&eacute;es dans `poses\`.
 - Pour une nouvelle soirée, vide le diaporama (mode admin) ; garde ou supprime les anciennes photos comme tu veux.
 
 ## Soirées et planches-contact
 
-Au début de chaque soirée, ouvre le mode administrateur (3 appuis rapides dans le coin supérieur gauche) et choisis **Démarrer une nouvelle soirée**. Cette soirée reste active après minuit et après un redémarrage, jusqu'au démarrage explicite de la suivante. Si une soirée est déjà active, l'application demande confirmation avant de la clôturer.
+Au début de chaque soirée, ouvre le mode administrateur (5 appuis rapides dans le coin supérieur gauche) et choisis **Démarrer une nouvelle soirée**. Cette soirée reste active après minuit et après un redémarrage, jusqu'au démarrage explicite de la suivante. Si une soirée est déjà active, l'application demande confirmation avant de la clôturer.
 
 En fin de soirée ou plus tard, retourne dans le mode administrateur, sélectionne la soirée dans la liste puis choisis **Créer les planches-contact**. Une planche PNG est créée pour chaque invité identifié par son adresse mail, dans `exports\planches-contact\`. Elle inclut les photos uniques, les photos avec cadre, les bandes photomaton (une seule vignette de la bande, sans recompter les poses) et une vignette de la première image de chaque GIF. Le dossier créé s'ouvre automatiquement.
 
@@ -120,11 +132,13 @@ Seules les photos validées pendant une soirée active et associées à une adre
 
 Après le délai `inactivite_secondes` de `[general]`, l'écran de veille du thème s'affiche. Si l'invité était dans le parcours, la borne revient à l'accueil sous cet écran, sans attendre un second délai. Si elle était déjà à l'accueil, la veille s'affiche directement. Touche l'écran de veille pour révéler l'accueil, puis **Commencer** pour lancer le parcours. Le geste administrateur reste disponible dans le coin supérieur gauche. Mets le délai à `0` pour désactiver le retour automatique et l'écran de veille.
 
+Le nombre de photos de la soirée qui flottent sur l'écran de veille se règle dans le menu administrateur, de 1 à 20 (15 par défaut). Le nombre réellement affiché dépend du nombre de photos disponibles.
+
 ## Autocollants photo
 
 Sur l'écran de résultat, touche une icône pour ajouter l'autocollant au centre de la photo, puis fais-le glisser au doigt pour le placer. Les commandes `−` et `+` changent sa taille, `↶` et `↻` le tournent, et `×` retire l'autocollant sélectionné. Tu peux en ajouter plusieurs. Ils sont intégrés à la photo enregistrée quand tu la valides ; **Recommencer** les abandonne avec la photo.
 
-Les autocollants de départ sont fournis. Pour en ajouter, dépose des images PNG ou WebP transparentes, ou des SVG, dans `autocollants\` à côté de `config.ini`. Le nom du fichier sert d'infobulle.
+Les autocollants de départ sont fournis. Pour personnaliser un thème, dépose uniquement ses autocollants dans `themes/<nom-du-thème>/autocollants/`. Dès qu’au moins un autocollant valide est présent dans ce dossier, seuls ceux du thème sont proposés. Si le dossier est absent ou ne contient aucun autocollant valide, les autocollants intégrés et ceux de `autocollants/` à côté de `config.ini` restent utilisés. Formats acceptés : PNG, WebP, SVG, JPG ou JPEG (PNG/WebP/SVG conseillés pour la transparence) ; le nom du fichier sert d’infobulle.
 
 ## Livre d'or vidéo
 
@@ -151,4 +165,4 @@ Pour connecter Google Drive une seule fois :
 
 La commande programme une tâche Windows qui vérifie les liens toutes les heures ; la borne fait aussi une vérification au démarrage. Google Drive ne sait pas appliquer une date d'expiration aux liens publics « toute personne disposant du lien », donc un lien peut rester accessible jusqu'au prochain passage de la tâche après son échéance. Si la tâche n'a pas pu être créée, le nettoyage se fera au prochain démarrage de la borne.
 
-Les fichiers sont déposés dans le dossier Drive `Photo Booth`. Après 30 jours, l'accès public est révoqué, mais le fichier reste dans Drive et continue d'occuper de l'espace. Si le réseau, le quota, Drive ou OAuth est indisponible, le QR est désactivé pour ce résultat ; l'enregistrement local et la mise en file du mail continuent normalement. Toute personne possédant le QR ou le lien peut télécharger le média pendant la période de partage.
+Les fichiers sont déposés dans le dossier Drive `Photobooth`. Après 30 jours, l'accès public est révoqué, mais le fichier reste dans Drive et continue d'occuper de l'espace. Si le réseau, le quota, Drive ou OAuth est indisponible, le QR est désactivé pour ce résultat ; l'enregistrement local et la mise en file du mail continuent normalement. Toute personne possédant le QR ou le lien peut télécharger le média pendant la période de partage.

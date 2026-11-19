@@ -15,11 +15,11 @@ class GifOptionsScreen(BaseScreen):
         title = QLabel("Ton GIF animé")
         title.setObjectName("heading")
         self._mode_buttons = {
-            "spaced": BigButton("Poses espacées", "primary"),
+            "spaced": BigButton("Poses espacées", "notListed"),
             "burst": BigButton("Rafale courte", "secondary"),
         }
         self._effect_buttons = {
-            "loop": BigButton("Boucle", "primary"),
+            "loop": BigButton("Boucle", "notListed"),
             "boomerang": BigButton("Boomerang", "secondary"),
             "fast": BigButton("Accéléré", "secondary"),
             "slow": BigButton("Ralenti", "secondary"),
@@ -53,8 +53,8 @@ class GifOptionsScreen(BaseScreen):
         self._hold = QCheckBox("Marquer une pause sur la dernière image")
         back = BigButton("Retour", "secondary")
         back.clicked.connect(lambda: self.nav.go_to("challenge" if self.session.challenge_id else "format_select"))
-        start = BigButton("Continuer")
-        start.clicked.connect(lambda: self.nav.go_to("capture"))
+        start = BigButton("Continuer", "notListed")
+        start.clicked.connect(self._continue)
         footer = QHBoxLayout()
         footer.addStretch(1)
         footer.addWidget(back)
@@ -81,7 +81,7 @@ class GifOptionsScreen(BaseScreen):
     @staticmethod
     def _set_selected(buttons: dict[str, BigButton], selected: str) -> None:
         for key, button in buttons.items():
-            button.setProperty("variant", "primary" if key == selected else "secondary")
+            button.setProperty("variant", "notListed" if key == selected else "secondary")
             button.style().unpolish(button)
             button.style().polish(button)
 
@@ -95,3 +95,6 @@ class GifOptionsScreen(BaseScreen):
 
     def on_leave(self) -> None:
         self.session.gif_hold_last = self._hold.isChecked()
+
+    def _continue(self) -> None:
+        self.nav.go_to("capture")
